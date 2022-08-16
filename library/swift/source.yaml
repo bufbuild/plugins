@@ -1,0 +1,4 @@
+source:
+  github:
+    owner: apple
+    repository: swift-protobuf

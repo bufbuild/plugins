@@ -1,0 +1,4 @@
+source:
+  maven:
+    group: io.grpc
+    name: protoc-gen-grpc-java

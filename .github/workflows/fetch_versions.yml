@@ -1,0 +1,31 @@
+name: Fetch latest versions
+
+on:
+  schedule:
+    - cron: "0 */4 * * *" # At minute 0 past every 4th hour.
+  workflow_dispatch:
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  fetch-versions:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout repository code
+        uses: actions/checkout@v3
+      - name: Fetch all versions
+        run: |
+          go run cmd/fetcher/main.go library
+      - name: Create PR
+        uses: peter-evans/create-pull-request@10db75894f6d53fc01c3bb0995e95bd03e583a62
+        with:
+          add-paths: .
+          commit-message: "detected new plugin versions"
+          branch: fetch-versions
+          branch-suffix: timestamp
+          delete-branch: true
+          title: "Found new plugin versions"
+          body: "New plugin versions found. Please review."
+          assignees: mfridman, pkwarren
+          

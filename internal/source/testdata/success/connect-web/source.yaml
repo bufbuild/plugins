@@ -1,0 +1,4 @@
+source:
+  disabled: true
+  npm_registry:
+    name: "@bufbuild/protoc-gen-connect-web"
