@@ -4,7 +4,7 @@ plugin_version: v0.4.0
 source_url: github.com/bufbuild/connect-go
 description: A better gRPC.
 deps:
-  - plugin: buf.build/library/go:v1.28.0
+  - plugin: buf.build/library/go:v1.28.1
 default_opts:
   - paths=source_relative
 registry:
@@ -12,4 +12,4 @@ registry:
     min_version: "1.18"
     deps:
       - module: github.com/bufbuild/connect-go
-        version: v0.3.0
+        version: v0.4.0
