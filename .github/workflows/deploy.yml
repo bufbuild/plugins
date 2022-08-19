@@ -1,0 +1,39 @@
+name: Deploy
+
+permissions: read-all
+
+on:
+  workflow_dispatch:
+    inputs:
+      plugin-directory:
+        description: "Plugin directory"
+        required: true
+
+jobs:
+  deploy-plugin:
+    runs-on: ubuntu-latest
+    name: Deploy plugin to BSR
+    timeout-minutes: 10
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+      - uses: actions/cache@v3
+        with:
+          path: ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+      - uses: actions/setup-go@v3
+        with:
+          go-version: "1.19"
+      - name: Install buf cli
+        run: |
+          go install github.com/bufbuild/buf/cmd/buf@main
+      - name: Deploy plugin
+        env:
+          BUF_BETA_SUPPRESS_WARNINGS: 1
+          BSR_USER: ${{ secrets.BSR_USER }}
+          BSR_TOKEN: ${{ secrets.BSR_TOKEN }}
+        run: |
+          echo ${BSR_TOKEN} | buf registry login --username ${BSR_USER} --token-stdin
+          buf alpha plugin push ${{ github.event.inputs.plugin-directory }}
