@@ -35,6 +35,5 @@ jobs:
           BSR_USER: ${{ secrets.BSR_USER }}
           BSR_TOKEN: ${{ secrets.BSR_TOKEN }}
         run: |
-          buf --version
           echo ${BSR_TOKEN} | buf registry login --username ${BSR_USER} --token-stdin
           buf alpha plugin push ${{ github.event.inputs.plugin-directory }}
