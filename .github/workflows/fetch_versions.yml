@@ -2,7 +2,7 @@ name: Fetch latest versions
 
 on:
   schedule:
-    - cron: "0 */4 * * *" # At minute 0 past every 4th hour.
+    - cron: "0 0 * * *" # Run once a day
   workflow_dispatch:
 permissions:
   contents: write
