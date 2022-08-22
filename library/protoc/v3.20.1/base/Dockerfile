@@ -1,10 +1,12 @@
 # syntax=docker/dockerfile:1.4
-FROM bufbuild/plugins-protoc-base-build:latest
+ARG DOCKER_ORG=bufbuild
+ARG BASE_BUILD_VERSION=latest
+FROM ${DOCKER_ORG}/plugins-protoc-base-build:${BASE_BUILD_VERSION}
 
-ARG PROTOC_VERSION
-RUN test -n "${PROTOC_VERSION}"
+ARG VERSION
+RUN test -n "${VERSION}"
 
-RUN git clone https://github.com/protocolbuffers/protobuf --depth 1 --branch ${PROTOC_VERSION} --recursive
+RUN git clone https://github.com/protocolbuffers/protobuf --depth 1 --branch ${VERSION} --recursive
 WORKDIR /build/protobuf/
 COPY plugins/* /build/plugins/
 RUN ["ln", "-s", "/build/plugins", "."]

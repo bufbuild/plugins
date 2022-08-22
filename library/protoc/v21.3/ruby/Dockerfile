@@ -1,6 +1,7 @@
 # syntax=docker/dockerfile:1.4
 ARG PLUGIN_VERSION
-FROM bufbuild/plugins-protoc-base:${PLUGIN_VERSION} as build
+ARG DOCKER_ORG=bufbuild
+FROM ${DOCKER_ORG}/plugins-protoc-base:${PLUGIN_VERSION} as build
 
 FROM debian:bullseye-slim
 WORKDIR /app
