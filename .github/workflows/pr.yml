@@ -12,6 +12,11 @@ permissions: read-all
 jobs:
   pr:
     runs-on: ubuntu-latest
+    services:
+      registry:
+        image: registry:2
+        ports:
+          - 5000:5000
     steps:
     - uses: actions/checkout@v3
       with:
@@ -47,23 +52,23 @@ jobs:
       with:
         path: ~/go/pkg/mod
         key: ${{ runner.os }}-plugins-ci-${{ hashFiles('**/go.sum') }}
-        restore-keys: ${{ runner.os }}-plugins-ci-
+        restore-keys: ${{ runner.os }}-plugins-ci
     - name: Set up QEMU
       uses: docker/setup-qemu-action@v2
     - name: Set up Docker Buildx
       id: buildx
       uses: docker/setup-buildx-action@v2
       with:
-        driver: docker
+        driver-opts: network=host
     - name: Build
       env:
         ALL_MODIFIED_FILES: ${{ steps.changed-files.outputs.all_modified_files }}
         ANY_MODIFIED: ${{ steps.changed-files.outputs.any_modified }}
       shell: bash
-      run: make
+      run: make DOCKER_ORG="localhost:5000/bufbuild" DOCKER_BUILD_EXTRA_ARGS="--build-arg BUILDKIT_INLINE_CACHE=1 --push"
     - name: Test
       env:
         ALL_MODIFIED_FILES: ${{ steps.changed-files.outputs.all_modified_files }}
         ANY_MODIFIED: ${{ steps.changed-files.outputs.any_modified }}
       shell: bash
-      run: make test
+      run: make test DOCKER_ORG="localhost:5000/bufbuild"

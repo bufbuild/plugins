@@ -28,7 +28,7 @@ jobs:
       with:
         path: ~/go/pkg/mod
         key: ${{ runner.os }}-plugins-ci-${{ hashFiles('**/go.sum') }}
-        restore-keys: ${{ runner.os }}-plugins-ci-
+        restore-keys: ${{ runner.os }}-plugins-ci
     - name: Set up QEMU
       uses: docker/setup-qemu-action@v2
     - name: Set up Docker Buildx
