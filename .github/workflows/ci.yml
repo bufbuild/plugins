@@ -36,6 +36,8 @@ jobs:
       uses: docker/setup-buildx-action@v2
       with:
         driver-opts: network=host
+    - name: Log in to registry
+      run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u $ --password-stdin
     - name: Build
       shell: bash
       run: make DOCKER_ORG="ghcr.io/bufbuild" DOCKER_BUILD_EXTRA_ARGS="--build-arg BUILDKIT_INLINE_CACHE=1 --push"
