@@ -44,3 +44,6 @@ jobs:
     - name: Test
       shell: bash
       run: make test DOCKER_ORG="ghcr.io/bufbuild"
+    - name: Push
+      shell: bash
+      run: make push DOCKER_ORG="ghcr.io/bufbuild" DOCKER_CACHE_ORG="ghcr.io/bufbuild"
