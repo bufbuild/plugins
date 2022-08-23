@@ -25,6 +25,8 @@ const (
 	mavenSearchURL = "https://search.maven.org/solrsearch/select"
 )
 
+var ErrSkipPrerelease = errors.New("skipping prerelease version")
+
 // Client is a client used to fetch latest package version.
 type Client struct {
 	httpClient *http.Client
@@ -53,6 +55,10 @@ func (c *Client) Fetch(ctx context.Context, config *source.Config) (string, erro
 	validSemver, ok := ensureSemverPrefix(version)
 	if !ok {
 		return "", fmt.Errorf("%s: invalid semver: %s", config.Source.Name(), version)
+	}
+	// For now we ignore prerelease versions. But this may change in the future.
+	if semver.Prerelease(validSemver) != "" && !config.IncludePrerelease {
+		return "", fmt.Errorf("%s: %w: %s", config.Source.Name(), ErrSkipPrerelease, validSemver)
 	}
 	return validSemver, nil
 }
@@ -219,7 +225,7 @@ func (c *Client) fetchGithub(ctx context.Context, owner string, repository strin
 					versions = append(versions, version)
 					continue
 				}
-				log.Printf("skipping: got invalid semver %s for package %s/%s\n", *tag.Name, owner, repository)
+				log.Printf("fetchclient: skipping invalid semver %s for package %s/%s\n", *tag.Name, owner, repository)
 			}
 		}
 		page = response.NextPage

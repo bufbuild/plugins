@@ -21,6 +21,9 @@ func NewConfig(reader io.Reader) (*Config, error) {
 type Config struct {
 	Filename string       `yaml:"-"`
 	Source   SourceConfig `yaml:"source"`
+	// IncludePrerelease includes semver prereleases when fecthing versions
+	// from upstream.
+	IncludePrerelease bool `yaml:"include_prerelease"`
 }
 
 // SourceConfig is the configuration for the fetch source.

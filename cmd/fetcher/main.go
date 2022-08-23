@@ -55,6 +55,10 @@ func run(ctx context.Context, root string, depth int) error {
 		}
 		newVersion, err := client.Fetch(ctx, config)
 		if err != nil {
+			if errors.Is(err, fetchclient.ErrSkipPrerelease) {
+				log.Println(err)
+				continue
+			}
 			return err
 		}
 		// example: library/grpc
