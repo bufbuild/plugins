@@ -1,26 +1,21 @@
 package main
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
 	"log"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strings"
 	"time"
 
+	"github.com/bufbuild/buf/private/bufpkg/bufplugin/bufpluginconfig"
+	"github.com/bufbuild/buf/private/pkg/encoding"
 	"github.com/bufbuild/plugins/internal/fetchclient"
 	"github.com/bufbuild/plugins/internal/source"
 	"go.uber.org/multierr"
 	"golang.org/x/mod/semver"
-)
-
-var (
-	// TODO(mf): use the plugin from bufbuild/buf
-	re = regexp.MustCompile(`(?m)^plugin_version:\s(v.*)$`)
 )
 
 var errNoVersions = errors.New("no versions found")
@@ -58,79 +53,175 @@ func run(ctx context.Context, root string, depth int) error {
 			log.Printf("skipping source: %s\n", config.Filename)
 			continue
 		}
-		latestVersion, err := client.Fetch(ctx, config)
+		newVersion, err := client.Fetch(ctx, config)
 		if err != nil {
 			return err
 		}
-		baseDir := filepath.Dir(config.Filename)
-		ok, err := checkDirVersionExists(baseDir, latestVersion)
+		// example: library/grpc
+		pluginDir := filepath.Dir(config.Filename)
+		ok, err := checkDirExists(filepath.Join(pluginDir, newVersion))
 		if err != nil {
 			return err
 		}
 		if ok {
-			log.Printf("skipping: %v/%v already exists\n", baseDir, latestVersion)
+			log.Printf("skipping: %v/%v already exists\n", pluginDir, newVersion)
 			continue
 		}
-		if err := createDirVersion(baseDir, latestVersion); err != nil {
+		previousVersion, err := getLatestVersionFromDir(pluginDir)
+		if err != nil {
+			return fmt.Errorf("failed to get latest known version from dir %s with error: %w", pluginDir, err)
+		}
+		switch pluginDir {
+		case "library/grpc", "library/protoc":
+			// These directories don't follow the normal convention:
+			//	library/{plugin_name}/{version}
+			// 	Example: library/connect-go/v0.1.1
+			//
+			// Instead, they have an additional per language subdirectory:
+			// 	library/{plugin_base}/{version}/{plugin_language}
+			// 	Example: library/grpc/v1.48.0/ruby
+			//
+			// This means we need to make a copy for each of those subdirectories .
+			if err := createPluginDirs(pluginDir, previousVersion, newVersion); err != nil {
+				return err
+			}
+			if err := updatePluginDirs(pluginDir, newVersion); err != nil {
+				return err
+			}
+		default:
+			if err := createPluginDir(pluginDir, previousVersion, newVersion); err != nil {
+				return err
+			}
+			// example: library/connect-go/v0.4.0/buf.plugin.yaml
+			bufPluginFile := filepath.Join(pluginDir, newVersion, bufpluginconfig.ExternalConfigFilePath)
+			if err := updateBufPluginFile(bufPluginFile, newVersion); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+// copyDirectory copies all files from the source directory to the target,
+// creating the target directory if does not exist.
+// If the source directory contains subdirectories this function returns an error.
+func copyDirectory(source, target string) (retErr error) {
+	entries, err := os.ReadDir(source)
+	if err != nil {
+		return err
+	}
+	if err := os.MkdirAll(target, 0755); err != nil {
+		return err
+	}
+	defer func() {
+		if retErr != nil {
+			retErr = multierr.Append(retErr, os.RemoveAll(target))
+		}
+	}()
+	for _, file := range entries {
+		if file.IsDir() {
+			return fmt.Errorf("failed to copy directory. Expecting files only: %s", source)
+		}
+		if err := copyFile(
+			filepath.Join(source, file.Name()),
+			filepath.Join(target, file.Name()),
+		); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func createDirVersion(dir string, version string) (retErr error) {
-	previousVersion, err := getLatestVersionFromDir(dir)
-	if err != nil && !errors.Is(err, errNoVersions) {
+func createPluginDirs(pluginDir string, previousVersion string, newVersion string) error {
+	// pluginDir: library/grpc
+	// newVersion: v1.49.0-pre1
+	// previousVersion: v1.48.0
+
+	// example: library/grpc/v1.48.0
+	oldPluginDir := filepath.Join(pluginDir, previousVersion)
+	entries, err := os.ReadDir(oldPluginDir)
+	if err != nil {
 		return err
 	}
-	// ^^^^ make sure to resolve the latest version before writing the new version
-	// 		to the same directory.
-	if err := os.Mkdir(filepath.Join(dir, version), 0755); err != nil {
+	// example: library/grpc/v1.49.0-pre1
+	newPluginDir := filepath.Join(pluginDir, newVersion)
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			return fmt.Errorf("expecting directories only: %s", entry.Name())
+		}
+		err = copyDirectory(
+			filepath.Join(oldPluginDir, entry.Name()),
+			filepath.Join(newPluginDir, entry.Name()),
+		)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func createPluginDir(dir string, previousVersion string, newVersion string) (retErr error) {
+	if err := os.Mkdir(filepath.Join(dir, newVersion), 0755); err != nil {
 		return err
 	}
 	defer func() {
 		if retErr != nil {
-			retErr = multierr.Append(retErr, os.RemoveAll(filepath.Join(dir, version)))
+			retErr = multierr.Append(retErr, os.RemoveAll(filepath.Join(dir, newVersion)))
 		}
 	}()
-	if previousVersion == "" {
-		log.Printf("successfully created empty directory: %s\n", filepath.Join(dir, version))
-		return nil
-	}
-	for _, name := range []string{"Dockerfile", ".dockerignore"} {
-		if err := copy(
-			filepath.Join(dir, previousVersion, name),
-			filepath.Join(dir, version, name),
-		); err != nil {
-			return err
-		}
-	}
-	previousBufPluginFile := filepath.Join(dir, previousVersion, "buf.plugin.yaml")
-	previousBufPluginData, err := os.ReadFile(previousBufPluginFile)
+	return copyDirectory(
+		filepath.Join(dir, previousVersion),
+		filepath.Join(dir, newVersion),
+	)
+}
+
+func updatePluginDirs(pluginDir string, newVersion string) error {
+	// example: library/grpc/v1.49.0-pre1
+	newPluginDir := filepath.Join(pluginDir, newVersion)
+	entries, err := os.ReadDir(newPluginDir)
 	if err != nil {
 		return err
 	}
-	match := re.FindSubmatch(previousBufPluginData)
-	if len(match) != 2 {
-		return fmt.Errorf("invalid match for plugin_version in buf.plugin.yaml file: got %d matches", len(match))
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			continue
+		}
+		// example: library/grpc/v1.49.0-pre1/python/buf.plugin.yaml
+		bufPluginFile := filepath.Join(newPluginDir, entry.Name(), bufpluginconfig.ExternalConfigFilePath)
+		ok, err := checkFileExists(bufPluginFile)
+		if err != nil {
+			return err
+		}
+		if ok {
+			if err := updateBufPluginFile(bufPluginFile, newVersion); err != nil {
+				return err
+			}
+		}
 	}
-	// Sanity check the existing plugin_version is lower than incoming version.
-	match[1] = bytes.TrimSpace(match[1])
-	if semver.Compare(string(match[1]), previousVersion) < 0 {
-		return fmt.Errorf(
-			"existing plugin_version version: %q in %s has higher semver precedence than found version: %q",
-			string(match[1]),
-			previousBufPluginFile,
-			version,
-		)
-	}
-	// We are certain the incoming version is latest, replace and write to new file.
-	newBufPluginData := re.ReplaceAll(previousBufPluginData, []byte("plugin_version: "+version))
-	newBufPluginFile := filepath.Join(dir, version, "buf.plugin.yaml")
-	return os.WriteFile(newBufPluginFile, newBufPluginData, 0644)
+	return nil
 }
 
-func copy(src, dest string) error {
+// updateBufPluginFile takes a named file, expected to be a buf.plugin.yaml, and
+// updates the plugin_version with new version.
+func updateBufPluginFile(name string, newVersion string) error {
+	data, err := os.ReadFile(name)
+	if err != nil {
+		return err
+	}
+	var config bufpluginconfig.ExternalConfig
+	if err := encoding.UnmarshalYAMLStrict(data, &config); err != nil {
+		return err
+	}
+	config.PluginVersion = newVersion
+	// TODO(mf): can we also bump the registry.{npm|go}.deps assuming its the same version?
+	newData, err := encoding.MarshalYAML(config)
+	if err != nil {
+		return fmt.Errorf("failed to write file %s with error: %s", name, err)
+	}
+	return os.WriteFile(name, newData, 0644)
+}
+
+func copyFile(src, dest string) error {
 	data, err := os.ReadFile(src)
 	if err != nil {
 		return err
@@ -144,12 +235,9 @@ func getLatestVersionFromDir(dir string) (string, error) {
 		return "", err
 	}
 	var versions []string
-	for _, d := range dirs {
-		if d.IsDir() {
-			if semver.IsValid(d.Name()) {
-				versions = append(versions, d.Name())
-				continue
-			}
+	for _, dir := range dirs {
+		if dir.IsDir() && semver.IsValid(dir.Name()) {
+			versions = append(versions, dir.Name())
 		}
 	}
 	if len(versions) == 0 {
@@ -159,8 +247,8 @@ func getLatestVersionFromDir(dir string) (string, error) {
 	return versions[len(versions)-1], nil
 }
 
-func checkDirVersionExists(dir string, version string) (bool, error) {
-	info, err := os.Stat(filepath.Join(dir, version))
+func checkDirExists(dir string) (bool, error) {
+	info, err := os.Stat(dir)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return false, nil
@@ -169,6 +257,20 @@ func checkDirVersionExists(dir string, version string) (bool, error) {
 	}
 	if !info.IsDir() {
 		return false, fmt.Errorf("expecting directory: %q", dir)
+	}
+	return true, nil
+}
+
+func checkFileExists(name string) (bool, error) {
+	info, err := os.Stat(name)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return false, nil
+		}
+		return false, err
+	}
+	if !info.Mode().IsRegular() {
+		return false, fmt.Errorf("expecting normal file: %q", name)
 	}
 	return true, nil
 }
