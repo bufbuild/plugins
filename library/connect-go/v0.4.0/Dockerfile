@@ -10,6 +10,6 @@ RUN --mount=type=cache,target=/go/pkg/mod \
 
 FROM scratch
 COPY --from=build --chown=root:root /etc/passwd /etc/passwd
-COPY --from=build /protoc-gen-connect-go /
+COPY --from=build /app/protoc-gen-connect-go /
 USER nobody
 ENTRYPOINT [ "/protoc-gen-connect-go" ]
