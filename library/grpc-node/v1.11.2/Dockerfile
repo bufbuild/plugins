@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1.4
-FROM node:lts-bullseye AS build
+FROM node:16.17.0-bullseye AS build
 
 ARG PLUGIN_VERSION
 RUN test -n "${PLUGIN_VERSION}"
@@ -24,7 +24,7 @@ else
 fi
 EOF
 
-FROM debian:bullseye-slim
+FROM debian:bullseye-20220822-slim
 WORKDIR /app
 COPY --from=build --chmod=0755 --chown=root:root /build/grpc_node_plugin .
 USER nobody
