@@ -9,8 +9,7 @@ RUN --mount=type=cache,target=/go/pkg/mod \
     go install -ldflags="-s -w" -trimpath github.com/bufbuild/connect-go/cmd/protoc-gen-connect-go@${PLUGIN_VERSION}
 
 FROM scratch
-WORKDIR /app
 COPY --from=build --chown=root:root /etc/passwd /etc/passwd
-COPY --from=build /app/protoc-gen-connect-go .
+COPY --from=build /protoc-gen-connect-go /
 USER nobody
-ENTRYPOINT [ "/app/protoc-gen-connect-go" ]
+ENTRYPOINT [ "/protoc-gen-connect-go" ]
