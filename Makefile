@@ -42,7 +42,7 @@ test:
 	if [[ -n "$(DOCKER_CACHE_ORG)" ]]; then \
 		CACHE_ARGS=" --cache-from type=registry,ref=$(DOCKER_CACHE_ORG)/plugins-grpc-base:$${VERSION}"; \
 	fi; \
-	echo $(DOCKER) $(DOCKER_BUILD_ARGS) $(DOCKER_BUILD_EXTRA_ARGS)$${CACHE_ARGS} --build-arg VERSION=$${VERSION} -t $(DOCKER_ORG)/plugins-grpc-base:$${VERSION} $(<D)
+	$(DOCKER) $(DOCKER_BUILD_ARGS) $(DOCKER_BUILD_EXTRA_ARGS)$${CACHE_ARGS} --build-arg VERSION=$${VERSION} -t $(DOCKER_ORG)/plugins-grpc-base:$${VERSION} $(<D)
 	@mkdir -p $(dir $@) && touch $@
 
 .build/base/library/protoc/v%/base/image: library/protoc/v%/base/Dockerfile
