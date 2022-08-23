@@ -15,9 +15,13 @@ jobs:
     - uses: actions/checkout@v3
       with:
         fetch-depth: 1
-    - uses: bufbuild/buf-setup-action@v1
-      with:
-        version: 1.7.0
+#    - uses: bufbuild/buf-setup-action@v1
+#      with:
+#        version: 1.7.0
+    # TODO: Remove this when new Buf CLI is released.
+    - name: Install buf cli
+      run: |
+        go install github.com/bufbuild/buf/cmd/buf@main
     - name: Install Go
       uses: actions/setup-go@v3
       with:
