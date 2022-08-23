@@ -77,7 +77,7 @@ push: build
 			CACHE_ARGS=" --cache-from $(DOCKER_CACHE_ORG)/plugins-$${PLUGIN_OWNER}-$${PLUGIN_NAME}:$${PLUGIN_VERSION}"; \
 		fi; \
 		if [[ "$(DOCKER_ORG)" != "bufbuild" ]]; then \
-			docker pull $(DOCKER_ORG)/bufbuild/plugins-$${PLUGIN_OWNER}-$${PLUGIN_NAME}:$${PLUGIN_VERSION} || :; \
+			docker pull $(DOCKER_ORG)/bufbuild/plugins-$${PLUGIN_OWNER}-$${PLUGIN_NAME}:$${PLUGIN_VERSION}; \
 		fi; \
 		echo "Pushing plugin: $${plugin}"; \
 		buf alpha plugin push $${plugin_dir} $(BUF_PLUGIN_PUSH_ARGS)$${CACHE_ARGS} --build-arg DOCKER_ORG="$(DOCKER_ORG)" || exit 1; \

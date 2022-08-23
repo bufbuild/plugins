@@ -46,4 +46,6 @@ jobs:
       run: make test DOCKER_ORG="ghcr.io/bufbuild"
     - name: Push
       shell: bash
-      run: make push DOCKER_ORG="ghcr.io/bufbuild" DOCKER_CACHE_ORG="ghcr.io/bufbuild"
+      run: |
+        echo ${BSR_TOKEN} | buf registry login --username ${BSR_USER} --token-stdin
+        make push DOCKER_ORG="ghcr.io/bufbuild" DOCKER_CACHE_ORG="ghcr.io/bufbuild"
