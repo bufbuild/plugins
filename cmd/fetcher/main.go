@@ -78,7 +78,7 @@ func run(ctx context.Context, root string, depth int) error {
 			// 	Example: library/connect-go/v0.1.1
 			//
 			// Instead, they have an additional per language subdirectory:
-			// 	library/{plugin_base}/{version}/{plugin_name}
+			// 	library/{plugin_base}/{version}/{plugin_language}
 			// 	Example: library/grpc/v1.48.0/ruby
 			//
 			// This means we need to make a copy for each of those subdirectories .
@@ -134,7 +134,7 @@ func copyDirectory(source, target string) (retErr error) {
 
 func createPluginDirs(pluginDir string, previousVersion string, newVersion string) error {
 	// pluginDir: library/grpc
-	// incomingVersion: v1.49.0-pre1
+	// newVersion: v1.49.0-pre1
 	// previousVersion: v1.48.0
 
 	// example: library/grpc/v1.48.0
