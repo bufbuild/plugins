@@ -38,6 +38,7 @@ jobs:
         shell: bash
         run: |
           echo ${BSR_TOKEN} | buf registry login --username ${BSR_USER} --token-stdin
+          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u $ --password-stdin
           PLUGIN_YAML=${{ github.event.inputs.plugin-directory }}/buf.plugin.yaml
           PLUGIN_FULL_NAME=$(yq '.name' ${PLUGIN_YAML})
           PLUGIN_OWNER=$(echo "${PLUGIN_FULL_NAME}" | cut -d '/' -f 2)
