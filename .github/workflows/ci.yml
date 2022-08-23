@@ -46,6 +46,10 @@ jobs:
       run: make test DOCKER_ORG="ghcr.io/bufbuild"
     - name: Push
       shell: bash
+      env:
+        BUF_ALPHA_SUPPRESS_WARNINGS: 1
+        BSR_USER: ${{ secrets.BSR_USER }}
+        BSR_TOKEN: ${{ secrets.BSR_TOKEN }}
       run: |
         echo ${BSR_TOKEN} | buf registry login --username ${BSR_USER} --token-stdin
         make push DOCKER_ORG="ghcr.io/bufbuild" DOCKER_CACHE_ORG="ghcr.io/bufbuild"
