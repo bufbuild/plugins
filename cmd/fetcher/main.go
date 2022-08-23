@@ -57,6 +57,11 @@ func run(ctx context.Context, root string, depth int) error {
 		if err != nil {
 			return err
 		}
+		// For now we ignore prerelease versions. But this may change in the future.
+		if semver.Prerelease(newVersion) != "" && !config.IncludePrerelease {
+			log.Printf("%s: skipping prerelease version: %s", config.Source.Name(), newVersion)
+			continue
+		}
 		// example: library/grpc
 		pluginDir := filepath.Dir(config.Filename)
 		ok, err := checkDirExists(filepath.Join(pluginDir, newVersion))

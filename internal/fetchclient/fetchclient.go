@@ -219,7 +219,7 @@ func (c *Client) fetchGithub(ctx context.Context, owner string, repository strin
 					versions = append(versions, version)
 					continue
 				}
-				log.Printf("skipping: got invalid semver %s for package %s/%s\n", *tag.Name, owner, repository)
+				log.Printf("fetchclient: skipping invalid semver %s for package %s/%s\n", *tag.Name, owner, repository)
 			}
 		}
 		page = response.NextPage
