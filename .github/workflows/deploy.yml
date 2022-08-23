@@ -25,15 +25,25 @@ jobs:
             ${{ runner.os }}-go-
       - uses: actions/setup-go@v3
         with:
-          go-version: "1.19"
+          go-version: 1.19.x
+          check-latest: true
       - name: Install buf cli
         run: |
           go install github.com/bufbuild/buf/cmd/buf@main
       - name: Deploy plugin
         env:
-          BUF_BETA_SUPPRESS_WARNINGS: 1
+          BUF_ALPHA_SUPPRESS_WARNINGS: 1
           BSR_USER: ${{ secrets.BSR_USER }}
           BSR_TOKEN: ${{ secrets.BSR_TOKEN }}
+        shell: bash
         run: |
           echo ${BSR_TOKEN} | buf registry login --username ${BSR_USER} --token-stdin
-          buf alpha plugin push ${{ github.event.inputs.plugin-directory }}
+          PLUGIN_YAML=${{ github.event.inputs.plugin-directory }}/buf.plugin.yaml
+          PLUGIN_FULL_NAME=$(yq '.name' ${PLUGIN_YAML})
+          PLUGIN_OWNER=$(echo "${PLUGIN_FULL_NAME}" | cut -d '/' -f 2`)
+          PLUGIN_NAME=$(echo "${PLUGIN_FULL_NAME}" | cut -d '/' -f 3-)
+          PLUGIN_VERSION=$(yq '.plugin_version' ${PLUGIN_YAML})
+          buf alpha plugin push \
+            --cache-from ghcr.io/bufbuild/plugins-${PLUGIN_OWNER}-${PLUGIN_NAME}:${PLUGIN_VERSION} \
+            --build-arg DOCKER_ORG=ghcr.io/bufbuild \
+            ${{ github.event.inputs.plugin-directory }}
