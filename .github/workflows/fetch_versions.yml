@@ -16,7 +16,7 @@ jobs:
         uses: actions/checkout@v3
       - name: Fetch all versions
         run: |
-          go run cmd/fetcher/main.go library
+          go run ./cmd/fetcher library
       - name: Create PR
         uses: peter-evans/create-pull-request@18f90432bedd2afd6a825469ffd38aa24712a91d
         with:
