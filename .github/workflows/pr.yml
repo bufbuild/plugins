@@ -59,6 +59,8 @@ jobs:
       uses: docker/setup-buildx-action@v2
       with:
         driver-opts: network=host
+    - name: Log in to registry
+      run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u $ --password-stdin
     - name: Build
       env:
         ALL_MODIFIED_FILES: ${{ steps.changed-files.outputs.all_modified_files }}
