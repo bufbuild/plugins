@@ -30,6 +30,13 @@ jobs:
       - name: Install buf cli
         run: |
           go install github.com/bufbuild/buf/cmd/buf@main
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v2
+      - name: Set up Docker Buildx
+        id: buildx
+        uses: docker/setup-buildx-action@v2
+        with:
+          driver-opts: network=host
       - name: Deploy plugin
         env:
           BUF_ALPHA_SUPPRESS_WARNINGS: 1
@@ -44,7 +51,9 @@ jobs:
           PLUGIN_OWNER=$(echo "${PLUGIN_FULL_NAME}" | cut -d '/' -f 2)
           PLUGIN_NAME=$(echo "${PLUGIN_FULL_NAME}" | cut -d '/' -f 3-)
           PLUGIN_VERSION=$(yq '.plugin_version' ${PLUGIN_YAML})
+          docker pull ghcr.io/bufbuild/plugins-${PLUGIN_OWNER}-${PLUGIN_NAME}:${PLUGIN_VERSION} || :
           buf alpha plugin push \
             --cache-from ghcr.io/bufbuild/plugins-${PLUGIN_OWNER}-${PLUGIN_NAME}:${PLUGIN_VERSION} \
             --build-arg DOCKER_ORG=ghcr.io/bufbuild \
+            --debug \
             ${{ github.event.inputs.plugin-directory }}
