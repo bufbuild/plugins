@@ -9,6 +9,7 @@ DOCKER_CACHE_ORG ?=
 
 GO_TEST_FLAGS ?= -race -count=1
 
+BUF ?= buf
 BUF_PLUGIN_PUSH_ARGS ?=
 
 BASE_DOCKERFILES := $(shell go run ./cmd/dependency-order -dockerfile -base .)
@@ -77,8 +78,8 @@ push: build
 			CACHE_ARGS=" --cache-from $(DOCKER_CACHE_ORG)/plugins-$${PLUGIN_OWNER}-$${PLUGIN_NAME}:$${PLUGIN_VERSION}"; \
 		fi; \
 		if [[ "$(DOCKER_ORG)" != "bufbuild" ]]; then \
-			docker pull $(DOCKER_ORG)/bufbuild/plugins-$${PLUGIN_OWNER}-$${PLUGIN_NAME}:$${PLUGIN_VERSION}; \
+			$(DOCKER) pull $(DOCKER_ORG)/plugins-$${PLUGIN_OWNER}-$${PLUGIN_NAME}:$${PLUGIN_VERSION} || exit 1; \
 		fi; \
 		echo "Pushing plugin: $${plugin}"; \
-		buf alpha plugin push $${plugin_dir} $(BUF_PLUGIN_PUSH_ARGS)$${CACHE_ARGS} --build-arg DOCKER_ORG="$(DOCKER_ORG)" || exit 1; \
+		$(BUF) alpha plugin push $${plugin_dir} $(BUF_PLUGIN_PUSH_ARGS)$${CACHE_ARGS} --build-arg DOCKER_ORG="$(DOCKER_ORG)" || exit 1; \
 	done
