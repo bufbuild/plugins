@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1.4
-FROM debian:bullseye AS build
+FROM debian:bullseye-20220822 AS build
 
 ARG PLUGIN_VERSION
 RUN test -n "${PLUGIN_VERSION}"
@@ -26,7 +26,7 @@ else
 fi
 EOF
 
-FROM debian:bullseye-slim
+FROM debian:bullseye-20220822-slim
 WORKDIR /app
 COPY --from=build --chmod=0755 --chown=root:root /build/protoc-gen-grpc-web .
 USER nobody

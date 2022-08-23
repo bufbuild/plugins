@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1.4
-FROM node:lts-bullseye-slim
+FROM node:16.17.0-bullseye-slim
 ARG PLUGIN_VERSION
 RUN test -n "${PLUGIN_VERSION}"
 WORKDIR /app

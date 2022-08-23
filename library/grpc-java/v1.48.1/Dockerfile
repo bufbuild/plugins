@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1.4
-FROM debian:bullseye-slim AS build
+FROM debian:bullseye-20220822-slim AS build
 
 ARG PLUGIN_VERSION
 RUN test -n "${PLUGIN_VERSION}"
@@ -18,7 +18,7 @@ RUN arch=${TARGETARCH}; \
     echo "${arch}"; \
     curl -fsSL -o protoc-gen-grpc-java https://repo1.maven.org/maven2/io/grpc/protoc-gen-grpc-java/${PLUGIN_VERSION#v}/protoc-gen-grpc-java-${PLUGIN_VERSION#v}-linux-${arch}.exe
 
-FROM debian:bullseye-slim
+FROM debian:bullseye-20220822-slim
 WORKDIR /app
 COPY --from=build --chmod=0755 --chown=root:root /build/protoc-gen-grpc-java .
 USER nobody
