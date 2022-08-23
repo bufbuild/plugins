@@ -8,7 +8,38 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+  # go plugin
   - package-ecosystem: "docker"
-    directory: "/"
+    directory: "/library/connect-go/v0.4.0"
+    schedule:
+      interval: "weekly"
+  # node slim plugin
+  - package-ecosystem: "docker"
+    directory: "/library/connect-web/v0.1.0"
+    schedule:
+      interval: "weekly"
+  # node full plugin
+  - package-ecosystem: "docker"
+    directory: "/library/grpc-node/v1.11.2"
+    schedule:
+      interval: "weekly"
+  # dart plugin
+  - package-ecosystem: "docker"
+    directory: "/library/dart/v20.0.1"
+    schedule:
+      interval: "weekly"
+  # java plugin
+  - package-ecosystem: "docker"
+    directory: "/library/grpc-kotlin/v1.3.0"
+    schedule:
+      interval: "weekly"
+  # swift plugin
+  - package-ecosystem: "docker"
+    directory: "/library/swift/v1.19.1"
+    schedule:
+      interval: "weekly"
+  # debian bullseye
+  - package-ecosystem: "docker"
+    directory: "/library/protoc/base-build"
     schedule:
       interval: "weekly"
