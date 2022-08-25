@@ -1,0 +1,9 @@
+version: v1
+name: buf.build/library/protobuf-es
+plugin_version: v0.1.0
+source_url: https://github.com/bufbuild/protobuf-es
+registry:
+  npm:
+    deps:
+      - package: '@bufbuild/protobuf'
+        version: ^0.0.10
