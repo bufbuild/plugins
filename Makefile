@@ -63,7 +63,13 @@ test:
 		CACHE_ARGS=" --cache-from type=registry,ref=$(DOCKER_CACHE_ORG)/plugins-$${PLUGIN_OWNER}-$${PLUGIN_NAME}:$${PLUGIN_VERSION}"; \
 	fi; \
 	test -n "$${PLUGIN_NAME}" -a -n "$${PLUGIN_VERSION}" && \
-	$(DOCKER) $(DOCKER_BUILD_ARGS) $(DOCKER_BUILD_EXTRA_ARGS)$${CACHE_ARGS} --build-arg PLUGIN_VERSION=$${PLUGIN_VERSION} -t $(DOCKER_ORG)/plugins-$${PLUGIN_OWNER}-$${PLUGIN_NAME}:$${PLUGIN_VERSION} $(<D)
+	$(DOCKER) $(DOCKER_BUILD_ARGS) \
+		$(DOCKER_BUILD_EXTRA_ARGS)$${CACHE_ARGS} \
+		--build-arg PLUGIN_VERSION=$${PLUGIN_VERSION} \
+		--label build.buf.plugins.config.owner=$${PLUGIN_OWNER} \
+		--label build.buf.plugins.config.name=$${PLUGIN_NAME} \
+		-t $(DOCKER_ORG)/plugins-$${PLUGIN_OWNER}-$${PLUGIN_NAME}:$${PLUGIN_VERSION} \
+		$(<D)
 	@mkdir -p $(dir $@) && touch $@
 
 .PHONY: push
@@ -77,9 +83,11 @@ push: build
 		if [[ -n "$(DOCKER_CACHE_ORG)" ]]; then \
 			CACHE_ARGS=" --cache-from $(DOCKER_CACHE_ORG)/plugins-$${PLUGIN_OWNER}-$${PLUGIN_NAME}:$${PLUGIN_VERSION}"; \
 		fi; \
+		echo "Pushing plugin: $${plugin}"; \
 		if [[ "$(DOCKER_ORG)" != "bufbuild" ]]; then \
 			$(DOCKER) pull $(DOCKER_ORG)/plugins-$${PLUGIN_OWNER}-$${PLUGIN_NAME}:$${PLUGIN_VERSION} || exit 1; \
+			$(BUF) alpha plugin push $${plugin_dir} --image $(DOCKER_ORG)/plugins-$${PLUGIN_OWNER}-$${PLUGIN_NAME}:$${PLUGIN_VERSION} || exit 1; \
+		else \
+			$(BUF) alpha plugin push $${plugin_dir} $(BUF_PLUGIN_PUSH_ARGS)$${CACHE_ARGS} --build-arg DOCKER_ORG="$(DOCKER_ORG)" || exit 1; \
 		fi; \
-		echo "Pushing plugin: $${plugin}"; \
-		$(BUF) alpha plugin push $${plugin_dir} $(BUF_PLUGIN_PUSH_ARGS)$${CACHE_ARGS} --build-arg DOCKER_ORG="$(DOCKER_ORG)" || exit 1; \
 	done
