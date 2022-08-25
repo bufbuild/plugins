@@ -51,9 +51,7 @@ jobs:
           PLUGIN_OWNER=$(echo "${PLUGIN_FULL_NAME}" | cut -d '/' -f 2)
           PLUGIN_NAME=$(echo "${PLUGIN_FULL_NAME}" | cut -d '/' -f 3-)
           PLUGIN_VERSION=$(yq '.plugin_version' ${PLUGIN_YAML})
-          docker pull ghcr.io/bufbuild/plugins-${PLUGIN_OWNER}-${PLUGIN_NAME}:${PLUGIN_VERSION} || :
+          docker pull ghcr.io/bufbuild/plugins-${PLUGIN_OWNER}-${PLUGIN_NAME}:${PLUGIN_VERSION}
           buf alpha plugin push \
-            --cache-from ghcr.io/bufbuild/plugins-${PLUGIN_OWNER}-${PLUGIN_NAME}:${PLUGIN_VERSION} \
-            --build-arg DOCKER_ORG=ghcr.io/bufbuild \
-            --debug \
+            --image ghcr.io/bufbuild/plugins-${PLUGIN_OWNER}-${PLUGIN_NAME}:${PLUGIN_VERSION}
             ${{ github.event.inputs.plugin-directory }}
