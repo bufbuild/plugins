@@ -1,6 +1,7 @@
 .build/
 .idea/
 .vscode/
+node_modules/
 tests/testdata/**/buf.gen.yaml
 tests/testdata/**/gen/
 tests/testdata/**/protoc-gen-plugin
