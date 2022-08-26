@@ -25,7 +25,6 @@ fi
 EOF
 
 FROM debian:bullseye-20220822-slim
-WORKDIR /app
-COPY --from=build --chmod=0755 --chown=root:root /build/grpc_node_plugin .
+COPY --from=build --link --chmod=0755 --chown=root:root /build/grpc_node_plugin .
 USER nobody
-ENTRYPOINT [ "/app/grpc_node_plugin" ]
+ENTRYPOINT [ "/grpc_node_plugin" ]

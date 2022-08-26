@@ -11,7 +11,6 @@ WORKDIR /app/grpc-swift
 RUN swift build -c release --static-swift-stdlib --product protoc-gen-grpc-swift
 
 FROM debian:bullseye-20220822-slim
-WORKDIR /app
-COPY --from=build /app/grpc-swift/.build/release/protoc-gen-grpc-swift .
+COPY --from=build --link /app/grpc-swift/.build/release/protoc-gen-grpc-swift .
 USER nobody
-ENTRYPOINT [ "/app/protoc-gen-grpc-swift" ]
+ENTRYPOINT [ "/protoc-gen-grpc-swift" ]

@@ -8,5 +8,5 @@ RUN test -n "${VERSION}"
 
 RUN git clone https://github.com/protocolbuffers/protobuf --depth 1 --branch ${VERSION} --recursive
 WORKDIR /build/protobuf/
-RUN ["ln", "-s", "/build/plugins", "."]
-RUN ["/bin/bash", "-c", "bazel build $(bazel query 'kind(cc_binary, //plugins/...)')"]
+RUN ln -s /build/plugins .
+RUN bazel build $(bazel query 'kind(cc_binary, //plugins/...)')
