@@ -4,7 +4,6 @@ ARG DOCKER_ORG=bufbuild
 FROM ${DOCKER_ORG}/plugins-protoc-base:${PLUGIN_VERSION} as build
 
 FROM debian:bullseye-20220822-slim
-WORKDIR /app
-COPY --from=build --chmod=0755 /build/protobuf/bazel-bin/plugins/protoc-gen-python .
+COPY --from=build --link --chmod=0755 /build/protobuf/bazel-bin/plugins/protoc-gen-python .
 USER nobody
-ENTRYPOINT ["/app/protoc-gen-python"]
+ENTRYPOINT ["/protoc-gen-python"]

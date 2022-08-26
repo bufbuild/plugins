@@ -12,4 +12,4 @@ RUN arch=${TARGETARCH}; \
  && chmod +x /usr/local/bin/bazel
 
 WORKDIR /build
-COPY plugins plugins
+COPY --link plugins plugins

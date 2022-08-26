@@ -27,7 +27,6 @@ fi
 EOF
 
 FROM debian:bullseye-20220822-slim
-WORKDIR /app
-COPY --from=build --chmod=0755 --chown=root:root /build/protoc-gen-grpc-web .
+COPY --from=build --link --chmod=0755 --chown=root:root /build/protoc-gen-grpc-web .
 USER nobody
-ENTRYPOINT [ "/app/protoc-gen-grpc-web" ]
+ENTRYPOINT [ "/protoc-gen-grpc-web" ]

@@ -19,7 +19,6 @@ RUN arch=${TARGETARCH}; \
     curl -fsSL -o protoc-gen-grpc-java https://repo1.maven.org/maven2/io/grpc/protoc-gen-grpc-java/${PLUGIN_VERSION#v}/protoc-gen-grpc-java-${PLUGIN_VERSION#v}-linux-${arch}.exe
 
 FROM debian:bullseye-20220822-slim
-WORKDIR /app
-COPY --from=build --chmod=0755 --chown=root:root /build/protoc-gen-grpc-java .
+COPY --from=build --link --chmod=0755 --chown=root:root /build/protoc-gen-grpc-java .
 USER nobody
-ENTRYPOINT [ "/app/protoc-gen-grpc-java" ]
+ENTRYPOINT [ "/protoc-gen-grpc-java" ]
