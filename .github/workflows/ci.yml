@@ -40,7 +40,7 @@ jobs:
       run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u $ --password-stdin
     - name: Build
       shell: bash
-      run: make DOCKER_ORG="ghcr.io/bufbuild" DOCKER_CACHE_ORG="ghcr.io/bufbuild" DOCKER_BUILD_EXTRA_ARGS="--build-arg BUILDKIT_INLINE_CACHE=1 --push"
+      run: make DOCKER_ORG="ghcr.io/bufbuild" DOCKER_READ_CACHE_ORG="ghcr.io/bufbuild" DOCKER_WRITE_CACHE_ORG="ghcr.io/bufbuild" DOCKER_BUILD_EXTRA_ARGS="--push"
     - name: Test
       shell: bash
       run: make test DOCKER_ORG="ghcr.io/bufbuild"
