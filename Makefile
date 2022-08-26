@@ -5,7 +5,8 @@ DOCKER ?= docker
 DOCKER_ORG ?= bufbuild
 DOCKER_BUILD_ARGS ?= buildx build --build-arg DOCKER_ORG="$(DOCKER_ORG)"
 DOCKER_BUILD_EXTRA_ARGS ?=
-DOCKER_CACHE_ORG ?=
+DOCKER_READ_CACHE_ORG ?=
+DOCKER_WRITE_CACHE_ORG ?=
 
 GO_TEST_FLAGS ?= -race -count=1
 
@@ -32,24 +33,36 @@ test:
 	go test $(GO_TEST_FLAGS) ./...
 
 .build/base/library/%/base-build/image: library/%/base-build/Dockerfile
-	if [[ -n "$(DOCKER_CACHE_ORG)" ]]; then \
-		CACHE_ARGS=" --cache-from type=registry,ref=$(DOCKER_CACHE_ORG)/plugins-$*-base-build:latest"; \
+	CACHE_ARGS=""; \
+	if [[ -n "$(DOCKER_READ_CACHE_ORG)" ]]; then \
+		CACHE_ARGS="$${CACHE_ARGS} --cache-from type=registry,ref=$(DOCKER_READ_CACHE_ORG)/plugins-$*-base-build:buildcache"; \
+	fi; \
+	if [[ -n "$(DOCKER_WRITE_CACHE_ORG)" ]]; then \
+		CACHE_ARGS="$${CACHE_ARGS} --cache-to type=registry,mode=max,ref=$(DOCKER_WRITE_CACHE_ORG)/plugins-$*-base-build:buildcache"; \
 	fi; \
 	$(DOCKER) $(DOCKER_BUILD_ARGS) $(DOCKER_BUILD_EXTRA_ARGS)$${CACHE_ARGS} -t $(DOCKER_ORG)/plugins-$*-base-build $(<D)
 	@mkdir -p $(dir $@) && touch $@
 
 .build/base/library/grpc/v%/base/image: library/grpc/v%/base/Dockerfile
 	VERSION=v$(shell basename $*); \
-	if [[ -n "$(DOCKER_CACHE_ORG)" ]]; then \
-		CACHE_ARGS=" --cache-from type=registry,ref=$(DOCKER_CACHE_ORG)/plugins-grpc-base:$${VERSION}"; \
+	CACHE_ARGS=""; \
+	if [[ -n "$(DOCKER_READ_CACHE_ORG)" ]]; then \
+		CACHE_ARGS="$${CACHE_ARGS} --cache-from type=registry,ref=$(DOCKER_READ_CACHE_ORG)/plugins-grpc-base:buildcache"; \
+	fi; \
+	if [[ -n "$(DOCKER_WRITE_CACHE_ORG)" ]]; then \
+		CACHE_ARGS="$${CACHE_ARGS} --cache-to type=registry,mode=max,ref=$(DOCKER_WRITE_CACHE_ORG)/plugins-grpc-base:buildcache"; \
 	fi; \
 	$(DOCKER) $(DOCKER_BUILD_ARGS) $(DOCKER_BUILD_EXTRA_ARGS)$${CACHE_ARGS} --build-arg VERSION=$${VERSION} -t $(DOCKER_ORG)/plugins-grpc-base:$${VERSION} $(<D)
 	@mkdir -p $(dir $@) && touch $@
 
 .build/base/library/protoc/v%/base/image: library/protoc/v%/base/Dockerfile
 	VERSION=v$(shell basename $*); \
-	if [[ -n "$(DOCKER_CACHE_ORG)" ]]; then \
-		CACHE_ARGS=" --cache-from type=registry,ref=$(DOCKER_CACHE_ORG)/plugins-protoc-base:$${VERSION}"; \
+	CACHE_ARGS=""; \
+	if [[ -n "$(DOCKER_READ_CACHE_ORG)" ]]; then \
+		CACHE_ARGS="$${CACHE_ARGS} --cache-from type=registry,ref=$(DOCKER_READ_CACHE_ORG)/plugins-protoc-base:buildcache"; \
+	fi; \
+	if [[ -n "$(DOCKER_WRITE_CACHE_ORG)" ]]; then \
+		CACHE_ARGS="$${CACHE_ARGS} --cache-to type=registry,mode=max,ref=$(DOCKER_WRITE_CACHE_ORG)/plugins-protoc-base:buildcache"; \
 	fi; \
 	$(DOCKER) $(DOCKER_BUILD_ARGS) $(DOCKER_BUILD_EXTRA_ARGS)$${CACHE_ARGS} --build-arg VERSION=$${VERSION} -t $(DOCKER_ORG)/plugins-protoc-base:$${VERSION} $(<D)
 	@mkdir -p $(dir $@) && touch $@
@@ -59,8 +72,12 @@ test:
 	PLUGIN_OWNER=`echo "$${PLUGIN_FULL_NAME}" | cut -d '/' -f 2`; \
 	PLUGIN_NAME=`echo "$${PLUGIN_FULL_NAME}" | cut -d '/' -f 3-`; \
 	PLUGIN_VERSION=$(shell yq '.plugin_version' $*/buf.plugin.yaml); \
-	if [[ -n "$(DOCKER_CACHE_ORG)" ]]; then \
-		CACHE_ARGS=" --cache-from type=registry,ref=$(DOCKER_CACHE_ORG)/plugins-$${PLUGIN_OWNER}-$${PLUGIN_NAME}:$${PLUGIN_VERSION}"; \
+	CACHE_ARGS=""; \
+	if [[ -n "$(DOCKER_READ_CACHE_ORG)" ]]; then \
+		CACHE_ARGS="$${CACHE_ARGS} --cache-from type=registry,ref=$(DOCKER_READ_CACHE_ORG)/plugins-$${PLUGIN_OWNER}-$${PLUGIN_NAME}:buildcache"; \
+	fi; \
+	if [[ -n "$(DOCKER_WRITE_CACHE_ORG)" ]]; then \
+		CACHE_ARGS="$${CACHE_ARGS} --cache-to type=registry,mode=max,ref=$(DOCKER_WRITE_CACHE_ORG)/plugins-$${PLUGIN_OWNER}-$${PLUGIN_NAME}:buildcache"; \
 	fi; \
 	test -n "$${PLUGIN_NAME}" -a -n "$${PLUGIN_VERSION}" && \
 	$(DOCKER) $(DOCKER_BUILD_ARGS) \
@@ -80,14 +97,14 @@ push: build
 		PLUGIN_OWNER=`echo "$${PLUGIN_FULL_NAME}" | cut -d '/' -f 2`; \
 		PLUGIN_NAME=`echo "$${PLUGIN_FULL_NAME}" | cut -d '/' -f 3-`; \
 		PLUGIN_VERSION=`yq '.plugin_version' $${plugin_dir}/buf.plugin.yaml`; \
-		if [[ -n "$(DOCKER_CACHE_ORG)" ]]; then \
-			CACHE_ARGS=" --cache-from $(DOCKER_CACHE_ORG)/plugins-$${PLUGIN_OWNER}-$${PLUGIN_NAME}:$${PLUGIN_VERSION}"; \
-		fi; \
 		echo "Pushing plugin: $${plugin}"; \
 		if [[ "$(DOCKER_ORG)" != "bufbuild" ]]; then \
 			$(DOCKER) pull $(DOCKER_ORG)/plugins-$${PLUGIN_OWNER}-$${PLUGIN_NAME}:$${PLUGIN_VERSION} || exit 1; \
 			$(BUF) alpha plugin push $${plugin_dir} --image $(DOCKER_ORG)/plugins-$${PLUGIN_OWNER}-$${PLUGIN_NAME}:$${PLUGIN_VERSION} || exit 1; \
 		else \
+			if [[ -n "$(DOCKER_READ_CACHE_ORG)" ]]; then \
+				CACHE_ARGS=" --cache-from $(DOCKER_READ_CACHE_ORG)/plugins-$${PLUGIN_OWNER}-$${PLUGIN_NAME}:buildcache"; \
+			fi; \
 			$(BUF) alpha plugin push $${plugin_dir} $(BUF_PLUGIN_PUSH_ARGS)$${CACHE_ARGS} --build-arg DOCKER_ORG="$(DOCKER_ORG)" || exit 1; \
 		fi; \
 	done
