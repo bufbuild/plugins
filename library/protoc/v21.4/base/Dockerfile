@@ -3,10 +3,7 @@ ARG DOCKER_ORG=bufbuild
 ARG BASE_BUILD_VERSION=latest
 FROM ${DOCKER_ORG}/plugins-protoc-base-build:${BASE_BUILD_VERSION}
 
-ARG VERSION
-RUN test -n "${VERSION}"
-
-RUN git clone https://github.com/protocolbuffers/protobuf --depth 1 --branch ${VERSION} --recursive
+RUN git clone https://github.com/protocolbuffers/protobuf --depth 1 --branch v21.4 --recursive
 WORKDIR /build/protobuf/
 RUN ln -s /build/plugins .
 RUN bazel build $(bazel query 'kind(cc_binary, //plugins/...)')

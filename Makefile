@@ -52,7 +52,7 @@ test:
 	if [[ -n "$(DOCKER_WRITE_CACHE_ORG)" ]]; then \
 		CACHE_ARGS="$${CACHE_ARGS} --cache-to type=registry,mode=max,ref=$(DOCKER_WRITE_CACHE_ORG)/plugins-grpc-base:$${VERSION}-buildcache"; \
 	fi; \
-	$(DOCKER) $(DOCKER_BUILD_ARGS) $(DOCKER_BUILD_EXTRA_ARGS)$${CACHE_ARGS} --build-arg VERSION=$${VERSION} -t $(DOCKER_ORG)/plugins-grpc-base:$${VERSION} $(<D)
+	$(DOCKER) $(DOCKER_BUILD_ARGS) $(DOCKER_BUILD_EXTRA_ARGS)$${CACHE_ARGS} -t $(DOCKER_ORG)/plugins-grpc-base:$${VERSION} $(<D)
 	@mkdir -p $(dir $@) && touch $@
 
 .build/base/library/protoc/v%/base/image: library/protoc/v%/base/Dockerfile
@@ -64,7 +64,7 @@ test:
 	if [[ -n "$(DOCKER_WRITE_CACHE_ORG)" ]]; then \
 		CACHE_ARGS="$${CACHE_ARGS} --cache-to type=registry,mode=max,ref=$(DOCKER_WRITE_CACHE_ORG)/plugins-protoc-base:$${VERSION}-buildcache"; \
 	fi; \
-	$(DOCKER) $(DOCKER_BUILD_ARGS) $(DOCKER_BUILD_EXTRA_ARGS)$${CACHE_ARGS} --build-arg VERSION=$${VERSION} -t $(DOCKER_ORG)/plugins-protoc-base:$${VERSION} $(<D)
+	$(DOCKER) $(DOCKER_BUILD_ARGS) $(DOCKER_BUILD_EXTRA_ARGS)$${CACHE_ARGS} -t $(DOCKER_ORG)/plugins-protoc-base:$${VERSION} $(<D)
 	@mkdir -p $(dir $@) && touch $@
 
 .build/plugin/%/image: %/Dockerfile %/buf.plugin.yaml $(BASE_IMAGES)
