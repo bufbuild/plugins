@@ -7,6 +7,7 @@ RUN test -n "${PLUGIN_VERSION}"
 ARG TARGETARCH
 
 WORKDIR /build
+COPY --link package* .
 RUN /bin/bash <<'EOF'
 set -e
 # https://github.com/grpc/grpc-node/issues/1405#issuecomment-1195903603 - linux/arm64 binaries not available
@@ -19,7 +20,7 @@ if [ "${TARGETARCH}" = "arm64" ]; then
     cmake linux_64bit.toolchain.cmake . && cmake --build . --target clean && cmake --build . -- -j 12
     cp grpc_node_plugin /build
 else
-    npm install grpc-tools@${PLUGIN_VERSION#v}
+    npm ci
     cp /build/node_modules/grpc-tools/bin/grpc_node_plugin /build
 fi
 EOF

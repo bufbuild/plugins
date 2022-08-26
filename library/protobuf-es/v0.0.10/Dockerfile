@@ -3,7 +3,8 @@ FROM node:16.17.0-bullseye-slim
 ARG PLUGIN_VERSION
 RUN test -n "${PLUGIN_VERSION}"
 WORKDIR /app
-RUN npm install @bufbuild/protoc-gen-es@${PLUGIN_VERSION}
+COPY --link package*.json .
+RUN npm ci
 
 USER nobody
 ENTRYPOINT [ "/app/node_modules/.bin/protoc-gen-es" ]
