@@ -13,3 +13,7 @@ registry:
     deps:
       - module: google.golang.org/grpc
         version: v1.43.0
+  opts:
+    - paths=source_relative
+    - require_unimplemented_servers=false
+    - separate_package=true
