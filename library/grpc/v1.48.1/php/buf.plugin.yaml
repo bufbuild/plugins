@@ -1,0 +1,5 @@
+version: v1
+name: buf.build/library/grpc-php
+plugin_version: v1.48.1
+source_url: https://github.com/grpc/grpc
+description: Official gRPC plugin for PHP.
