@@ -24,7 +24,7 @@ What is the latest version, and where did you get this value from?
 
 **Does the plugin have default options?**
 
-We're mainly interested if there is a default set of options that should be set.
+We're interested to know if there is a set of default plugin options that will work for most users.
 
 **Does this plugin have runtime dependencies?**
 
