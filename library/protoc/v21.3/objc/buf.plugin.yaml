@@ -1,5 +1,6 @@
 version: v1
 name: buf.build/library/objc
 plugin_version: v21.3
+output_languages: [objective_c]
 source_url: https://github.com/protocolbuffers/protobuf
 description: Official protobuf plugin for Objective-C.
