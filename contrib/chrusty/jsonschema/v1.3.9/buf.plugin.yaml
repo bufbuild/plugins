@@ -1,6 +1,6 @@
 version: v1
 name: buf.build/contrib/chrusty-jsonschema
 plugin_version: v1.3.9
-output_languages: [javascript]
+output_languages: []
 source_url: https://github.com/chrusty/protoc-gen-jsonschema
 description: Converts protobuf definitions into JSONSchemas, which can be used to dynamically validate JSON messages.
