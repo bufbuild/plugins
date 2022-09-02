@@ -22,6 +22,10 @@ https://github.com/bufbuild/connect-go/tree/main/cmd/protoc-gen-connect-go
 
 What is the latest version, and where did you get this value from? 
 
+**Does the plugin have default options?**
+
+We're mainly interested if there is a default set of options that should be set.
+
 **Does this plugin have runtime dependencies?**
 
 Example, the generated code for the `protoc-gen-connect-go` plugin has a runtime dependency on the Go module: 
