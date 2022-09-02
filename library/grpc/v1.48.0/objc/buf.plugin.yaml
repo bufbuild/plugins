@@ -1,5 +1,6 @@
 version: v1
 name: buf.build/library/grpc-objc
 plugin_version: v1.48.0
+output_languages: [objective_c]
 source_url: https://github.com/grpc/grpc
 description: Official gRPC plugin for Objective-C.

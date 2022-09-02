@@ -1,6 +1,7 @@
 version: v1
 name: buf.build/library/go
 plugin_version: v1.28.0
+output_languages: [go]
 source_url: https://github.com/golang/protobuf
 description: Generates Go code for both proto2 and proto3 versions of the protocol buffer language.
 default_opts:
