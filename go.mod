@@ -3,7 +3,7 @@ module github.com/bufbuild/plugins
 go 1.18
 
 require (
-	github.com/bufbuild/buf v1.7.1-0.20220830155658-0eda16139cac
+	github.com/bufbuild/buf v1.7.1-0.20220904071201-be400eddb667
 	github.com/google/go-github/v45 v45.2.0
 	github.com/hashicorp/go-retryablehttp v0.7.1
 	github.com/sethvargo/go-envconfig v0.8.2
