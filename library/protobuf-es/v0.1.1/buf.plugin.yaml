@@ -10,4 +10,4 @@ registry:
     rewrite_import_path_suffix: pb.js
     deps:
       - package: '@bufbuild/protobuf'
-        version: ^0.1.0
+        version: ^0.1.1
