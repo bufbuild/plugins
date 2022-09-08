@@ -104,7 +104,7 @@ push: build
 		echo "Pushing plugin: $${plugin}"; \
 		if [[ "$(DOCKER_ORG)" != "bufbuild" ]]; then \
 			$(DOCKER) pull $(DOCKER_ORG)/plugins-$${PLUGIN_OWNER}-$${PLUGIN_NAME}:$${PLUGIN_VERSION} || exit 1; \
-			$(BUF) alpha plugin push $${plugin_dir} --image $(DOCKER_ORG)/plugins-$${PLUGIN_OWNER}-$${PLUGIN_NAME}:$${PLUGIN_VERSION} || exit 1; \
+			$(BUF) alpha plugin push $${plugin_dir} $(BUF_PLUGIN_PUSH_ARGS) --image $(DOCKER_ORG)/plugins-$${PLUGIN_OWNER}-$${PLUGIN_NAME}:$${PLUGIN_VERSION} || exit 1; \
 		else \
 			if [[ -n "$(DOCKER_READ_CACHE_ORG)" ]]; then \
 				CACHE_ARGS=" --cache-from $(DOCKER_READ_CACHE_ORG)/plugins-$${PLUGIN_OWNER}-$${PLUGIN_NAME}:$${PLUGIN_VERSION}-buildcache"; \
