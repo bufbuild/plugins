@@ -19,6 +19,7 @@ The build requires the following:
 * Run integration tests against Docker images: `make test`.
 * Remove intermediate state from previous builds: `make clean`.
 * Push built plugins to the BSR (currently locked down to CI/CD): `make push`.
+* Build and test an individual plugin: `make PLUGINS="connect-go:v0.4.0" test`.
 
 ## Creating a new plugin
 
@@ -107,7 +108,9 @@ When testing locally, you may wish to build for a different architecture or push
 For example:
 
 ```
-$ make push DOCKER_ORG="bufbuild.internal" BUF_PLUGIN_PUSH_ARGS="--override-remote bufbuild.internal"
+$ make push BUF_PLUGIN_PUSH_ARGS="--override-remote bufbuild.internal"
 ```
 
 This command can also be used to publish to other instances of the BSR.
+This will build with the default architecture of the system by default.
+To specify a different architecture (i.e. x86_64), specify the `DOCKER_BUILD_EXTRA_ARGS="--platform linux/amd64"` argument to the build.
