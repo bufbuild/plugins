@@ -151,11 +151,12 @@ func FilterByPluginsEnv(plugins []*Plugin, pluginsEnv string) ([]*Plugin, error)
 	if err != nil {
 		return nil, err
 	}
+	latestVersionByName := getLatestPluginVersionsByName(plugins)
 	var filtered []*Plugin
 	for _, plugin := range plugins {
 		var matched bool
 		for _, include := range includes {
-			if matched = include.Matches(plugin); matched {
+			if matched = include.Matches(plugin, latestVersionByName[plugin.Name]); matched {
 				break
 			}
 		}
@@ -310,7 +311,7 @@ func parsePluginsEnvVar(pluginsEnv string) ([]includePlugin, error) {
 		}
 		name, version, ok := strings.Cut(field, ":")
 		if ok { // Specified a version
-			if !semver.IsValid(version) {
+			if !semver.IsValid(version) && version != "latest" {
 				return nil, fmt.Errorf("invalid version: %s", version)
 			}
 			includes = append(includes, includePlugin{name: name, version: version})
@@ -321,16 +322,36 @@ func parsePluginsEnvVar(pluginsEnv string) ([]includePlugin, error) {
 	return includes, nil
 }
 
+// getLatestPluginVersionsByName returns a map with keys set to plugin.Name and values set to the latest semver version for the plugin.
+// For example, if plugins contains buf.build/library/connect-web v0.1.1, v0.2.0, and v0.2.1,
+// the returned map will contain: {"buf.build/library/connect-web": "v0.2.1"}.
+func getLatestPluginVersionsByName(plugins []*Plugin) map[string]string {
+	latestVersions := make(map[string]string)
+	for _, plugin := range plugins {
+		current := latestVersions[plugin.Name]
+		if current == "" || semver.Compare(current, plugin.Version) < 0 {
+			latestVersions[plugin.Name] = plugin.Version
+		}
+	}
+	return latestVersions
+}
+
 type includePlugin struct {
 	name    string
 	version string
 }
 
-func (p includePlugin) Matches(plugin *Plugin) bool {
-	if p.version != "" && plugin.Version != p.version {
+func (p includePlugin) Matches(plugin *Plugin, latestVersion string) bool {
+	if !strings.HasSuffix(plugin.Name, "/"+p.name) {
 		return false
 	}
-	return strings.HasSuffix(plugin.Name, "/"+p.name)
+	if p.version == "" {
+		return true
+	}
+	if p.version == "latest" {
+		return plugin.Version == latestVersion
+	}
+	return p.version == plugin.Version
 }
 
 // changedFiles contains data from the tj-actions/changed-files action.

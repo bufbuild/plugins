@@ -36,6 +36,10 @@ func TestFilterByPluginsEnv(t *testing.T) {
 	assert.Equal(t, filterPluginsByPathPrefixes(t, plugins, "contrib/chrusty/jsonschema/"),
 		runFilterByPluginsEnv(t, plugins, "chrusty-jsonschema"))
 	assert.Equal(t, filterPluginsByPathPrefixes(t, plugins, "contrib/", "library/"), runFilterByPluginsEnv(t, plugins, ""))
+	latestConnectWeb := getLatestPluginVersionsByName(plugins)["buf.build/library/connect-web"]
+	require.NotEmpty(t, latestConnectWeb)
+	assert.Equal(t, filterPluginsByPathPrefixes(t, plugins, "library/connect-web/"+latestConnectWeb+"/"),
+		runFilterByPluginsEnv(t, plugins, "connect-web:latest"))
 }
 
 func TestFilterByChangedFiles(t *testing.T) {
