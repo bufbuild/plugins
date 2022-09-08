@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/sethvargo/go-envconfig"
+	"golang.org/x/mod/semver"
 	"gopkg.in/yaml.v3"
 )
 
@@ -139,6 +140,32 @@ func Load(path string, basedir string) (*Plugin, error) {
 	}
 	plugin.Relpath = filepath.ToSlash(plugin.Relpath)
 	return &plugin, nil
+}
+
+// FilterByPluginsEnv returns matching plugins based on a space separated list of plugins (and optional versions) to include.
+func FilterByPluginsEnv(plugins []*Plugin, pluginsEnv string) ([]*Plugin, error) {
+	if pluginsEnv == "" {
+		return plugins, nil
+	}
+	includes, err := parsePluginsEnvVar(pluginsEnv)
+	if err != nil {
+		return nil, err
+	}
+	var filtered []*Plugin
+	for _, plugin := range plugins {
+		var matched bool
+		for _, include := range includes {
+			if matched = include.Matches(plugin); matched {
+				break
+			}
+		}
+		if matched {
+			filtered = append(filtered, plugin)
+		} else {
+			log.Printf("excluding plugin: %s", plugin.Relpath)
+		}
+	}
+	return filtered, nil
 }
 
 // FilterByChangedFiles works with https://github.com/tj-actions/changed-files#outputs to filter out unchanged plugins.
@@ -271,6 +298,39 @@ func IsBaseDockerfile(path string) bool {
 	}
 	parentDir := filepath.Base(filepath.Dir(path))
 	return strings.HasPrefix(parentDir, "base")
+}
+
+func parsePluginsEnvVar(pluginsEnv string) ([]includePlugin, error) {
+	var includes []includePlugin
+	fields := strings.Fields(pluginsEnv)
+	for _, field := range fields {
+		field = strings.TrimSpace(field)
+		if field == "" {
+			continue
+		}
+		name, version, ok := strings.Cut(field, ":")
+		if ok { // Specified a version
+			if !semver.IsValid(version) {
+				return nil, fmt.Errorf("invalid version: %s", version)
+			}
+			includes = append(includes, includePlugin{name: name, version: version})
+		} else {
+			includes = append(includes, includePlugin{name: name})
+		}
+	}
+	return includes, nil
+}
+
+type includePlugin struct {
+	name    string
+	version string
+}
+
+func (p includePlugin) Matches(plugin *Plugin) bool {
+	if p.version != "" && plugin.Version != p.version {
+		return false
+	}
+	return strings.HasSuffix(plugin.Name, "/"+p.name)
 }
 
 // changedFiles contains data from the tj-actions/changed-files action.

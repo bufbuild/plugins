@@ -138,7 +138,13 @@ func loadPlugins(t *testing.T) []*plugin.Plugin {
 	}); err != nil {
 		t.Fatalf("failed to find plugins: %v", err)
 	}
-	filtered, err := plugin.FilterByChangedFiles(plugins, envconfig.OsLookuper())
+	var filtered []*plugin.Plugin
+	var err error
+	if pluginsEnv := os.Getenv("PLUGINS"); pluginsEnv != "" {
+		filtered, err = plugin.FilterByPluginsEnv(plugins, pluginsEnv)
+	} else {
+		filtered, err = plugin.FilterByChangedFiles(plugins, envconfig.OsLookuper())
+	}
 	require.NoError(t, err)
 	return filtered
 }

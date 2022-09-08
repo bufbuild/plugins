@@ -37,24 +37,33 @@ func main() {
 		log.Fatalf("failed to walk directory: %v", err)
 	}
 
-	// Filter by changed plugins (for PR builds)
-	includedPlugins, err := plugin.FilterByChangedFiles(plugins, envconfig.OsLookuper())
-	if err != nil {
-		log.Fatalf("failed to filter plugins by changed files: %v", err)
+	var includedPlugins []*plugin.Plugin
+	var err error
+	if pluginsMatch := os.Getenv("PLUGINS"); pluginsMatch != "" {
+		includedPlugins, err = plugin.FilterByPluginsEnv(plugins, pluginsMatch)
+		if err != nil {
+			log.Fatalf("failed to filter plugins by PLUGINS env var: %v", err)
+		}
+	} else {
+		// Filter by changed plugins (for PR builds)
+		includedPlugins, err = plugin.FilterByChangedFiles(plugins, envconfig.OsLookuper())
+		if err != nil {
+			log.Fatalf("failed to filter plugins by changed files: %v", err)
+		}
 	}
 
 	if dockerFile {
 		dockerFiles, _ := plugin.GetDockerfiles(basedir, includedPlugins)
 		for _, f := range dockerFiles {
 			if !base || plugin.IsBaseDockerfile(f) {
-				if _, err = fmt.Fprintln(os.Stdout, f); err != nil {
+				if _, err := fmt.Fprintln(os.Stdout, f); err != nil {
 					log.Fatalf("failed to print dockerfile: %v", err)
 				}
 			}
 		}
 	} else {
 		for _, includedPlugin := range includedPlugins {
-			if _, err = fmt.Fprintln(os.Stdout, includedPlugin.Path); err != nil {
+			if _, err := fmt.Fprintln(os.Stdout, includedPlugin.Path); err != nil {
 				log.Fatalf("failed to print plugin: %v", err)
 			}
 		}

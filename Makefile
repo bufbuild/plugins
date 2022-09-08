@@ -13,9 +13,16 @@ GO_TEST_FLAGS ?= -race -count=1
 BUF ?= buf
 BUF_PLUGIN_PUSH_ARGS ?=
 
-BASE_DOCKERFILES := $(shell go run ./cmd/dependency-order -dockerfile -base .)
+# Specify a space separated list of plugin name (and optional version) to just build/test individual plugins.
+# For example:
+# $ make PLUGINS="connect-go connect-web" # builds all versions of connect-go and connect-web plugins
+# $ make PLUGINS="connect-go:v0.4.0"      # builds connect-go v0.4.0 plugin
+# $ make PLUGINS="library/connect-go"     # can use optional prefix of the org
+PLUGINS ?=
+
+BASE_DOCKERFILES := $(shell PLUGINS="$(PLUGINS)" go run ./cmd/dependency-order -dockerfile -base .)
 BASE_IMAGES := $(patsubst %/Dockerfile,.build/base/%/image,$(BASE_DOCKERFILES))
-PLUGIN_YAML_FILES := $(shell go run ./cmd/dependency-order .)
+PLUGIN_YAML_FILES := $(shell PLUGINS="$(PLUGINS)" go run ./cmd/dependency-order .)
 PLUGIN_IMAGES := $(patsubst %/buf.plugin.yaml,.build/plugin/%/image,$(PLUGIN_YAML_FILES))
 
 .PHONY: all
@@ -29,7 +36,7 @@ clean:
 	@rm -rf .build
 
 .PHONY: test
-test:
+test: build
 	go test $(GO_TEST_FLAGS) ./...
 
 .build/base/library/%/base-build/image: library/%/base-build/Dockerfile
@@ -102,13 +109,8 @@ push: build
 		PLUGIN_NAME=`echo "$${PLUGIN_FULL_NAME}" | cut -d '/' -f 3-`; \
 		PLUGIN_VERSION=`yq '.plugin_version' $${plugin_dir}/buf.plugin.yaml`; \
 		echo "Pushing plugin: $${plugin}"; \
-		if [[ "$(DOCKER_ORG)" != "bufbuild" ]]; then \
+		if [[ "$(DOCKER_ORG)" = "ghcr.io/bufbuild" ]]; then \
 			$(DOCKER) pull $(DOCKER_ORG)/plugins-$${PLUGIN_OWNER}-$${PLUGIN_NAME}:$${PLUGIN_VERSION} || exit 1; \
-			$(BUF) alpha plugin push $${plugin_dir} $(BUF_PLUGIN_PUSH_ARGS) --image $(DOCKER_ORG)/plugins-$${PLUGIN_OWNER}-$${PLUGIN_NAME}:$${PLUGIN_VERSION} || exit 1; \
-		else \
-			if [[ -n "$(DOCKER_READ_CACHE_ORG)" ]]; then \
-				CACHE_ARGS=" --cache-from $(DOCKER_READ_CACHE_ORG)/plugins-$${PLUGIN_OWNER}-$${PLUGIN_NAME}:$${PLUGIN_VERSION}-buildcache"; \
-			fi; \
-			$(BUF) alpha plugin push $${plugin_dir} $(BUF_PLUGIN_PUSH_ARGS)$${CACHE_ARGS} --build-arg DOCKER_ORG="$(DOCKER_ORG)" || exit 1; \
 		fi; \
+		$(BUF) alpha plugin push $${plugin_dir} $(BUF_PLUGIN_PUSH_ARGS) --image $(DOCKER_ORG)/plugins-$${PLUGIN_OWNER}-$${PLUGIN_NAME}:$${PLUGIN_VERSION} || exit 1; \
 	done
