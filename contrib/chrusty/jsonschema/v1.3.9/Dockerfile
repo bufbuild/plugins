@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1.4
-FROM golang:1.19.0-bullseye AS build
+FROM golang:1.19.1-bullseye AS build
 ARG PLUGIN_VERSION
 RUN test -n "${PLUGIN_VERSION}"
 RUN --mount=type=cache,target=/go/pkg/mod \
