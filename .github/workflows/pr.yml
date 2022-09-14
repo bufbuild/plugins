@@ -40,7 +40,7 @@ jobs:
       shell: bash
     - uses: bufbuild/buf-setup-action@v1
       with:
-        version: 1.7.0
+        version: 1.8.0
     - name: Install Go
       uses: actions/setup-go@v3
       with:
