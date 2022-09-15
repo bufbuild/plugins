@@ -6,4 +6,5 @@ source_url: https://github.com/planetscale/vtprotobuf
 description: Generates optimized marshall & unmarshal code.
 default_opts:
   - paths=source_relative
-  - features=marshal+unmarshal+size+pool
+  # grpc feature is disabled and clone feature is not recognized
+  - features=size+equal+marshal+unmarshal+pool
