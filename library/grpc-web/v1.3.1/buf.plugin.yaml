@@ -8,4 +8,4 @@ default_opts:
   - import_style=commonjs+dts
   - mode=grpcwebtext
 deps:
-  - plugin: buf.build/library/js:v3.20.1
+  - plugin: buf.build/library/js:v3.21.0
