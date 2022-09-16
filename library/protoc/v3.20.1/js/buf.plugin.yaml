@@ -12,4 +12,4 @@ registry:
     deps:
       # https://www.npmjs.com/package/google-protobuf
       - package: "google-protobuf"
-        version: "^3.21.0"
+        version: "^3.20.1"
