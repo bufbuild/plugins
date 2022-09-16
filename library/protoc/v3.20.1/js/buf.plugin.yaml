@@ -7,3 +7,9 @@ description: Official protobuf plugin for JavaScript.
 default_opts:
   - import_style=commonjs
   - binary
+registry:
+  npm:
+    deps:
+      # https://www.npmjs.com/package/google-protobuf
+      - package: "google-protobuf"
+        version: "^3.21.0"
