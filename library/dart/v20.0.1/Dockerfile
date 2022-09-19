@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1.4
-FROM dart:2.18.0-sdk as build
+FROM dart:2.18.1-sdk as build
 
 ARG PLUGIN_VERSION
 RUN test -n "${PLUGIN_VERSION}"
