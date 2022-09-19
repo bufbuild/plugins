@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1.4
-FROM swift:5.6.2-focal AS build
+FROM swift:5.7.0-focal AS build
 
 ARG PLUGIN_VERSION
 RUN test -n "${PLUGIN_VERSION}"
