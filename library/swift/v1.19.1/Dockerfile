@@ -10,7 +10,7 @@ RUN git clone --depth 1 --branch ${PLUGIN_VERSION#v} https://github.com/apple/sw
 WORKDIR /app/swift-protobuf
 RUN swift build -c release --static-swift-stdlib
 
-FROM debian:bullseye-20220822-slim
+FROM debian:bullseye-20220912-slim
 COPY --from=build --link /app/swift-protobuf/.build/release/protoc-gen-swift .
 USER nobody
 ENTRYPOINT [ "/protoc-gen-swift" ]
