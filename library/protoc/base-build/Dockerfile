@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1.4
-FROM debian:bullseye-20220822
+FROM debian:bullseye-20220912
 
 ARG TARGETARCH
 ARG BAZEL_VERSION="4.2.1"
