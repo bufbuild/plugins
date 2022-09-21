@@ -1,7 +1,5 @@
 # syntax=docker/dockerfile:1.4
 FROM golang:1.19.1-bullseye AS build
-ARG PLUGIN_VERSION
-RUN test -n "${PLUGIN_VERSION}"
 WORKDIR /app
 COPY --link . /app
 RUN CGO_ENABLED=0 go install -ldflags "-s -w" -trimpath github.com/twitchtv/twirp/protoc-gen-twirp
