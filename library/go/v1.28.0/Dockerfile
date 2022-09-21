@@ -1,10 +1,8 @@
 # syntax=docker/dockerfile:1.4
 FROM golang:1.19.1-bullseye AS build
-ARG PLUGIN_VERSION
-RUN test -n "${PLUGIN_VERSION}"
 RUN --mount=type=cache,target=/go/pkg/mod \
     CGO_ENABLED=0 \
-    go install -ldflags "-s -w" -trimpath google.golang.org/protobuf/cmd/protoc-gen-go@${PLUGIN_VERSION}
+    go install -ldflags "-s -w" -trimpath google.golang.org/protobuf/cmd/protoc-gen-go@v1.28.0
 
 FROM scratch
 COPY --from=build --link /etc/passwd /etc/passwd

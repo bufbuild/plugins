@@ -1,9 +1,6 @@
 # syntax=docker/dockerfile:1.4
 FROM node:16.17.0-bullseye AS build
 
-ARG PLUGIN_VERSION
-RUN test -n "${PLUGIN_VERSION}"
-
 ARG TARGETARCH
 
 WORKDIR /build
@@ -14,7 +11,7 @@ set -e
 if [ "${TARGETARCH}" = "arm64" ]; then
     apt update
     apt install -y git build-essential file jq cmake
-    git clone --recursive --depth 1 --branch grpc-tools@${PLUGIN_VERSION#v} https://github.com/grpc/grpc-node.git
+    git clone --recursive --depth 1 --branch grpc-tools@1.11.2 https://github.com/grpc/grpc-node.git
     cd grpc-node/packages/grpc-tools
     sed -i -e '# -m64##g' linux_64bit.toolchain.cmake
     cmake linux_64bit.toolchain.cmake . && cmake --build . --target clean && cmake --build . -- -j 12
