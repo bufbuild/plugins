@@ -1,7 +1,6 @@
 # syntax=docker/dockerfile:1.4
-ARG PLUGIN_VERSION
 ARG DOCKER_ORG=bufbuild
-FROM ${DOCKER_ORG}/plugins-grpc-base:${PLUGIN_VERSION} AS build
+FROM ${DOCKER_ORG}/plugins-grpc-base:v1.49.0 AS build
 
 FROM debian:bullseye-20220822-slim
 COPY --from=build --link --chmod=0755 /build/grpc/grpc_python_plugin .

@@ -1,9 +1,7 @@
 # syntax=docker/dockerfile:1.4
 FROM golang:1.19.1-bullseye AS build
-ARG PLUGIN_VERSION
-RUN test -n "${PLUGIN_VERSION}"
 WORKDIR /tmp
-RUN git clone --depth 1 --branch cmd/protoc-gen-go-grpc/${PLUGIN_VERSION} https://github.com/grpc/grpc-go.git
+RUN git clone --depth 1 --branch cmd/protoc-gen-go-grpc/v1.2.0 https://github.com/grpc/grpc-go.git
 WORKDIR /tmp/grpc-go
 RUN git apply <<'EOF'
 diff --git a/cmd/protoc-gen-go-grpc/grpc.go b/cmd/protoc-gen-go-grpc/grpc.go

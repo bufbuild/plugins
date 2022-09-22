@@ -93,7 +93,6 @@ test: build
 	test -n "$${PLUGIN_NAME}" -a -n "$${PLUGIN_VERSION}" && \
 	$(DOCKER) $(DOCKER_BUILD_ARGS) \
 		$(DOCKER_BUILD_EXTRA_ARGS)$${CACHE_ARGS} \
-		--build-arg PLUGIN_VERSION=$${PLUGIN_VERSION} \
 		--label build.buf.plugins.config.owner=$${PLUGIN_OWNER} \
 		--label build.buf.plugins.config.name=$${PLUGIN_NAME} \
 		-t $(DOCKER_ORG)/plugins-$${PLUGIN_OWNER}-$${PLUGIN_NAME}:$${PLUGIN_VERSION} \
