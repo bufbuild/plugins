@@ -18,7 +18,7 @@ jobs:
         run: |
           go run ./cmd/fetcher library
       - name: Create PR
-        uses: peter-evans/create-pull-request@18f90432bedd2afd6a825469ffd38aa24712a91d
+        uses: peter-evans/create-pull-request@171dd555b9ab6b18fa02519fdfacbb8bf671e1b4
         with:
           add-paths: .
           commit-message: "detected new plugin versions"
