@@ -5,7 +5,7 @@ ARG TARGETARCH
 
 RUN apt-get update \
  && apt-get install -y curl \
- && if [ "${TARGETARCH}" = "arm64" ]; then TARGETARCH=aarch64; fi \
+ && if [ "${TARGETARCH}" = "arm64" ]; then TARGETARCH=aarch64; else TARGETARCH="x86_64"; fi \
  && curl -fsSL https://github.com/grpc/grpc-web/releases/download/1.4.0/protoc-gen-grpc-web-1.4.0-linux-${TARGETARCH} -o /tmp/protoc-gen-grpc-web
 
 FROM debian:bullseye-20220912-slim
