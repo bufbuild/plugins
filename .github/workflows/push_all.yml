@@ -1,7 +1,5 @@
-name: ci
+name: push_all
 on:
-  push:
-    branches: [ "main" ]
   workflow_dispatch: {} # support manual runs
 
 # Ref: https://docs.github.com/en/actions/reference/workflow-syntax-for-github-actions#permissions
@@ -11,37 +9,12 @@ permissions:
 concurrency: ci-${{ github.ref }}
 
 jobs:
-  ci:
+  push_all:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
       with:
-        fetch-depth: 0
-    - uses: nrwl/last-successful-commit-action@v1
-      id: last_successful_commit_push
-      with:
-        branch: ${{ github.ref_name }}
-        workflow_id: 'ci.yml'
-        github_token: ${{ secrets.GITHUB_TOKEN }}
-    - name: Get changed files
-      id: changed-files
-      uses: tj-actions/changed-files@v31
-      with:
-        base_sha: ${{ steps.last_successful_commit_push.outputs.commit_hash }}
-        files: |
-          contrib/**
-          library/**
-          tests/*.go
-          tests/testdata/buf.build/**
-          tests/testdata/images/*.gz
-          Makefile
-        files_ignore: |
-          **/source.yaml
-        separator: ","
-    - name: Show changed files
-      run: |
-        echo '${{ toJSON(steps.changed-files.outputs) }}'
-      shell: bash
+        fetch-depth: 1
     - uses: bufbuild/buf-setup-action@v1
       with:
         version: 1.8.0
@@ -71,22 +44,14 @@ jobs:
     - name: Log in to registry
       run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u $ --password-stdin
     - name: Build
-      env:
-        ALL_MODIFIED_FILES: ${{ steps.changed-files.outputs.all_modified_files }}
-        ANY_MODIFIED: ${{ steps.changed-files.outputs.any_modified }}
       shell: bash
       run: make DOCKER_ORG="ghcr.io/bufbuild" DOCKER_READ_CACHE_ORG="ghcr.io/bufbuild" DOCKER_WRITE_CACHE_ORG="ghcr.io/bufbuild" DOCKER_BUILD_EXTRA_ARGS="--push"
     - name: Test
-      env:
-        ALL_MODIFIED_FILES: ${{ steps.changed-files.outputs.all_modified_files }}
-        ANY_MODIFIED: ${{ steps.changed-files.outputs.any_modified }}
       shell: bash
       run: make test DOCKER_ORG="ghcr.io/bufbuild"
     - name: Push
       shell: bash
       env:
-        ALL_MODIFIED_FILES: ${{ steps.changed-files.outputs.all_modified_files }}
-        ANY_MODIFIED: ${{ steps.changed-files.outputs.any_modified }}
         BUF_ALPHA_SUPPRESS_WARNINGS: 1
         BSR_USER: ${{ secrets.BSR_USER }}
         BSR_TOKEN: ${{ secrets.BSR_TOKEN }}
