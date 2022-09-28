@@ -2,7 +2,6 @@ package source
 
 import (
 	"errors"
-	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -15,8 +14,8 @@ var (
 	ErrSourceFileNotFound = errors.New("source file not found")
 )
 
-func GatherConfigs(root string, depth int) (_ []*Config, retErr error) {
-	filenames, err := gatherSourceFilenames(root, depth)
+func GatherConfigs(root string) (_ []*Config, retErr error) {
+	filenames, err := gatherSourceFilenames(root)
 	if err != nil {
 		return nil, err
 	}
@@ -47,36 +46,23 @@ func loadConfigFile(filename string) (_ *Config, retErr error) {
 	return config, nil
 }
 
-func gatherSourceFilenames(root string, depth int) ([]string, error) {
+func gatherSourceFilenames(root string) ([]string, error) {
 	var filenames []string
 	if err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
 		if d.IsDir() {
-			count := strings.Count(strings.TrimPrefix(path, root), string(os.PathSeparator))
-			if count == 0 {
-				return nil
-			} else if count > depth {
-				return fs.SkipDir
-			}
-			files, err := os.ReadDir(path)
-			if err != nil {
-				return err
-			}
-			var found bool
-			for _, file := range files {
-				if file.Name() == "source.yaml" {
-					found = true
-					break
+			switch d.Name() {
+			case ".": // Allow relative path to current directory
+			case "cmd", "internal", "tests":
+				return filepath.SkipDir
+			default:
+				if strings.HasPrefix(d.Name(), ".") {
+					return filepath.SkipDir
 				}
 			}
-			if !found {
-				return fmt.Errorf("%w: %s", ErrSourceFileNotFound, path)
-			}
-			return nil
-		}
-		if d.Name() == "source.yaml" {
+		} else if d.Name() == "source.yaml" {
 			filenames = append(filenames, path)
 		}
 		return nil

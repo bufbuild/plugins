@@ -7,6 +7,7 @@ on:
 permissions:
   contents: write
   pull-requests: write
+  repository-projects: read
 
 jobs:
   fetch-versions:
@@ -15,8 +16,10 @@ jobs:
       - name: Checkout repository code
         uses: actions/checkout@v3
       - name: Fetch all versions
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          go run ./cmd/fetcher library
+          go run ./cmd/fetcher .
       - name: Create PR
         uses: peter-evans/create-pull-request@171dd555b9ab6b18fa02519fdfacbb8bf671e1b4
         with:

@@ -8,12 +8,14 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 
 	"github.com/bufbuild/plugins/internal/source"
 	"github.com/google/go-github/v45/github"
 	"github.com/hashicorp/go-retryablehttp"
 	"golang.org/x/mod/semver"
+	"golang.org/x/oauth2"
 )
 
 const (
@@ -33,10 +35,16 @@ type Client struct {
 
 // New returns a new client.
 func New() *Client {
-	return newClient(retryablehttp.NewClient().StandardClient())
-}
-
-func newClient(client *http.Client) *Client {
+	var client *http.Client
+	if ghToken := os.Getenv("GITHUB_TOKEN"); ghToken != "" {
+		ctx := context.Background()
+		ts := oauth2.StaticTokenSource(
+			&oauth2.Token{AccessToken: ghToken},
+		)
+		client = oauth2.NewClient(ctx, ts)
+	} else {
+		client = retryablehttp.NewClient().StandardClient()
+	}
 	return &Client{
 		httpClient: client,
 		ghClient:   github.NewClient(client),
@@ -74,7 +82,8 @@ func (c *Client) fetch(ctx context.Context, config *source.Config) (string, erro
 }
 
 func (c *Client) fetchDartFlutter(ctx context.Context, name string) (string, error) {
-	request, err := http.NewRequest(
+	request, err := http.NewRequestWithContext(
+		ctx,
 		http.MethodGet,
 		fmt.Sprintf("%s/%s", dartFlutterAPIURL, strings.TrimPrefix(name, "/")),
 		nil,
@@ -100,7 +109,8 @@ func (c *Client) fetchDartFlutter(ctx context.Context, name string) (string, err
 }
 
 func (c *Client) fetchGoProxy(ctx context.Context, name string) (string, error) {
-	request, err := http.NewRequest(
+	request, err := http.NewRequestWithContext(
+		ctx,
 		http.MethodGet,
 		fmt.Sprintf("%s/%s/@latest", goProxyURL, strings.TrimPrefix(name, "/")),
 		nil,
@@ -124,7 +134,8 @@ func (c *Client) fetchGoProxy(ctx context.Context, name string) (string, error) 
 }
 
 func (c *Client) fetchNPMRegistry(ctx context.Context, name string) (string, error) {
-	request, err := http.NewRequest(
+	request, err := http.NewRequestWithContext(
+		ctx,
 		http.MethodGet,
 		fmt.Sprintf("%s/%s", npmRegistryURL, strings.TrimPrefix(name, "/")),
 		nil,
@@ -164,7 +175,7 @@ func (c *Client) fetchMaven(ctx context.Context, group string, name string) (str
 		return "", err
 	}
 	targetURL.RawQuery = unescapedQuery
-	request, err := http.NewRequest(http.MethodGet, targetURL.String(), nil)
+	request, err := http.NewRequestWithContext(ctx, http.MethodGet, targetURL.String(), nil)
 	if err != nil {
 		return "", err
 	}

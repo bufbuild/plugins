@@ -12,31 +12,27 @@ import (
 
 func TestGatherSourceFilenames(t *testing.T) {
 	// Walk entire directory with a depth of 1
-	filenames, err := gatherSourceFilenames("testdata/success", 1)
+	filenames, err := gatherSourceFilenames("testdata/success")
 	require.NoError(t, err)
 	assert.Equal(t, 2, len(filenames))
-	// Walk explicit directory with a depth 0 (source is expected to be in the root directory)
-	filenames, err = gatherSourceFilenames("testdata/success/connect-go", 0)
+	filenames, err = gatherSourceFilenames("testdata/success/connect-go")
 	require.NoError(t, err)
 	assert.Equal(t, 1, len(filenames))
-	// Wrong depth, no source files found in root
-	_, err = gatherSourceFilenames("testdata/success", 0)
-	require.ErrorIs(t, err, ErrSourceFileNotFound)
-	// Wrong depth, no source files found in subdirectory. Too far.
-	_, err = gatherSourceFilenames("testdata/success", 2)
-	require.ErrorIs(t, err, ErrSourceFileNotFound)
+	filenames, err = gatherSourceFilenames("testdata/success")
+	require.NoError(t, err)
+	assert.Equal(t, 2, len(filenames))
 
-	// One directory does not contain source file.
-	_, err = gatherSourceFilenames("testdata/fail", 0)
-	require.ErrorIs(t, err, ErrSourceFileNotFound)
+	filenames, err = gatherSourceFilenames("testdata/fail")
+	require.NoError(t, err)
+	assert.Equal(t, 2, len(filenames))
 
 	// Invalid directory
-	_, err = gatherSourceFilenames("notexists", 0)
+	_, err = gatherSourceFilenames("notexists")
 	require.ErrorIs(t, err, os.ErrNotExist)
 }
 
 func TestLoadSourceFile(t *testing.T) {
-	filenames, err := gatherSourceFilenames("testdata/success/connect-go", 0)
+	filenames, err := gatherSourceFilenames("testdata/success/connect-go")
 	require.NoError(t, err)
 	assert.Equal(t, 1, len(filenames))
 	config, err := loadConfigFile(filenames[0])
@@ -45,7 +41,7 @@ func TestLoadSourceFile(t *testing.T) {
 }
 
 func TestGatherConfigs(t *testing.T) {
-	configs, err := GatherConfigs("testdata/success", 1)
+	configs, err := GatherConfigs("testdata/success")
 	require.NoError(t, err)
 	assert.Equal(t, 2, len(configs))
 
@@ -70,7 +66,7 @@ func TestGatherConfigs(t *testing.T) {
 	}
 
 	// invalid source file
-	_, err = GatherConfigs("testdata/fail/invalid", 1)
+	_, err = GatherConfigs("testdata/fail/invalid")
 	require.Error(t, err)
 }
 
