@@ -43,7 +43,7 @@ func run(ctx context.Context, root string, depth int) error {
 	defer func() {
 		log.Printf("finished running in: %.2fs\n", time.Since(now).Seconds())
 	}()
-	configs, err := source.GatherConfigs(root, depth)
+	configs, err := source.GatherConfigs(root)
 	if err != nil {
 		return err
 	}
@@ -110,7 +110,7 @@ func run(ctx context.Context, root string, depth int) error {
 // copyDirectory copies all files from the source directory to the target,
 // creating the target directory if does not exist.
 // If the source directory contains subdirectories this function returns an error.
-func copyDirectory(source, target string) (retErr error) {
+func copyDirectory(source, target, prevVersion, newVersion string) (retErr error) {
 	entries, err := os.ReadDir(source)
 	if err != nil {
 		return err
@@ -130,6 +130,8 @@ func copyDirectory(source, target string) (retErr error) {
 		if err := copyFile(
 			filepath.Join(source, file.Name()),
 			filepath.Join(target, file.Name()),
+			prevVersion,
+			newVersion,
 		); err != nil {
 			return err
 		}
@@ -157,6 +159,8 @@ func createPluginDirs(pluginDir string, previousVersion string, newVersion strin
 		err = copyDirectory(
 			filepath.Join(oldPluginDir, entry.Name()),
 			filepath.Join(newPluginDir, entry.Name()),
+			previousVersion,
+			newVersion,
 		)
 		if err != nil {
 			return err
@@ -177,6 +181,8 @@ func createPluginDir(dir string, previousVersion string, newVersion string) (ret
 	return copyDirectory(
 		filepath.Join(dir, previousVersion),
 		filepath.Join(dir, newVersion),
+		previousVersion,
+		newVersion,
 	)
 }
 
@@ -226,12 +232,13 @@ func updateBufPluginFile(name string, newVersion string) error {
 	return os.WriteFile(name, newData, 0644)
 }
 
-func copyFile(src, dest string) error {
+func copyFile(src, dest string, prevVersion, newVersion string) error {
 	data, err := os.ReadFile(src)
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(dest, data, 0644)
+	replaced := strings.ReplaceAll(string(data), strings.TrimPrefix(prevVersion, "v"), strings.TrimPrefix(newVersion, "v"))
+	return os.WriteFile(dest, []byte(replaced), 0644)
 }
 
 func getLatestVersionFromDir(dir string) (string, error) {

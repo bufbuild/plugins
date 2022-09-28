@@ -1,0 +1,4 @@
+source:
+  github:
+    owner: chrusty
+    repository: protoc-gen-jsonschema
