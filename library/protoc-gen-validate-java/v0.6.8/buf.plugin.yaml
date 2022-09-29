@@ -1,0 +1,8 @@
+version: v1
+name: buf.build/library/protoc-gen-validate-java
+plugin_version: v0.6.8
+output_languages: [java]
+source_url: https://github.com/envoyproxy/protoc-gen-validate
+description: Plugin to generate message validators for Java
+default_opts:
+  - lang=java

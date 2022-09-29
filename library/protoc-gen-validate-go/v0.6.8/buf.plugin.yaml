@@ -1,0 +1,9 @@
+version: v1
+name: buf.build/library/protoc-gen-validate-go
+plugin_version: v0.6.8
+output_languages: [go]
+source_url: https://github.com/envoyproxy/protoc-gen-validate
+description: Plugin to generate message validators for Go
+default_opts:
+  - lang=go
+  - paths=source_relative
