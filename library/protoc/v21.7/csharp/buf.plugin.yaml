@@ -1,0 +1,7 @@
+version: v1
+name: buf.build/library/csharp
+plugin_version: v21.7
+source_url: https://github.com/protocolbuffers/protobuf
+description: Official protobuf plugin for C#.
+output_languages:
+  - csharp
