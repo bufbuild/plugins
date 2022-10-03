@@ -2,7 +2,7 @@
 FROM golang:1.19.1-bullseye AS build
 WORKDIR /app
 COPY --link . /app
-RUN CGO_ENABLED=0 go install -ldflags "-s -w" -trimpath github.com/envoyproxy/protoc-gen-validate@v0.6.8
+RUN CGO_ENABLED=0 go install -ldflags "-s -w" -trimpath github.com/envoyproxy/protoc-gen-validate@v0.6.12
 
 FROM scratch
 COPY --from=build --link /etc/passwd /etc/passwd

@@ -1,8 +1,8 @@
 version: v1
 name: buf.build/library/protoc-gen-validate-go
-plugin_version: v0.6.8
+plugin_version: v0.6.12
 output_languages: [go]
-source_url: https://github.com/envoyproxy/protoc-gen-validate
+source_url: https://github.com/bufbuild/protoc-gen-validate
 description: Plugin to generate message validators for Go
 default_opts:
   - lang=go

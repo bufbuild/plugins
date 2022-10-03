@@ -1,4 +1,4 @@
 source:
   github:
-    owner: envoyproxy
+    owner: bufbuild
     repository: protoc-gen-validate
