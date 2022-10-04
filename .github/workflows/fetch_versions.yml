@@ -25,7 +25,6 @@ jobs:
           add-paths: .
           commit-message: "detected new plugin versions"
           branch: fetch-versions
-          branch-suffix: timestamp
           delete-branch: true
           title: "Found new plugin versions"
           body: "New plugin versions found. Please review."
