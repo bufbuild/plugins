@@ -19,14 +19,17 @@ The build requires the following:
 * Run integration tests against Docker images: `make test`.
 * Remove intermediate state from previous builds: `make clean`.
 * Push built plugins to the BSR (currently locked down to CI/CD): `make push`.
-* Build and test an individual plugin: `make PLUGINS="connect-go:v0.4.0" test`.
+* Build and test an individual plugin:
+  * Specific version: `make test PLUGINS="connect-go:v0.4.0"`
+  * Latest version: `make test PLUGINS="connect-go:latest"`.
+  * All versions: `make test PLUGINS="connect-go"`.
 
 ## Creating a new plugin
 
 Plugins are found in the top-level `library` or `contrib` directories, depending on their level of support by the Buf team.
 
 To create a new plugin, add a new folder matching the last component of the plugin's name and its version (i.e. `mkdir -p library/plugin-name/vX.Y.Z`) and add a `buf.plugin.yaml` / `Dockerfile` / `.dockerignore` to the newly created directory.
-To verify the plugin builds properly, run `make PLUGINS=<plugin-name>` to build the Docker image and `make test PLUGINS=<plugin-name>` to verify code generation for the plugin using some basic APIs stored in `tests/testdata/images/`.
+To verify the plugin builds properly, run `make PLUGINS="<plugin-name>"` to build the Docker image and `make test PLUGINS="<plugin-name>"` to verify code generation for the plugin using some basic APIs stored in `tests/testdata/images/`.
 
 When a plugin is executed for the first time, it will create the following file(s):
 
