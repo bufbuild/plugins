@@ -19,14 +19,17 @@ The build requires the following:
 * Run integration tests against Docker images: `make test`.
 * Remove intermediate state from previous builds: `make clean`.
 * Push built plugins to the BSR (currently locked down to CI/CD): `make push`.
-* Build and test an individual plugin: `make PLUGINS="connect-go:v0.4.0" test`.
+* Build and test an individual plugin:
+  * Specific version: `make test PLUGINS="connect-go:v0.4.0"`
+  * Latest version: `make test PLUGINS="connect-go:latest"`.
+  * All versions: `make test PLUGINS="connect-go"`.
 
 ## Creating a new plugin
 
 Plugins are found in the top-level `library` or `contrib` directories, depending on their level of support by the Buf team.
 
-To create a new plugin, add a new folder matching the last component of the plugin's name and its version (i.e. `mkdir -p library/my-plugin-name/vX.Y.Z`) and add a `buf.plugin.yaml` / `Dockerfile` / `.dockerignore` to the newly created directory.
-To verify the plugin builds properly, run `make` to build the Docker image and `make test` to verify code generation for the plugin using some basic APIs stored in `tests/testdata/images/`.
+To create a new plugin, add a new folder matching the last component of the plugin's name and its version (i.e. `mkdir -p library/plugin-name/vX.Y.Z`) and add a `buf.plugin.yaml` / `Dockerfile` / `.dockerignore` to the newly created directory.
+To verify the plugin builds properly, run `make PLUGINS="<plugin-name>"` to build the Docker image and `make test PLUGINS="<plugin-name>"` to verify code generation for the plugin using some basic APIs stored in `tests/testdata/images/`.
 
 When a plugin is executed for the first time, it will create the following file(s):
 
@@ -91,9 +94,9 @@ If the `fetcher` command opens a PR for a new version of an existing plugin, the
    If NPM or Go dependencies change, ensure that `npm i` or `go mod tidy` are run to ensure that the `package-lock.json` or `go.sum` files are kept up to date.
 3. Double check version numbers in `plugin.yaml` or other files to ensure they are bumped.
    Often times, there may be dependencies (plugin or runtime dependencies) which need to be updated.
-4. Run `make` and `make test` to build the plugin and run the unit tests.
+4. Run `make PLUGINS="<plugin-name>"` and `make test PLUGINS="<plugin-name>"` to build the plugin and run the unit tests.
    It is expected that the tests will fail with a directory checksum mismatch (because the `plugin.sum` file doesn't exist).
-   Perform a manual inspection of the generated code for the new version of the plugin under `tests/testdata/library/<your-plugin>/v<version>/*/gen` to ensure it looks correct.
+   Perform a manual inspection of the generated code for the new version of the plugin under `tests/testdata/library/<plugin-name>/<version>/*/gen` to ensure it looks correct.
    It may be helpful to diff a previous version of the plugin's generated code to the new version's to verify expected changes are included.
 5. Add the `plugin.sum` files for the new version of the generated code to source control and request a PR review for any updates.
 
