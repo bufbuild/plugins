@@ -76,7 +76,11 @@ func (c *Client) fetch(ctx context.Context, config *source.Config) (string, erro
 	case config.Source.NPMRegistry != nil:
 		return c.fetchNPMRegistry(ctx, config.Source.NPMRegistry.Name)
 	case config.Source.Maven != nil:
-		return c.fetchMaven(ctx, config.Source.Maven.Group, config.Source.Maven.Name)
+		results, err := c.fetchMaven(ctx, config.Source.Maven.Group, config.Source.Maven.Name)
+		if err != nil {
+			return "", err
+		}
+		return results.latestVersion, nil
 	}
 	return "", fmt.Errorf("failed to match a source")
 }
@@ -160,10 +164,15 @@ func (c *Client) fetchNPMRegistry(ctx context.Context, name string) (string, err
 	return data.DistTags.Latest, nil
 }
 
-func (c *Client) fetchMaven(ctx context.Context, group string, name string) (string, error) {
+type mavenResults struct {
+	latestVersion       string
+	latestPatchVersions map[string]string
+}
+
+func (c *Client) fetchMaven(ctx context.Context, group string, name string) (*mavenResults, error) {
 	targetURL, err := url.Parse(mavenSearchURL)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	q := url.Values{}
 	q.Set("wt", "json")
@@ -172,22 +181,24 @@ func (c *Client) fetchMaven(ctx context.Context, group string, name string) (str
 	q.Set("q", fmt.Sprintf("g:%s+AND+a:%s", group, name))
 	unescapedQuery, err := url.QueryUnescape(q.Encode())
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	targetURL.RawQuery = unescapedQuery
 	request, err := http.NewRequestWithContext(ctx, http.MethodGet, targetURL.String(), nil)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	response, err := c.httpClient.Do(request)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	defer response.Body.Close()
 
 	var data struct {
 		Response struct {
-			Docs []struct {
+			NumFound int `json:"numFound"`
+			Start    int `json:"start"`
+			Docs     []struct {
 				ID       string `json:"id"`
 				Group    string `json:"g"`
 				Artifact string `json:"a"`
@@ -196,12 +207,36 @@ func (c *Client) fetchMaven(ctx context.Context, group string, name string) (str
 		} `json:"response"`
 	}
 	if err := json.NewDecoder(response.Body).Decode(&data); err != nil {
-		return "", err
+		return nil, err
 	}
+	// TODO: support pagination over additional results using Response.NumFound / Response.Start
 	if len(data.Response.Docs) == 0 {
-		return "", errors.New("failed to get versions from response docs")
+		return nil, errors.New("failed to get versions from response docs")
 	}
-	return data.Response.Docs[0].Version, nil
+	results := &mavenResults{
+		latestPatchVersions: make(map[string]string),
+	}
+	for _, doc := range data.Response.Docs {
+		version := doc.Version
+		if !strings.HasPrefix(version, "v") {
+			version = "v" + version
+		}
+		if !semver.IsValid(version) || semver.Prerelease(version) != "" {
+			continue
+		}
+		version = semver.Canonical(version)
+		if results.latestVersion == "" || semver.Compare(results.latestVersion, version) < 0 {
+			results.latestVersion = version
+		}
+		release := semver.MajorMinor(version)
+		if results.latestPatchVersions[release] == "" || semver.Compare(results.latestPatchVersions[release], version) < 0 {
+			results.latestPatchVersions[release] = version
+		}
+	}
+	if results.latestVersion == "" {
+		return nil, errors.New("failed to determine latest version from response docs")
+	}
+	return results, nil
 }
 
 func (c *Client) fetchGithub(ctx context.Context, owner string, repository string) (string, error) {
