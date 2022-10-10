@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1.4
-FROM node:16.17.0-bullseye AS build
+FROM node:16.17.1-bullseye AS build
 
 ARG TARGETARCH
 
