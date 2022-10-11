@@ -4,7 +4,7 @@ plugin_version: v1.4.0
 source_url: https://github.com/grpc/grpc-web
 description: gRPC for Web Clients.
 deps:
-  - plugin: buf.build/library/js:v3.21.0
+  - plugin: buf.build/protocolbuffers/js:v3.21.0
 default_opts:
   - import_style=commonjs+dts
   - mode=grpcwebtext

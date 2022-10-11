@@ -5,7 +5,7 @@ output_languages: [go]
 source_url: https://github.com/grpc/grpc-go
 description: Generates Go language bindings of services in protobuf definition files for gRPC.
 deps:
-  - plugin: buf.build/library/go:v1.28.1
+  - plugin: buf.build/protocolbuffers/go:v1.28.1
 default_opts:
   - paths=source_relative
   - require_unimplemented_servers=false
