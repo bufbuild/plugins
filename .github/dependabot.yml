@@ -15,12 +15,12 @@ updates:
       interval: "weekly"
   # node slim plugin
   - package-ecosystem: "docker"
-    directory: "/plugins/bufbuild/connect-web/v0.1.0"
+    directory: "/plugins/bufbuild/connect-web/v0.2.1"
     schedule:
       interval: "weekly"
   # node full plugin
   - package-ecosystem: "docker"
-    directory: "/plugins/grpc/node/v1.11.2"
+    directory: "/plugins/grpc/node/v1.11.3"
     schedule:
       interval: "weekly"
   # dart plugin
@@ -35,7 +35,7 @@ updates:
       interval: "weekly"
   # swift plugin
   - package-ecosystem: "docker"
-    directory: "/plugins/apple/swift/v1.19.1"
+    directory: "/plugins/apple/swift/v1.20.2"
     schedule:
       interval: "weekly"
   # debian bullseye
