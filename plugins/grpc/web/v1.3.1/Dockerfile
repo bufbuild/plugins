@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1.4
-FROM debian:bullseye-20220822 AS build
+FROM debian:bullseye-20221004 AS build
 
 ARG TARGETARCH
 ARG BAZEL_VERSION="4.2.1"
@@ -23,7 +23,7 @@ else
 fi
 EOF
 
-FROM debian:bullseye-20220822-slim
+FROM debian:bullseye-20221004-slim
 COPY --from=build --link --chmod=0755 --chown=root:root /build/protoc-gen-grpc-web .
 USER nobody
 ENTRYPOINT [ "/protoc-gen-grpc-web" ]

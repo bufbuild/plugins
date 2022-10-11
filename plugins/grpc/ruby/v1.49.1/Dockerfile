@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1.4
-FROM debian:bullseye-20221004 as build
+FROM debian:bullseye-20221004 AS build
 
 RUN apt-get update \
  && apt-get install -y git cmake build-essential
