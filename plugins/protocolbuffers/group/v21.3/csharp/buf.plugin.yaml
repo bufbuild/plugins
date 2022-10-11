@@ -1,5 +1,5 @@
 version: v1
-name: buf.build/library/csharp
+name: buf.build/protocolbuffers/csharp
 plugin_version: v21.3
 output_languages: [csharp]
 source_url: https://github.com/protocolbuffers/protobuf

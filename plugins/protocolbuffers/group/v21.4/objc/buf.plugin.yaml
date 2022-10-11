@@ -1,5 +1,5 @@
 version: v1
-name: buf.build/library/objc
+name: buf.build/protocolbuffers/objc
 plugin_version: v21.4
 output_languages: [objective_c]
 source_url: https://github.com/protocolbuffers/protobuf

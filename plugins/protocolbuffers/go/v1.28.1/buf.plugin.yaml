@@ -1,5 +1,5 @@
 version: v1
-name: buf.build/library/go
+name: buf.build/protocolbuffers/go
 plugin_version: v1.28.1
 output_languages: [go]
 source_url: https://github.com/protocolbuffers/protobuf-go

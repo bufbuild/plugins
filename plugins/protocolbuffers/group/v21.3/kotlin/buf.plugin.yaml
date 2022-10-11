@@ -1,5 +1,5 @@
 version: v1
-name: buf.build/library/kotlin
+name: buf.build/protocolbuffers/kotlin
 plugin_version: v21.3
 output_languages: [kotlin]
 source_url: https://github.com/protocolbuffers/protobuf

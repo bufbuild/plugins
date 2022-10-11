@@ -4,7 +4,7 @@ plugin_version: v1.0.0
 source_url: github.com/bufbuild/connect-go
 description: A better gRPC.
 deps:
-  - plugin: buf.build/bufbuild/go:v1.28.1
+  - plugin: buf.build/protocolbuffers/go:v1.28.1
 default_opts:
   - paths=source_relative
 output_languages:

@@ -1,5 +1,5 @@
 version: v1
-name: buf.build/library/cpp
+name: buf.build/protocolbuffers/cpp
 plugin_version: v21.4
 output_languages: [cpp]
 source_url: https://github.com/protocolbuffers/protobuf

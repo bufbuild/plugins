@@ -1,5 +1,5 @@
 version: v1
-name: buf.build/library/python
+name: buf.build/protocolbuffers/python
 plugin_version: v3.20.1
 output_languages: [python]
 source_url: https://github.com/protocolbuffers/protobuf

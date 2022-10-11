@@ -1,5 +1,5 @@
 version: v1
-name: buf.build/library/js
+name: buf.build/protocolbuffers/js
 plugin_version: v3.21.2
 source_url: https://github.com/protocolbuffers/protobuf-javascript
 description: JavaScript Protocol Buffers code generator.
