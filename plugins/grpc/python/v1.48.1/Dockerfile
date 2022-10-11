@@ -2,7 +2,7 @@
 FROM debian:bullseye-20221004 as build
 
 RUN apt-get update \
- && apt-get install -y git cmake build-essential \
+ && apt-get install -y git cmake build-essential
 
 WORKDIR /build
 

@@ -241,64 +241,12 @@ func FilterByChangedFiles(plugins []*Plugin, lookuper envconfig.Lookuper) ([]*Pl
 }
 
 // GetDockerfiles returns the relative path of all Dockerfile files found in the specified list of plugins.
-func GetDockerfiles(basedir string, plugins []*Plugin) ([]string, error) {
-	baseDockerfiles, err := GetBaseDockerfiles(basedir)
-	if err != nil {
-		return nil, err
-	}
+func GetDockerfiles(plugins []*Plugin) ([]string, error) {
 	var dockerFiles []string
 	for _, plugin := range plugins {
-		remaining := make([]string, 0, len(baseDockerfiles))
-		for _, baseDockerfile := range baseDockerfiles {
-			pluginBasedir := filepath.ToSlash(filepath.Dir(filepath.Dir(baseDockerfile)))
-			if strings.HasPrefix(plugin.Relpath, pluginBasedir+"/") {
-				dockerFiles = append(dockerFiles, baseDockerfile)
-			} else {
-				remaining = append(remaining, baseDockerfile)
-			}
-		}
-		baseDockerfiles = remaining
 		dockerFiles = append(dockerFiles, filepath.ToSlash(filepath.Join(filepath.Dir(plugin.Relpath), "Dockerfile")))
 	}
 	return dockerFiles, nil
-}
-
-// GetBaseDockerfiles returns the relative paths to base Dockerfiles in the specified base directory.
-func GetBaseDockerfiles(basedir string) ([]string, error) {
-	var baseDockerFiles []string
-	if err := filepath.WalkDir(basedir, func(path string, entry fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-		if entry.IsDir() {
-			switch entry.Name() {
-			case ".git", "tests", "testdata", "vendor":
-				return filepath.SkipDir
-			}
-			return nil
-		}
-		if IsBaseDockerfile(path) {
-			relativePath, err := filepath.Rel(basedir, path)
-			if err != nil {
-				return err
-			}
-			baseDockerFiles = append(baseDockerFiles, filepath.ToSlash(relativePath))
-		}
-		return nil
-	}); err != nil {
-		return nil, err
-	}
-	return baseDockerFiles, nil
-}
-
-// IsBaseDockerfile returns true if the path's base name is 'Dockerfile' and the name of the parent directory begins with "base".
-// For example, 'library/protoc/base-build/Dockerfile' and 'library/protoc/v21.3/base/Dockerfile' will return true.
-func IsBaseDockerfile(path string) bool {
-	if filepath.Base(path) != "Dockerfile" {
-		return false
-	}
-	parentDir := filepath.Base(filepath.Dir(path))
-	return strings.HasPrefix(parentDir, "base")
 }
 
 func parsePluginsEnvVar(pluginsEnv string) ([]includePlugin, error) {

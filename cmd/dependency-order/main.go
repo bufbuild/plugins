@@ -12,22 +12,14 @@ import (
 
 func main() {
 	var (
-		base       bool
 		dockerFile bool
 	)
-	flag.BoolVar(&base, "base", false, "only include base Dockerfiles (must be used with -dockerfile)")
 	flag.BoolVar(&dockerFile, "dockerfile", false, "outputs Dockerfiles in dependency order")
 	flag.Parse()
 	if len(flag.Args()) != 1 {
 		flag.Usage()
 		os.Exit(2)
 	}
-	if base && !dockerFile {
-		_, _ = fmt.Fprintln(os.Stderr, "-base option must be used with -dockerfile option")
-		flag.Usage()
-		os.Exit(2)
-	}
-
 	basedir := flag.Args()[0]
 
 	plugins := make([]*plugin.Plugin, 0)
@@ -53,12 +45,10 @@ func main() {
 	}
 
 	if dockerFile {
-		dockerFiles, _ := plugin.GetDockerfiles(basedir, includedPlugins)
+		dockerFiles, _ := plugin.GetDockerfiles(includedPlugins)
 		for _, f := range dockerFiles {
-			if !base || plugin.IsBaseDockerfile(f) {
-				if _, err := fmt.Fprintln(os.Stdout, f); err != nil {
-					log.Fatalf("failed to print dockerfile: %v", err)
-				}
+			if _, err := fmt.Fprintln(os.Stdout, f); err != nil {
+				log.Fatalf("failed to print dockerfile: %v", err)
 			}
 		}
 	} else {

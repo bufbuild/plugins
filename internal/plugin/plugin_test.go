@@ -1,7 +1,6 @@
 package plugin
 
 import (
-	"path/filepath"
 	"strconv"
 	"strings"
 	"testing"
@@ -72,15 +71,6 @@ func TestFilterByChangedFiles(t *testing.T) {
 	)
 }
 
-func TestGetBaseDockerfiles(t *testing.T) {
-	files, err := GetBaseDockerfiles("../..")
-	require.NoError(t, err)
-	assert.NotEmpty(t, files)
-	for _, file := range files {
-		assert.Containsf(t, []string{"base-build", "base"}, filepath.Base(filepath.Dir(file)), "not a base dockerfile: %s", file)
-	}
-}
-
 func TestGetDockerfiles(t *testing.T) {
 	t.Parallel()
 	var plugins []*Plugin
@@ -88,30 +78,9 @@ func TestGetDockerfiles(t *testing.T) {
 		plugins = append(plugins, plugin)
 	})
 	require.NoError(t, err)
-	baseFiles, err := GetBaseDockerfiles("../..")
+	files, err := GetDockerfiles(plugins)
 	require.NoError(t, err)
-	require.NotEmpty(t, baseFiles)
-	files, err := GetDockerfiles("../..", plugins)
 	require.NotEmpty(t, files)
-	require.NoError(t, err)
-	for _, baseFile := range baseFiles {
-		assert.Contains(t, files, baseFile)
-	}
-	// Verify protoc/base-build/Dockerfile comes before protoc/v21.3/base/Dockerfile
-	assert.Less(t, indexOf(t, files, "library/protoc/base-build/Dockerfile"), indexOf(t, files, "library/protoc/v21.3/base/Dockerfile"))
-	// Verify protoc/v21.3/base/Dockerfile comes before protoc/v21.3/cpp/Dockerfile
-	assert.Less(t, indexOf(t, files, "library/protoc/v21.3/base/Dockerfile"), indexOf(t, files, "library/protoc/v21.3/cpp/Dockerfile"))
-}
-
-func indexOf(t *testing.T, haystack []string, needle string) int {
-	t.Helper()
-	for i, item := range haystack {
-		if item == needle {
-			return i
-		}
-	}
-	t.Fatalf("failed to find %q in: %v", needle, haystack)
-	panic("unreachable")
 }
 
 func runFilterByPluginsEnv(t *testing.T, plugins []*Plugin, pluginsEnv string) []string {
