@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1.4
 ARG DOCKER_ORG=bufbuild
-FROM ${DOCKER_ORG}/plugins-protoc-base:v21.5 as build
+FROM ${DOCKER_ORG}/plugins-protoc-base:v21.5 AS build
 
 FROM debian:bullseye-20220822-slim
 COPY --from=build --link --chmod=0755 /build/protobuf/bazel-bin/plugins/protoc-gen-java .
