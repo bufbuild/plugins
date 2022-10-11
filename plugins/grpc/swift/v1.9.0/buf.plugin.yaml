@@ -1,6 +1,7 @@
 version: v1
 name: buf.build/grpc/swift
 plugin_version: v1.9.0
-output_languages: [swift]
 source_url: https://github.com/grpc/grpc-swift
-description: Swift gRPC plugin.
+description: The Swift language implementation of gRPC.
+output_languages:
+  - swift

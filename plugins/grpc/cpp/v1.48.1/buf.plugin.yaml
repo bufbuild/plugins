@@ -1,6 +1,7 @@
 version: v1
 name: buf.build/grpc/cpp
 plugin_version: v1.48.1
-output_languages: [cpp]
 source_url: https://github.com/grpc/grpc
 description: Official gRPC plugin for C++.
+output_languages:
+  - cpp

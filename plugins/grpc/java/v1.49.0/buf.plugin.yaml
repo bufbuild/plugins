@@ -1,6 +1,7 @@
 version: v1
 name: buf.build/grpc/java
 plugin_version: v1.49.0
-output_languages: [java]
 source_url: https://github.com/grpc/grpc-java
 description: gRPC Java Codegen Plugin for Protobuf Compiler.
+output_languages:
+  - java

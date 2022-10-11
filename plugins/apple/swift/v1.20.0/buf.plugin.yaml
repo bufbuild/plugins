@@ -1,6 +1,7 @@
 version: v1
 name: buf.build/apple/swift
 plugin_version: v1.20.0
-output_languages: [swift]
 source_url: https://github.com/apple/swift-protobuf
 description: Swift protobuf plugin.
+output_languages:
+  - swift

@@ -31,7 +31,7 @@ func TestFilterByPluginsEnv(t *testing.T) {
 	assert.Equal(t, filterPluginsByPathPrefixes(t, plugins, "plugins/bufbuild/connect-go/", "plugins/bufbuild/connect-web/v0.2.1/"),
 		runFilterByPluginsEnv(t, plugins, "connect-go connect-web:v0.2.1"))
 	assert.Equal(t, filterPluginsByPathPrefixes(t, plugins, "plugins/bufbuild/connect-go/", "plugins/bufbuild/connect-web/v0.2.1/"),
-		runFilterByPluginsEnv(t, plugins, "plugins/bufbuild/connect-go plugins/bufbuild/connect-web:v0.2.1"))
+		runFilterByPluginsEnv(t, plugins, "bufbuild/connect-go bufbuild/connect-web:v0.2.1"))
 	assert.Equal(t, filterPluginsByPathPrefixes(t, plugins, "plugins/community/chrusty-jsonschema/"),
 		runFilterByPluginsEnv(t, plugins, "chrusty-jsonschema"))
 	assert.Equal(t, filterPluginsByPathPrefixes(t, plugins, "plugins/"), runFilterByPluginsEnv(t, plugins, ""))
@@ -52,21 +52,17 @@ func TestFilterByChangedFiles(t *testing.T) {
 	assert.Len(t, runFilterByChangedFiles(t, plugins, []string{"Makefile"}, true), len(plugins))
 	assert.Len(t, runFilterByChangedFiles(t, plugins, []string{"tests/plugins_test.go"}, true), len(plugins))
 	assert.Len(t, runFilterByChangedFiles(t, plugins, []string{"tests/testdata/images/eliza.bin.gz"}, true), len(plugins))
-	assert.Equal(t, filterPluginsByPathPrefixes(t, plugins, "library/protoc/"), runFilterByChangedFiles(t, plugins, []string{"library/protoc/base-build/Dockerfile"}, true))
-	assert.Equal(t, filterPluginsByPathPrefixes(t, plugins, "library/protoc/v21.3/"), runFilterByChangedFiles(t, plugins, []string{"library/protoc/v21.3/base/Dockerfile"}, true))
-	assert.Equal(t, filterPluginsByPathPrefixes(t, plugins, "library/protoc/v21.3/cpp/"), runFilterByChangedFiles(t, plugins, []string{"tests/testdata/buf.build/library/cpp/v21.3/eliza/plugin.sum"}, true))
+	assert.Equal(t, filterPluginsByPathPrefixes(t, plugins, "plugins/protocolbuffers/cpp/v21.3/"), runFilterByChangedFiles(t, plugins, []string{"tests/testdata/buf.build/protocolbuffers/cpp/v21.3/eliza/plugin.sum"}, true))
 	assert.Equal(t,
 		filterPluginsByPathPrefixes(t, plugins,
-			"library/grpc/v1.2.0/",
-			"library/protoc/v21.3/cpp/",
-			"library/protoc/v21.5/java/",
-			"library/connect-go/v0.3.0/",
+			"plugins/protocolbuffers/cpp/v21.3/",
+			"plugins/protocolbuffers/java/v21.5/",
+			"plugins/bufbuild/connect-go/v0.3.0/",
 		), runFilterByChangedFiles(t, plugins,
 			[]string{
-				"library/connect-go/v0.3.0/buf.plugin.yaml",
-				"library/grpc/v1.2.0/base/Dockerfile",
-				"tests/testdata/buf.build/library/cpp/v21.3/eliza/plugin.sum",
-				"tests/testdata/buf.build/library/java/v21.5/petapis/plugin.sum",
+				"plugins/bufbuild/connect-go/v0.3.0/buf.plugin.yaml",
+				"tests/testdata/buf.build/protocolbuffers/cpp/v21.3/eliza/plugin.sum",
+				"tests/testdata/buf.build/protocolbuffers/java/v21.5/petapis/plugin.sum",
 			}, true),
 	)
 }

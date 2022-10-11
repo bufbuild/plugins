@@ -28,7 +28,7 @@ The build requires the following:
 
 Plugins are found in the top-level `plugins` directory.
 
-To create a new plugin, add a new folder matching the last component of the plugin's name and its version (i.e. `mkdir -p library/plugin-name/vX.Y.Z`) and add a `buf.plugin.yaml` / `Dockerfile` / `.dockerignore` to the newly created directory.
+To create a new plugin, add a new folder matching the last component of the plugin's name and its version (i.e. `mkdir -p plugins/<org>/<name>/vX.Y.Z`) and add a `buf.plugin.yaml` / `Dockerfile` / `.dockerignore` to the newly created directory.
 To verify the plugin builds properly, run `make PLUGINS="<plugin-name>"` to build the Docker image and `make test PLUGINS="<plugin-name>"` to verify code generation for the plugin using some basic APIs stored in `tests/testdata/images/`.
 
 When a plugin is executed for the first time, it will create the following file(s):

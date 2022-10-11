@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1.4
-FROM debian:bullseye-20220822 AS build
+FROM debian:bullseye-20221004 AS build
 
 ARG TARGETARCH
 ARG BAZEL_VERSION="4.2.1"
@@ -16,7 +16,7 @@ RUN git clone https://github.com/protocolbuffers/protobuf-javascript --depth 1 -
 WORKDIR /build/protobuf-javascript
 RUN bazel build //generator:protoc-gen-js
 
-FROM debian:bullseye-20220822-slim
+FROM debian:bullseye-20221004-slim
 COPY --from=build --link --chmod=0755 /build/protobuf-javascript/bazel-bin/generator/protoc-gen-js .
 USER nobody
 ENTRYPOINT ["/protoc-gen-js"]

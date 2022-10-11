@@ -17,7 +17,7 @@ BUF_PLUGIN_PUSH_ARGS ?=
 # For example:
 # $ make PLUGINS="connect-go connect-web" # builds all versions of connect-go and connect-web plugins
 # $ make PLUGINS="connect-go:v0.4.0"      # builds connect-go v0.4.0 plugin
-# $ make PLUGINS="library/connect-go"     # can use optional prefix of the org
+# $ make PLUGINS="bufbuild/connect-go"    # can use optional prefix of the org
 PLUGINS ?=
 
 PLUGIN_YAML_FILES := $(shell PLUGINS="$(PLUGINS)" go run ./cmd/dependency-order .)

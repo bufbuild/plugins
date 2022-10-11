@@ -1,2 +1,4 @@
 *
+!BUILD
 !Dockerfile
+!php.cc
