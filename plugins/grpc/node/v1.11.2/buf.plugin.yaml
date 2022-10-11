@@ -1,5 +1,5 @@
 version: v1
-name: buf.build/library/grpc-node
+name: buf.build/grpc/node
 plugin_version: v1.11.2
 output_languages: [javascript]
 source_url: https://github.com/grpc/grpc-node

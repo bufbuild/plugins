@@ -1,5 +1,5 @@
 version: v1
-name: buf.build/library/grpc-python
+name: buf.build/grpc/python
 plugin_version: v1.49.0
 source_url: https://github.com/grpc/grpc
 description: Official gRPC plugin for Python.

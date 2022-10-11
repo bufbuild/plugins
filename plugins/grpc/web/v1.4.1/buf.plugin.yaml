@@ -1,5 +1,5 @@
 version: v1
-name: buf.build/library/grpc-web
+name: buf.build/grpc/web
 plugin_version: v1.4.1
 source_url: https://github.com/grpc/grpc-web
 description: gRPC for Web Clients.

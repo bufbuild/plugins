@@ -1,5 +1,5 @@
 version: v1
-name: buf.build/library/grpc-go
+name: buf.build/grpc/go
 plugin_version: v1.2.0
 output_languages: [go]
 source_url: https://github.com/grpc/grpc-go
