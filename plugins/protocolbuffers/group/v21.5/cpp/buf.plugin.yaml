@@ -1,6 +1,0 @@
-version: v1
-name: buf.build/protocolbuffers/cpp
-plugin_version: v21.5
-output_languages: [cpp]
-source_url: https://github.com/protocolbuffers/protobuf
-description: Official protobuf plugin for C++.
