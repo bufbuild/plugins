@@ -25,8 +25,7 @@ jobs:
       uses: tj-actions/changed-files@v32
       with:
         files: |
-          contrib/**
-          library/**
+          plugins/**
           tests/*.go
           tests/testdata/buf.build/**
           tests/testdata/images/*.gz

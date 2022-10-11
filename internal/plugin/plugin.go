@@ -189,13 +189,13 @@ func FilterByChangedFiles(plugins []*Plugin, lookuper envconfig.Lookuper) ([]*Pl
 		return nil, nil
 	}
 	// Makefile: build all
-	// contrib/chrusty/jsonschema/v1.3.9/*: build contrib/chrusty/jsonschema/v1.3.9/buf.plugin.yaml
-	// library/connect-go/v0.1.1/*: build library/connect-go/v0.1.1/buf.plugin.yaml
+	// plugins/community/chrusty-jsonschema/v1.3.9/*: build plugins/community/chrusty-jsonschema/v1.3.9/buf.plugin.yaml
+	// plugins/bufbuild/connect-go/v0.1.1/*: build plugins/bufbuild/connect-go/v0.1.1/buf.plugin.yaml
 	// ...
 	// library/grpc/base-build/*: build library/grpc/**/buf.plugin.yaml
 	// library/grpc/v1.48.0/base/*: build library/grpc/v1.48.0/*/buf.plugin.yaml
 	// tests/*.go: build all
-	// tests/testdata/buf.build/contrib/chrusty-jsonschema/v1.3.9/**: build contrib/chrusty/jsonschema/v1.3.9/buf.plugin.yaml
+	// tests/testdata/buf.build/community/chrusty-jsonschema/v1.3.9/**: build plugins/community/chrusty-jsonschema/v1.3.9/buf.plugin.yaml
 	// tests/testdata/images/*: build all
 	includeAll := false
 	for _, modifiedFile := range changedFiles.AllModifiedFiles {

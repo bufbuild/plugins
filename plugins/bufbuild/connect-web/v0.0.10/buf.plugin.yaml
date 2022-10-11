@@ -1,11 +1,11 @@
 version: v1
-name: buf.build/library/connect-web
+name: buf.build/bufbuild/connect-web
 plugin_version: v0.0.10
 output_languages: [javascript, typescript]
 source_url: https://github.com/bufbuild/connect-web
 description: Simple, reliable, interoperable. A better gRPC-web.
 deps:
-  - plugin: buf.build/library/protobuf-es:v0.0.9
+  - plugin: buf.build/bufbuild/protobuf-es:v0.0.9
 registry:
   npm:
     deps:

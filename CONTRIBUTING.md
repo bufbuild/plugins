@@ -26,7 +26,7 @@ The build requires the following:
 
 ## Creating a new plugin
 
-Plugins are found in the top-level `library` or `contrib` directories, depending on their level of support by the Buf team.
+Plugins are found in the top-level `plugins` directory.
 
 To create a new plugin, add a new folder matching the last component of the plugin's name and its version (i.e. `mkdir -p library/plugin-name/vX.Y.Z`) and add a `buf.plugin.yaml` / `Dockerfile` / `.dockerignore` to the newly created directory.
 To verify the plugin builds properly, run `make PLUGINS="<plugin-name>"` to build the Docker image and `make test PLUGINS="<plugin-name>"` to verify code generation for the plugin using some basic APIs stored in `tests/testdata/images/`.

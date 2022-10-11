@@ -1,5 +1,5 @@
 version: v1
-name: buf.build/library/validate-java
+name: buf.build/bufbuild/validate-java
 plugin_version: v0.6.13
 source_url: https://github.com/bufbuild/protoc-gen-validate
 description: Plugin to generate message validators for Java

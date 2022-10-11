@@ -29,16 +29,16 @@ func TestFilterByPluginsEnv(t *testing.T) {
 	})
 	require.NoError(t, err)
 	assert.Empty(t, runFilterByPluginsEnv(t, plugins, "no-match"))
-	assert.Equal(t, filterPluginsByPathPrefixes(t, plugins, "library/connect-go/", "library/connect-web/v0.2.1/"),
+	assert.Equal(t, filterPluginsByPathPrefixes(t, plugins, "plugins/bufbuild/connect-go/", "plugins/bufbuild/connect-web/v0.2.1/"),
 		runFilterByPluginsEnv(t, plugins, "connect-go connect-web:v0.2.1"))
-	assert.Equal(t, filterPluginsByPathPrefixes(t, plugins, "library/connect-go/", "library/connect-web/v0.2.1/"),
-		runFilterByPluginsEnv(t, plugins, "library/connect-go library/connect-web:v0.2.1"))
-	assert.Equal(t, filterPluginsByPathPrefixes(t, plugins, "contrib/chrusty/jsonschema/"),
+	assert.Equal(t, filterPluginsByPathPrefixes(t, plugins, "plugins/bufbuild/connect-go/", "plugins/bufbuild/connect-web/v0.2.1/"),
+		runFilterByPluginsEnv(t, plugins, "plugins/bufbuild/connect-go plugins/bufbuild/connect-web:v0.2.1"))
+	assert.Equal(t, filterPluginsByPathPrefixes(t, plugins, "plugins/community/chrusty-jsonschema/"),
 		runFilterByPluginsEnv(t, plugins, "chrusty-jsonschema"))
-	assert.Equal(t, filterPluginsByPathPrefixes(t, plugins, "contrib/", "library/"), runFilterByPluginsEnv(t, plugins, ""))
-	latestConnectWeb := getLatestPluginVersionsByName(plugins)["buf.build/library/connect-web"]
+	assert.Equal(t, filterPluginsByPathPrefixes(t, plugins, "plugins/"), runFilterByPluginsEnv(t, plugins, ""))
+	latestConnectWeb := getLatestPluginVersionsByName(plugins)["buf.build/bufbuild/connect-web"]
 	require.NotEmpty(t, latestConnectWeb)
-	assert.Equal(t, filterPluginsByPathPrefixes(t, plugins, "library/connect-web/"+latestConnectWeb+"/"),
+	assert.Equal(t, filterPluginsByPathPrefixes(t, plugins, "plugins/bufbuild/connect-web/"+latestConnectWeb+"/"),
 		runFilterByPluginsEnv(t, plugins, "connect-web:latest"))
 }
 

@@ -1,11 +1,11 @@
 version: v1
-name: buf.build/library/connect-go
+name: buf.build/bufbuild/connect-go
 plugin_version: v0.1.1
 output_languages: [go]
 source_url: github.com/bufbuild/connect-go
 description: A better gRPC.
 deps:
-  - plugin: buf.build/library/go:v1.28.0
+  - plugin: buf.build/bufbuild/go:v1.28.0
 default_opts:
   - paths=source_relative
 registry:

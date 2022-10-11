@@ -1,5 +1,5 @@
 {
-  "name": "plugins-library-protobuf-es",
+  "name": "plugins-bufbuild-protobuf-es",
   "version": "1.0.0",
   "dependencies": {
     "@bufbuild/protoc-gen-es": "0.0.10"

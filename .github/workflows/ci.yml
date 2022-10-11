@@ -29,8 +29,7 @@ jobs:
       with:
         base_sha: ${{ steps.last_successful_commit_push.outputs.commit_hash }}
         files: |
-          contrib/**
-          library/**
+          plugins/**
           tests/*.go
           tests/testdata/buf.build/**
           tests/testdata/images/*.gz

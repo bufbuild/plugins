@@ -1,4 +1,4 @@
-module github.com/bufbuild/plugins/contrib/twitchtv
+module github.com/bufbuild/plugins/twitchtv/twitch
 
 go 1.19
 

@@ -1,5 +1,5 @@
 version: v1
-name: buf.build/library/swift
+name: buf.build/apple/swift
 plugin_version: v1.20.2
 source_url: https://github.com/apple/swift-protobuf
 description: Swift protobuf plugin.

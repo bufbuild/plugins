@@ -1,5 +1,5 @@
 version: v1
-name: buf.build/contrib/chrusty-jsonschema
+name: buf.build/community/chrusty-jsonschema
 plugin_version: v1.3.9
 output_languages: []
 source_url: https://github.com/chrusty/protoc-gen-jsonschema
