@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -69,6 +70,13 @@ func Walk(dir string, f func(plugin *Plugin)) error {
 	}); err != nil {
 		return err
 	}
+	sort.SliceStable(unsorted, func(i, j int) bool {
+		p1, p2 := unsorted[i], unsorted[j]
+		if p1.Name != p2.Name {
+			return p1.Name < p2.Name
+		}
+		return semver.Compare(p1.Version, p2.Version) < 0
+	})
 	sorted, err := sortByDependencyOrder(unsorted, pluginNames)
 	if err != nil {
 		return err
@@ -91,15 +99,9 @@ func sortByDependencyOrder(original []*Plugin, pluginNames map[string]struct{}) 
 		for _, plugin := range plugins {
 			foundDeps := true
 			for _, dep := range plugin.Deps {
-				name, _, ok := strings.Cut(dep.Plugin, ":")
+				_, _, ok := strings.Cut(dep.Plugin, ":")
 				if !ok {
 					return nil, fmt.Errorf("invalid plugin dependency: %s", dep)
-				}
-				if _, ok := pluginNames[name]; !ok {
-					// Plugin dependency defined elsewhere - this is ok.
-					// We only calculate dependency order for plugins found within the specified path.
-					log.Printf("dependency on external plugin - ignoring: %s", name)
-					continue
 				}
 				if _, ok := resolvedMap[dep.Plugin]; !ok {
 					foundDeps = false
@@ -170,7 +172,7 @@ func FilterByPluginsEnv(plugins []*Plugin, pluginsEnv string) ([]*Plugin, error)
 }
 
 // FilterByChangedFiles works with https://github.com/tj-actions/changed-files#outputs to filter out unchanged plugins.
-// This allows PR builds to only build the plugins which changed (and their base images) instead of all plugins.
+// This allows PR builds to only build the plugins which changed instead of all plugins.
 func FilterByChangedFiles(plugins []*Plugin, lookuper envconfig.Lookuper) ([]*Plugin, error) {
 	var changedFiles changedFiles
 	if err := envconfig.ProcessWith(context.Background(), &changedFiles, lookuper); err != nil {
@@ -192,8 +194,6 @@ func FilterByChangedFiles(plugins []*Plugin, lookuper envconfig.Lookuper) ([]*Pl
 	// plugins/community/chrusty-jsonschema/v1.3.9/*: build plugins/community/chrusty-jsonschema/v1.3.9/buf.plugin.yaml
 	// plugins/bufbuild/connect-go/v0.1.1/*: build plugins/bufbuild/connect-go/v0.1.1/buf.plugin.yaml
 	// ...
-	// library/grpc/base-build/*: build library/grpc/**/buf.plugin.yaml
-	// library/grpc/v1.48.0/base/*: build library/grpc/v1.48.0/*/buf.plugin.yaml
 	// tests/*.go: build all
 	// tests/testdata/buf.build/community/chrusty-jsonschema/v1.3.9/**: build plugins/community/chrusty-jsonschema/v1.3.9/buf.plugin.yaml
 	// tests/testdata/images/*: build all
@@ -218,10 +218,6 @@ func FilterByChangedFiles(plugins []*Plugin, lookuper envconfig.Lookuper) ([]*Pl
 		include := false
 		for _, changedFile := range changedFiles.AllModifiedFiles {
 			changedDir := filepath.ToSlash(filepath.Dir(changedFile))
-			switch filepath.Base(changedDir) {
-			case "base", "base-build":
-				changedDir = filepath.Dir(changedDir) + "/"
-			}
 			if strings.HasPrefix(plugin.Relpath, changedDir) {
 				include = true
 				break
@@ -238,15 +234,6 @@ func FilterByChangedFiles(plugins []*Plugin, lookuper envconfig.Lookuper) ([]*Pl
 		}
 	}
 	return filtered, nil
-}
-
-// GetDockerfiles returns the relative path of all Dockerfile files found in the specified list of plugins.
-func GetDockerfiles(plugins []*Plugin) ([]string, error) {
-	var dockerFiles []string
-	for _, plugin := range plugins {
-		dockerFiles = append(dockerFiles, filepath.ToSlash(filepath.Join(filepath.Dir(plugin.Relpath), "Dockerfile")))
-	}
-	return dockerFiles, nil
 }
 
 func parsePluginsEnvVar(pluginsEnv string) ([]includePlugin, error) {

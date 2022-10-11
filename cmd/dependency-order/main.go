@@ -11,10 +11,6 @@ import (
 )
 
 func main() {
-	var (
-		dockerFile bool
-	)
-	flag.BoolVar(&dockerFile, "dockerfile", false, "outputs Dockerfiles in dependency order")
 	flag.Parse()
 	if len(flag.Args()) != 1 {
 		flag.Usage()
@@ -44,18 +40,9 @@ func main() {
 		}
 	}
 
-	if dockerFile {
-		dockerFiles, _ := plugin.GetDockerfiles(includedPlugins)
-		for _, f := range dockerFiles {
-			if _, err := fmt.Fprintln(os.Stdout, f); err != nil {
-				log.Fatalf("failed to print dockerfile: %v", err)
-			}
-		}
-	} else {
-		for _, includedPlugin := range includedPlugins {
-			if _, err := fmt.Fprintln(os.Stdout, includedPlugin.Path); err != nil {
-				log.Fatalf("failed to print plugin: %v", err)
-			}
+	for _, includedPlugin := range includedPlugins {
+		if _, err := fmt.Fprintln(os.Stdout, includedPlugin.Path); err != nil {
+			log.Fatalf("failed to print plugin: %v", err)
 		}
 	}
 }

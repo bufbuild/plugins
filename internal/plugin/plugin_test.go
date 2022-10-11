@@ -67,18 +67,6 @@ func TestFilterByChangedFiles(t *testing.T) {
 	)
 }
 
-func TestGetDockerfiles(t *testing.T) {
-	t.Parallel()
-	var plugins []*Plugin
-	err := Walk("../..", func(plugin *Plugin) {
-		plugins = append(plugins, plugin)
-	})
-	require.NoError(t, err)
-	files, err := GetDockerfiles(plugins)
-	require.NoError(t, err)
-	require.NotEmpty(t, files)
-}
-
 func runFilterByPluginsEnv(t *testing.T, plugins []*Plugin, pluginsEnv string) []string {
 	t.Helper()
 	filtered, err := FilterByPluginsEnv(plugins, pluginsEnv)
