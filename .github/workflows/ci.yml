@@ -30,10 +30,6 @@ jobs:
         base_sha: ${{ steps.last_successful_commit_push.outputs.commit_hash }}
         files: |
           plugins/**
-          tests/*.go
-          tests/testdata/buf.build/**
-          tests/testdata/images/*.gz
-          Makefile
         files_ignore: |
           **/source.yaml
         separator: ","
@@ -42,8 +38,6 @@ jobs:
         echo '${{ toJSON(steps.changed-files.outputs) }}'
       shell: bash
     - uses: bufbuild/buf-setup-action@v1
-      with:
-        version: 1.8.0
     - name: Install Go
       uses: actions/setup-go@v3
       with:

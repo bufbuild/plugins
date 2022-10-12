@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log"
 	"net/http"
 	"net/url"
 	"os"
@@ -259,13 +258,11 @@ func (c *Client) fetchGithub(ctx context.Context, owner string, repository strin
 			return "", err
 		}
 		for _, tag := range tags {
-			if tag.Name != nil {
-				version, ok := ensureSemverPrefix(*tag.Name)
-				if ok {
-					versions = append(versions, version)
-					continue
-				}
-				log.Printf("fetchclient: skipping invalid semver %s for package %s/%s\n", *tag.Name, owner, repository)
+			if tag.Name == nil {
+				continue
+			}
+			if version, ok := ensureSemverPrefix(*tag.Name); ok {
+				versions = append(versions, version)
 			}
 		}
 		page = response.NextPage
