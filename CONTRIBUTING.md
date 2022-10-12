@@ -60,8 +60,6 @@ This file contains a directory checksum of the generated code for the plugin and
 PR builds use [tj-actions/changed-files](https://github.com/tj-actions/changed-files) to determine which plugin(s) need to be rebuilt.
 See [.github/workflows/pr.yaml](.github/workflows/pr.yml) and [cmd/dependency-order/main.go](cmd/dependency-order/main.go) for more details.
 Note that some files (`Makefile`,`tests/*.go`,`tests/testdata/images/*.gz`) require all plugins to be rebuilt.
-Builds on the main branch don't use this optimization (we use concurrency controls to limit parallel builds and would need to determine what changed since the last published build).
-We may optimize this in the future.
 
 We use a combination of a custom command ([cmd/fetcher/main.go](cmd/fetcher/main.go)) and Dependabot to keep dependencies up to date in the project.
 The `fetcher` command will use `source.yaml` files in each plugin to determine if new plugin versions are available.
