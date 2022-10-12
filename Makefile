@@ -3,10 +3,8 @@
 SHELL := /usr/bin/env bash -o pipefail
 DOCKER ?= docker
 DOCKER_ORG ?= bufbuild
-DOCKER_BUILD_ARGS ?= buildx build --build-arg DOCKER_ORG="$(DOCKER_ORG)"
+DOCKER_BUILD_ARGS ?= buildx build
 DOCKER_BUILD_EXTRA_ARGS ?=
-DOCKER_READ_CACHE_ORG ?=
-DOCKER_WRITE_CACHE_ORG ?=
 
 GO_TEST_FLAGS ?= -race -count=1
 
@@ -42,26 +40,15 @@ test: build
 	PLUGIN_OWNER=`echo "$${PLUGIN_FULL_NAME}" | cut -d '/' -f 2`; \
 	PLUGIN_NAME=`echo "$${PLUGIN_FULL_NAME}" | cut -d '/' -f 3-`; \
 	PLUGIN_VERSION=$(shell yq '.plugin_version' $*/buf.plugin.yaml); \
-	CACHE_ARGS=""; \
-	if [[ -n "$(DOCKER_READ_CACHE_ORG)" ]]; then \
-		CACHE_ARGS="$${CACHE_ARGS} --cache-from type=registry,ref=$(DOCKER_READ_CACHE_ORG)/plugins-$${PLUGIN_OWNER}-$${PLUGIN_NAME}:$${PLUGIN_VERSION}-buildcache"; \
-		$(DOCKER) pull $(DOCKER_READ_CACHE_ORG)/plugins-$${PLUGIN_OWNER}-$${PLUGIN_NAME}:$${PLUGIN_VERSION} || :; \
-	fi; \
-	if [[ -n "$(DOCKER_WRITE_CACHE_ORG)" ]]; then \
-		CACHE_ARGS="$${CACHE_ARGS} --cache-to type=registry,mode=max,ref=$(DOCKER_WRITE_CACHE_ORG)/plugins-$${PLUGIN_OWNER}-$${PLUGIN_NAME}:$${PLUGIN_VERSION}-buildcache"; \
-	fi; \
 	test -n "$${PLUGIN_NAME}" -a -n "$${PLUGIN_VERSION}" && \
+	if [[ "$(DOCKER_ORG)" = "ghcr.io/bufbuild" ]]; then \
+		$(DOCKER) pull $(DOCKER_ORG)/plugins-$${PLUGIN_OWNER}-$${PLUGIN_NAME}:$${PLUGIN_VERSION} || :; \
+	fi; \
 	$(DOCKER) $(DOCKER_BUILD_ARGS) \
-		$(DOCKER_BUILD_EXTRA_ARGS)$${CACHE_ARGS} \
+		$(DOCKER_BUILD_EXTRA_ARGS) \
 		--label build.buf.plugins.config.owner=$${PLUGIN_OWNER} \
 		--label build.buf.plugins.config.name=$${PLUGIN_NAME} \
-		-t $(DOCKER_ORG)/plugins-$${PLUGIN_OWNER}-$${PLUGIN_NAME}:$${PLUGIN_VERSION}-build \
-		--target build \
-		$(<D) \
-	$(DOCKER) $(DOCKER_BUILD_ARGS) \
-		$(DOCKER_BUILD_EXTRA_ARGS)$${CACHE_ARGS} \
-		--label build.buf.plugins.config.owner=$${PLUGIN_OWNER} \
-		--label build.buf.plugins.config.name=$${PLUGIN_NAME} \
+		--label build.buf.plugins.config.version=$${PLUGIN_VERSION} \
 		-t $(DOCKER_ORG)/plugins-$${PLUGIN_OWNER}-$${PLUGIN_NAME}:$${PLUGIN_VERSION} \
 		$(<D)
 	@mkdir -p $(dir $@) && touch $@
