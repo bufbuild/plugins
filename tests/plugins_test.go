@@ -103,10 +103,6 @@ func TestPluginVersionMatchesDirectory(t *testing.T) {
 	for _, toTest := range plugins {
 		dirPath := filepath.Dir(toTest.Path)
 		dirVersion := filepath.Base(dirPath)
-		// grpc and protoc plugin versions are two levels up
-		if !strings.HasPrefix(dirVersion, "v") {
-			dirVersion = filepath.Base(filepath.Dir(dirPath))
-		}
 		assert.Equal(t, dirVersion, toTest.Version)
 		st, err := os.Stat(filepath.Join(filepath.Dir(toTest.Path), ".dockerignore"))
 		if err != nil {
