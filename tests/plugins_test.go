@@ -1,6 +1,7 @@
 package tests
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/exec"
@@ -9,6 +10,7 @@ import (
 	"testing"
 	"text/template"
 
+	"github.com/bufbuild/buf/private/bufpkg/bufplugin/bufpluginconfig"
 	"github.com/bufbuild/plugins/internal/plugin"
 	"github.com/sethvargo/go-envconfig"
 	"github.com/stretchr/testify/assert"
@@ -81,7 +83,7 @@ func TestGeneration(t *testing.T) {
 		})
 	}
 
-	plugins := loadPlugins(t)
+	plugins := loadFilteredPlugins(t)
 	for _, toTest := range plugins {
 		toTest := toTest
 		t.Run(strings.TrimSuffix(toTest.Relpath, "/buf.plugin.yaml"), func(t *testing.T) {
@@ -97,14 +99,10 @@ func TestGeneration(t *testing.T) {
 func TestPluginVersionMatchesDirectory(t *testing.T) {
 	t.Parallel()
 	// Verify that buf.plugin.yaml plugin_version matches the directory name
-	plugins := loadPlugins(t)
+	plugins := loadAllPlugins(t)
 	for _, toTest := range plugins {
 		dirPath := filepath.Dir(toTest.Path)
 		dirVersion := filepath.Base(dirPath)
-		// grpc and protoc plugin versions are two levels up
-		if !strings.HasPrefix(dirVersion, "v") {
-			dirVersion = filepath.Base(filepath.Dir(dirPath))
-		}
 		assert.Equal(t, dirVersion, toTest.Version)
 		st, err := os.Stat(filepath.Join(filepath.Dir(toTest.Path), ".dockerignore"))
 		if err != nil {
@@ -112,6 +110,17 @@ func TestPluginVersionMatchesDirectory(t *testing.T) {
 		} else {
 			assert.False(t, st.IsDir())
 		}
+	}
+}
+
+func TestBufPluginConfig(t *testing.T) {
+	t.Parallel()
+	plugins := loadAllPlugins(t)
+	for _, p := range plugins {
+		yamlBytes, err := os.ReadFile(p.Path)
+		require.NoError(t, err)
+		_, err = bufpluginconfig.GetConfigForData(context.Background(), yamlBytes)
+		assert.NoErrorf(t, err, "invalid plugin config: %q", p.Path)
 	}
 }
 
@@ -130,7 +139,7 @@ func createBufGenYaml(t *testing.T, basedir string, plugin *plugin.Plugin) error
 	})
 }
 
-func loadPlugins(t *testing.T) []*plugin.Plugin {
+func loadAllPlugins(t *testing.T) []*plugin.Plugin {
 	t.Helper()
 	var plugins []*plugin.Plugin
 	if err := plugin.Walk("..", func(plugin *plugin.Plugin) {
@@ -138,6 +147,12 @@ func loadPlugins(t *testing.T) []*plugin.Plugin {
 	}); err != nil {
 		t.Fatalf("failed to find plugins: %v", err)
 	}
+	return plugins
+}
+
+func loadFilteredPlugins(t *testing.T) []*plugin.Plugin {
+	t.Helper()
+	plugins := loadAllPlugins(t)
 	var filtered []*plugin.Plugin
 	var err error
 	if pluginsEnv := os.Getenv("PLUGINS"); pluginsEnv != "" {
