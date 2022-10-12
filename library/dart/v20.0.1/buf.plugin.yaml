@@ -1,6 +1,0 @@
-version: v1
-name: buf.build/library/dart
-plugin_version: v20.0.1
-output_languages: [dart]
-source_url: https://github.com/google/protobuf.dart
-description: Protoc compiler plugin to generate Dart code

@@ -8,6 +8,10 @@ on:
 # Ref: https://docs.github.com/en/actions/reference/workflow-syntax-for-github-actions#permissions
 permissions: read-all
 
+concurrency:
+  group: ${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   pr:
     runs-on: ubuntu-latest
@@ -25,8 +29,7 @@ jobs:
       uses: tj-actions/changed-files@v32
       with:
         files: |
-          contrib/**
-          library/**
+          plugins/**
           tests/*.go
           tests/testdata/buf.build/**
           tests/testdata/images/*.gz
@@ -39,8 +42,6 @@ jobs:
         echo '${{ toJSON(steps.changed-files.outputs) }}'
       shell: bash
     - uses: bufbuild/buf-setup-action@v1
-      with:
-        version: 1.8.0
     - name: Install Go
       uses: actions/setup-go@v3
       with:
@@ -58,6 +59,7 @@ jobs:
       id: buildx
       uses: docker/setup-buildx-action@v2
       with:
+        driver: docker
         driver-opts: network=host
     - name: Login to Docker Hub
       uses: docker/login-action@v2
@@ -71,7 +73,7 @@ jobs:
         ALL_MODIFIED_FILES: ${{ steps.changed-files.outputs.all_modified_files }}
         ANY_MODIFIED: ${{ steps.changed-files.outputs.any_modified }}
       shell: bash
-      run: make DOCKER_ORG="localhost:5000/bufbuild" DOCKER_READ_CACHE_ORG="ghcr.io/bufbuild" DOCKER_BUILD_EXTRA_ARGS="--push"
+      run: make DOCKER_ORG="localhost:5000/bufbuild" DOCKER_BUILD_EXTRA_ARGS="--push"
     - name: Test
       env:
         ALL_MODIFIED_FILES: ${{ steps.changed-files.outputs.all_modified_files }}

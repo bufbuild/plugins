@@ -1,0 +1,7 @@
+version: v1
+name: buf.build/protocolbuffers/java
+plugin_version: v21.7
+source_url: https://github.com/protocolbuffers/protobuf
+description: Official protobuf plugin for Java.
+output_languages:
+  - java

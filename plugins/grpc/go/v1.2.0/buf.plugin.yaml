@@ -1,0 +1,21 @@
+version: v1
+name: buf.build/grpc/go
+plugin_version: v1.2.0
+source_url: https://github.com/grpc/grpc-go
+description: Generates Go language bindings of services in protobuf definition files for gRPC.
+output_languages:
+  - go
+deps:
+  - plugin: buf.build/protocolbuffers/go:v1.28.1
+default_opts:
+  - paths=source_relative
+  - require_unimplemented_servers=false
+registry:
+  go:
+    deps:
+      - module: google.golang.org/grpc
+        version: v1.43.0
+  opts:
+    - paths=source_relative
+    - require_unimplemented_servers=false
+    - separate_package=true

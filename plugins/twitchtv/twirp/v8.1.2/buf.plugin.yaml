@@ -1,0 +1,11 @@
+version: v1
+name: buf.build/twitchtv/twirp
+plugin_version: v8.1.2
+source_url: https://github.com/twitchtv/twirp
+description: Generates Go code for the Twirp framework.
+output_languages:
+  - go
+deps:
+  - plugin: buf.build/protocolbuffers/go:v1.28.1
+default_opts:
+  - paths=source_relative

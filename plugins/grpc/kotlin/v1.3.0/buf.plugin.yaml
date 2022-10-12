@@ -1,0 +1,7 @@
+version: v1
+name: buf.build/grpc/kotlin
+plugin_version: v1.3.0
+source_url: https://github.com/grpc/grpc-kotlin
+description: gRPC Kotlin protoc compiler plugin.
+output_languages:
+  - kotlin

@@ -29,12 +29,7 @@ jobs:
       with:
         base_sha: ${{ steps.last_successful_commit_push.outputs.commit_hash }}
         files: |
-          contrib/**
-          library/**
-          tests/*.go
-          tests/testdata/buf.build/**
-          tests/testdata/images/*.gz
-          Makefile
+          plugins/**
         files_ignore: |
           **/source.yaml
         separator: ","
@@ -43,8 +38,6 @@ jobs:
         echo '${{ toJSON(steps.changed-files.outputs) }}'
       shell: bash
     - uses: bufbuild/buf-setup-action@v1
-      with:
-        version: 1.8.0
     - name: Install Go
       uses: actions/setup-go@v3
       with:
@@ -62,6 +55,7 @@ jobs:
       id: buildx
       uses: docker/setup-buildx-action@v2
       with:
+        driver: docker
         driver-opts: network=host
     - name: Login to Docker Hub
       uses: docker/login-action@v2
@@ -75,7 +69,7 @@ jobs:
         ALL_MODIFIED_FILES: ${{ steps.changed-files.outputs.all_modified_files }}
         ANY_MODIFIED: ${{ steps.changed-files.outputs.any_modified }}
       shell: bash
-      run: make DOCKER_ORG="ghcr.io/bufbuild" DOCKER_READ_CACHE_ORG="ghcr.io/bufbuild" DOCKER_WRITE_CACHE_ORG="ghcr.io/bufbuild" DOCKER_BUILD_EXTRA_ARGS="--push"
+      run: make DOCKER_ORG="ghcr.io/bufbuild" DOCKER_BUILD_EXTRA_ARGS="--push"
     - name: Test
       env:
         ALL_MODIFIED_FILES: ${{ steps.changed-files.outputs.all_modified_files }}
@@ -92,4 +86,4 @@ jobs:
         BSR_TOKEN: ${{ secrets.BSR_TOKEN }}
       run: |
         echo ${BSR_TOKEN} | buf registry login --username ${BSR_USER} --token-stdin
-        make push DOCKER_ORG="ghcr.io/bufbuild" DOCKER_CACHE_ORG="ghcr.io/bufbuild"
+        make push DOCKER_ORG="ghcr.io/bufbuild"

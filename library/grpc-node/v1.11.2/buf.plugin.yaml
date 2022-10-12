@@ -1,8 +1,0 @@
-version: v1
-name: buf.build/library/grpc-node
-plugin_version: v1.11.2
-output_languages: [javascript]
-source_url: https://github.com/grpc/grpc-node
-description: Plugin for generating client and service objects for use with the Node gRPC libraries.
-default_opts:
-  - grpc_out=grpc_js

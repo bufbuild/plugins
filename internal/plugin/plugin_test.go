@@ -1,7 +1,6 @@
 package plugin
 
 import (
-	"path/filepath"
 	"strconv"
 	"strings"
 	"testing"
@@ -29,16 +28,16 @@ func TestFilterByPluginsEnv(t *testing.T) {
 	})
 	require.NoError(t, err)
 	assert.Empty(t, runFilterByPluginsEnv(t, plugins, "no-match"))
-	assert.Equal(t, filterPluginsByPathPrefixes(t, plugins, "library/connect-go/", "library/connect-web/v0.2.1/"),
+	assert.Equal(t, filterPluginsByPathPrefixes(t, plugins, "plugins/bufbuild/connect-go/", "plugins/bufbuild/connect-web/v0.2.1/"),
 		runFilterByPluginsEnv(t, plugins, "connect-go connect-web:v0.2.1"))
-	assert.Equal(t, filterPluginsByPathPrefixes(t, plugins, "library/connect-go/", "library/connect-web/v0.2.1/"),
-		runFilterByPluginsEnv(t, plugins, "library/connect-go library/connect-web:v0.2.1"))
-	assert.Equal(t, filterPluginsByPathPrefixes(t, plugins, "contrib/chrusty/jsonschema/"),
+	assert.Equal(t, filterPluginsByPathPrefixes(t, plugins, "plugins/bufbuild/connect-go/", "plugins/bufbuild/connect-web/v0.2.1/"),
+		runFilterByPluginsEnv(t, plugins, "bufbuild/connect-go bufbuild/connect-web:v0.2.1"))
+	assert.Equal(t, filterPluginsByPathPrefixes(t, plugins, "plugins/community/chrusty-jsonschema/"),
 		runFilterByPluginsEnv(t, plugins, "chrusty-jsonschema"))
-	assert.Equal(t, filterPluginsByPathPrefixes(t, plugins, "contrib/", "library/"), runFilterByPluginsEnv(t, plugins, ""))
-	latestConnectWeb := getLatestPluginVersionsByName(plugins)["buf.build/library/connect-web"]
+	assert.Equal(t, filterPluginsByPathPrefixes(t, plugins, "plugins/"), runFilterByPluginsEnv(t, plugins, ""))
+	latestConnectWeb := getLatestPluginVersionsByName(plugins)["buf.build/bufbuild/connect-web"]
 	require.NotEmpty(t, latestConnectWeb)
-	assert.Equal(t, filterPluginsByPathPrefixes(t, plugins, "library/connect-web/"+latestConnectWeb+"/"),
+	assert.Equal(t, filterPluginsByPathPrefixes(t, plugins, "plugins/bufbuild/connect-web/"+latestConnectWeb+"/"),
 		runFilterByPluginsEnv(t, plugins, "connect-web:latest"))
 }
 
@@ -53,65 +52,19 @@ func TestFilterByChangedFiles(t *testing.T) {
 	assert.Len(t, runFilterByChangedFiles(t, plugins, []string{"Makefile"}, true), len(plugins))
 	assert.Len(t, runFilterByChangedFiles(t, plugins, []string{"tests/plugins_test.go"}, true), len(plugins))
 	assert.Len(t, runFilterByChangedFiles(t, plugins, []string{"tests/testdata/images/eliza.bin.gz"}, true), len(plugins))
-	assert.Equal(t, filterPluginsByPathPrefixes(t, plugins, "library/protoc/"), runFilterByChangedFiles(t, plugins, []string{"library/protoc/base-build/Dockerfile"}, true))
-	assert.Equal(t, filterPluginsByPathPrefixes(t, plugins, "library/protoc/v21.3/"), runFilterByChangedFiles(t, plugins, []string{"library/protoc/v21.3/base/Dockerfile"}, true))
-	assert.Equal(t, filterPluginsByPathPrefixes(t, plugins, "library/protoc/v21.3/cpp/"), runFilterByChangedFiles(t, plugins, []string{"tests/testdata/buf.build/library/cpp/v21.3/eliza/plugin.sum"}, true))
+	assert.Equal(t, filterPluginsByPathPrefixes(t, plugins, "plugins/protocolbuffers/cpp/v21.7/"), runFilterByChangedFiles(t, plugins, []string{"tests/testdata/buf.build/protocolbuffers/cpp/v21.7/eliza/plugin.sum"}, true))
 	assert.Equal(t,
 		filterPluginsByPathPrefixes(t, plugins,
-			"library/grpc/v1.2.0/",
-			"library/protoc/v21.3/cpp/",
-			"library/protoc/v21.5/java/",
-			"library/connect-go/v0.3.0/",
+			"plugins/protocolbuffers/cpp/v21.7/",
+			"plugins/protocolbuffers/java/v21.7/",
+			"plugins/bufbuild/connect-go/v1.0.0/",
 		), runFilterByChangedFiles(t, plugins,
 			[]string{
-				"library/connect-go/v0.3.0/buf.plugin.yaml",
-				"library/grpc/v1.2.0/base/Dockerfile",
-				"tests/testdata/buf.build/library/cpp/v21.3/eliza/plugin.sum",
-				"tests/testdata/buf.build/library/java/v21.5/petapis/plugin.sum",
+				"plugins/bufbuild/connect-go/v1.0.0/buf.plugin.yaml",
+				"tests/testdata/buf.build/protocolbuffers/cpp/v21.7/eliza/plugin.sum",
+				"tests/testdata/buf.build/protocolbuffers/java/v21.7/petapis/plugin.sum",
 			}, true),
 	)
-}
-
-func TestGetBaseDockerfiles(t *testing.T) {
-	files, err := GetBaseDockerfiles("../..")
-	require.NoError(t, err)
-	assert.NotEmpty(t, files)
-	for _, file := range files {
-		assert.Containsf(t, []string{"base-build", "base"}, filepath.Base(filepath.Dir(file)), "not a base dockerfile: %s", file)
-	}
-}
-
-func TestGetDockerfiles(t *testing.T) {
-	t.Parallel()
-	var plugins []*Plugin
-	err := Walk("../..", func(plugin *Plugin) {
-		plugins = append(plugins, plugin)
-	})
-	require.NoError(t, err)
-	baseFiles, err := GetBaseDockerfiles("../..")
-	require.NoError(t, err)
-	require.NotEmpty(t, baseFiles)
-	files, err := GetDockerfiles("../..", plugins)
-	require.NotEmpty(t, files)
-	require.NoError(t, err)
-	for _, baseFile := range baseFiles {
-		assert.Contains(t, files, baseFile)
-	}
-	// Verify protoc/base-build/Dockerfile comes before protoc/v21.3/base/Dockerfile
-	assert.Less(t, indexOf(t, files, "library/protoc/base-build/Dockerfile"), indexOf(t, files, "library/protoc/v21.3/base/Dockerfile"))
-	// Verify protoc/v21.3/base/Dockerfile comes before protoc/v21.3/cpp/Dockerfile
-	assert.Less(t, indexOf(t, files, "library/protoc/v21.3/base/Dockerfile"), indexOf(t, files, "library/protoc/v21.3/cpp/Dockerfile"))
-}
-
-func indexOf(t *testing.T, haystack []string, needle string) int {
-	t.Helper()
-	for i, item := range haystack {
-		if item == needle {
-			return i
-		}
-	}
-	t.Fatalf("failed to find %q in: %v", needle, haystack)
-	panic("unreachable")
 }
 
 func runFilterByPluginsEnv(t *testing.T, plugins []*Plugin, pluginsEnv string) []string {
