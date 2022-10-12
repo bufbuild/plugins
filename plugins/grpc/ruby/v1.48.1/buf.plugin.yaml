@@ -1,7 +1,0 @@
-version: v1
-name: buf.build/grpc/ruby
-plugin_version: v1.48.1
-source_url: https://github.com/grpc/grpc
-description: Official gRPC plugin for Ruby.
-output_languages:
-  - ruby

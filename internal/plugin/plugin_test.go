@@ -52,17 +52,17 @@ func TestFilterByChangedFiles(t *testing.T) {
 	assert.Len(t, runFilterByChangedFiles(t, plugins, []string{"Makefile"}, true), len(plugins))
 	assert.Len(t, runFilterByChangedFiles(t, plugins, []string{"tests/plugins_test.go"}, true), len(plugins))
 	assert.Len(t, runFilterByChangedFiles(t, plugins, []string{"tests/testdata/images/eliza.bin.gz"}, true), len(plugins))
-	assert.Equal(t, filterPluginsByPathPrefixes(t, plugins, "plugins/protocolbuffers/cpp/v21.3/"), runFilterByChangedFiles(t, plugins, []string{"tests/testdata/buf.build/protocolbuffers/cpp/v21.3/eliza/plugin.sum"}, true))
+	assert.Equal(t, filterPluginsByPathPrefixes(t, plugins, "plugins/protocolbuffers/cpp/v21.7/"), runFilterByChangedFiles(t, plugins, []string{"tests/testdata/buf.build/protocolbuffers/cpp/v21.7/eliza/plugin.sum"}, true))
 	assert.Equal(t,
 		filterPluginsByPathPrefixes(t, plugins,
-			"plugins/protocolbuffers/cpp/v21.3/",
-			"plugins/protocolbuffers/java/v21.5/",
-			"plugins/bufbuild/connect-go/v0.3.0/",
+			"plugins/protocolbuffers/cpp/v21.7/",
+			"plugins/protocolbuffers/java/v21.7/",
+			"plugins/bufbuild/connect-go/v1.0.0/",
 		), runFilterByChangedFiles(t, plugins,
 			[]string{
-				"plugins/bufbuild/connect-go/v0.3.0/buf.plugin.yaml",
-				"tests/testdata/buf.build/protocolbuffers/cpp/v21.3/eliza/plugin.sum",
-				"tests/testdata/buf.build/protocolbuffers/java/v21.5/petapis/plugin.sum",
+				"plugins/bufbuild/connect-go/v1.0.0/buf.plugin.yaml",
+				"tests/testdata/buf.build/protocolbuffers/cpp/v21.7/eliza/plugin.sum",
+				"tests/testdata/buf.build/protocolbuffers/java/v21.7/petapis/plugin.sum",
 			}, true),
 	)
 }

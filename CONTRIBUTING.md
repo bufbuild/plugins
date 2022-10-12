@@ -69,19 +69,15 @@ Dependabot is used to determine if base Docker images are up-to-date with bug/se
 
 ### Caching
 
-We currently use [Buildkit registry caching](https://github.com/moby/buildkit#registry-push-image-and-cache-separately) to optimize build times for PR and main branch builds.
 Main branch builds publish Docker images to:
 
 * `ghcr.io/bufbuild/plugins-<org>-<name>:<version>` (Plugin image)
-* `ghcr.io/bufbuild/plugins-<org>-<name>:<version>-buildcache` (Registry cache with `mode=max`)
 
 These images are used only for caching - the authoritative images used for plugin execution are pushed to the BSR.
 Untagged versions of these cached images can be cleaned up at any time (only the latest tagged versions are used).
 
 During development, we've encountered a number of issues which lead to cache misses and in turn cause unnecessary revisions of plugins to be published to the BSR.
 Workarounds are in place for the majority of issues, however we should be careful to ensure build reproducibility.
-One critical change to the build images is the removal of `--build-arg` arguments in base images and the migration from `type=inline` to `type=registry` caching.
-See [PR #41](https://github.com/bufbuild/plugins/pull/41) and [PR #38](https://github.com/bufbuild/plugins/pull/38) for the gory details.
 
 ## Updates
 
