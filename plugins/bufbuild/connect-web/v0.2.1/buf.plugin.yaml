@@ -14,3 +14,4 @@ registry:
     deps:
       - package: '@bufbuild/connect-web'
         version: ^0.2.1
+spdx_license_id: Apache-2.0

@@ -8,3 +8,4 @@ default_opts:
   - paths=source_relative
 output_languages:
   - go
+spdx_license_id: Apache-2.0

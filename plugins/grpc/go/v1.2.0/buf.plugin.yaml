@@ -19,3 +19,4 @@ registry:
     - paths=source_relative
     - require_unimplemented_servers=false
     - separate_package=true
+spdx_license_id: Apache-2.0

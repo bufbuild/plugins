@@ -7,3 +7,4 @@ default_opts:
   - lang=java
 output_languages:
   - java
+spdx_license_id: Apache-2.0
