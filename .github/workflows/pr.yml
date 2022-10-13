@@ -41,14 +41,14 @@ jobs:
       run: |
         echo '${{ toJSON(steps.changed-files.outputs) }}'
       shell: bash
-    - name: Install buf cli
-      run: |
-        go install github.com/bufbuild/buf/cmd/buf@main
     - name: Install Go
       uses: actions/setup-go@v3
       with:
         go-version: 1.19.x
         check-latest: true
+    - name: Install buf cli
+      run: |
+        go install github.com/bufbuild/buf/cmd/buf@main
     - name: Cache
       uses: actions/cache@v3
       with:
