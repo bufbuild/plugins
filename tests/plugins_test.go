@@ -119,8 +119,11 @@ func TestBufPluginConfig(t *testing.T) {
 	for _, p := range plugins {
 		yamlBytes, err := os.ReadFile(p.Path)
 		require.NoError(t, err)
-		_, err = bufpluginconfig.GetConfigForData(context.Background(), yamlBytes)
+		config, err := bufpluginconfig.GetConfigForData(context.Background(), yamlBytes)
 		assert.NoErrorf(t, err, "invalid plugin config: %q", p.Path)
+		assert.NotEmpty(t, config.Name)
+		assert.NotEmpty(t, config.PluginVersion)
+		assert.NotEmpty(t, config.SPDXLicenseID)
 	}
 }
 
