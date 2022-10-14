@@ -12,3 +12,4 @@ registry:
     deps:
       - package: '@bufbuild/protobuf'
         version: ^0.1.1
+spdx_license_id: Apache-2.0

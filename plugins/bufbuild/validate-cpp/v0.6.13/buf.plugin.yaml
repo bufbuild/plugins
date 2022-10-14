@@ -7,3 +7,4 @@ default_opts:
   - lang=cc
 output_languages:
   - cpp
+spdx_license_id: Apache-2.0

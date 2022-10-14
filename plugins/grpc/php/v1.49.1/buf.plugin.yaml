@@ -5,3 +5,4 @@ source_url: https://github.com/grpc/grpc
 description: Official gRPC plugin for PHP.
 output_languages:
   - php
+spdx_license_id: Apache-2.0
