@@ -12,11 +12,20 @@ jobs:
   fetch-versions:
     runs-on: ubuntu-22.04
     steps:
+      - id: token-exchange
+        uses: bufbuild/github-app-token-exchange-action@7c69120abfeadda62a61b56dc57586548ba3cb4f
+        with:
+          # ID from: https://github.com/organizations/bufbuild/settings/apps/app-token-exchange-remote-plugins
+          github_app_id: 241830
+          github_app_private_key: ${{ secrets.TOKEN_EXCHANGE_GH_APP_PRIVATE_KEY }}
+          github_repository: ${{ github.repository }}
       - name: Checkout repository code
         uses: actions/checkout@v3
+        with:
+          token: ${{ steps.token-exchange.outputs.github_token }}
       - name: Fetch all versions
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ steps.token-exchange.outputs.github_token }}
         run: |
           go run ./cmd/fetcher .
       - name: Create PR
@@ -29,4 +38,5 @@ jobs:
           title: "Found new plugin versions"
           body: "New plugin versions found. Please review."
           assignees: mfridman, pkwarren
+          token: ${{ steps.token-exchange.outputs.github_token }}
           
