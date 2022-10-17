@@ -43,7 +43,7 @@ This file contains a directory checksum of the generated code for the plugin and
 * Use multi-stage builds to optimize image size. (Recommended to use `scratch` or `debian:bullseye-YYYYMMDD-slim` as runtime images).
 * Always include a [.dockerignore](https://docs.docker.com/engine/reference/builder/#dockerignore-file) alongside the Dockerfile to minimize the Docker build context size (and avoid cache misses during builds). See the following for some examples based on the Protobuf plugin language type:
     * Generic: [plugins/protocolbuffers/go/v1.28.0/.dockerignore](plugins/protocolbuffers/go/v1.28.0/.dockerignore)
-    * NPM/Node: [plugins/bufbuild/protobuf-es/v0.1.1/.dockerignore](plugins/bufbuild/protobuf-es/v0.1.1/.dockerignore)
+    * NPM/Node: [plugins/bufbuild/es/v0.1.1/.dockerignore](plugins/bufbuild/es/v0.1.1/.dockerignore)
     * Go (pre-Go modules): [plugins/twitchtv/twirp/v8.1.2/.dockerignore](plugins/twitchtv/twirp/v8.1.2/.dockerignore)
 * Builds should be reproducible (if possible). All Docker images used for builds should use a specific label (i.e. `debian:bullseye-YYYYMMDD` instead of `debian:bullseye` or `debian`).
     * NPM/Node: A `package.json` and `package-lock.json` file should be checked in and `npm ci` should be used during installation to ensure consistent dependencies are installed.
