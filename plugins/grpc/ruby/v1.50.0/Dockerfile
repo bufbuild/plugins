@@ -12,7 +12,7 @@ RUN arch=${TARGETARCH}; \
 
 WORKDIR /build
 
-RUN git clone --depth 1 --branch v1.49.1 --recursive https://github.com/grpc/grpc
+RUN git clone --depth 1 --branch v1.50.0 --recursive https://github.com/grpc/grpc
 WORKDIR /build/grpc
 RUN bazel build //src/compiler:grpc_plugin_support
 RUN bazel build //src/compiler:grpc_ruby_plugin

@@ -13,7 +13,7 @@ RUN arch=${TARGETARCH}; \
         arch="x86_64"; \
     fi; \
     echo "${arch}"; \
-    curl -fsSL -o protoc-gen-grpc-java https://repo1.maven.org/maven2/io/grpc/protoc-gen-grpc-java/1.49.2/protoc-gen-grpc-java-1.49.2-linux-${arch}.exe
+    curl -fsSL -o protoc-gen-grpc-java https://repo1.maven.org/maven2/io/grpc/protoc-gen-grpc-java/1.50.0/protoc-gen-grpc-java-1.50.0-linux-${arch}.exe
 
 FROM debian:bullseye-20221004-slim
 COPY --from=build --link --chmod=0755 --chown=root:root /build/protoc-gen-grpc-java .

@@ -12,12 +12,12 @@ RUN arch=${TARGETARCH}; \
 
 WORKDIR /build
 
-RUN git clone --depth 1 --branch v1.49.1 --recursive https://github.com/grpc/grpc
+RUN git clone --depth 1 --branch v1.50.0 --recursive https://github.com/grpc/grpc
 WORKDIR /build/grpc
 RUN bazel build //src/compiler:grpc_plugin_support
-RUN bazel build //src/compiler:grpc_objective_c_plugin
+RUN bazel build //src/compiler:grpc_csharp_plugin
 
 FROM debian:bullseye-20221004-slim
-COPY --from=build --link --chmod=0755 /build/grpc/bazel-bin/src/compiler/grpc_objective_c_plugin .
+COPY --from=build --link --chmod=0755 /build/grpc/bazel-bin/src/compiler/grpc_csharp_plugin .
 USER nobody
-ENTRYPOINT ["/grpc_objective_c_plugin"]
+ENTRYPOINT ["/grpc_csharp_plugin"]
