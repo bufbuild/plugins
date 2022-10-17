@@ -2,7 +2,7 @@ version: v1
 name: buf.build/protocolbuffers/php
 plugin_version: v21.7
 source_url: https://github.com/protocolbuffers/protobuf
-description: Official protobuf plugin for PHP.
+description: Generates PHP code from protobuf schemas.
 output_languages:
   - php
 spdx_license_id: BSD-3-Clause

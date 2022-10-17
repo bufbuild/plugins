@@ -2,7 +2,7 @@ version: v1
 name: buf.build/bufbuild/connect-go
 plugin_version: v1.0.0
 source_url: github.com/bufbuild/connect-go
-description: A better gRPC.
+description: Type-safe client and server code generator for connect-go.
 deps:
   - plugin: buf.build/protocolbuffers/go:v1.28.1
 default_opts:

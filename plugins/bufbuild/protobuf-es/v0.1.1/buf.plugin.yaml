@@ -2,7 +2,7 @@ version: v1
 name: buf.build/bufbuild/protobuf-es
 plugin_version: v0.1.1
 source_url: https://github.com/bufbuild/protobuf-es
-description: Protocol Buffers for ECMAScript.
+description: Optimized TypeScript/JavaScript code generator for using protobuf schemas in web browsers and Node.js.
 output_languages:
   - javascript
   - typescript
