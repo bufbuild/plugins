@@ -2,7 +2,7 @@ version: v1
 name: buf.build/grpc/cpp
 plugin_version: v1.49.1
 source_url: https://github.com/grpc/grpc
-description: Official gRPC plugin for C++.
+description: Generates C++ client and server stubs for the gRPC framework.
 output_languages:
   - cpp
 spdx_license_id: Apache-2.0

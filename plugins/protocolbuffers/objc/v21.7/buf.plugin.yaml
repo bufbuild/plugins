@@ -2,7 +2,7 @@ version: v1
 name: buf.build/protocolbuffers/objc
 plugin_version: v21.7
 source_url: https://github.com/protocolbuffers/protobuf
-description: Official protobuf plugin for Objective-C.
+description: Base types for Objective-C. Generates message and enum types.
 output_languages:
   - objective_c
 spdx_license_id: BSD-3-Clause
