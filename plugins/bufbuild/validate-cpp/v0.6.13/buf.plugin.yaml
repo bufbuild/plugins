@@ -2,7 +2,7 @@ version: v1
 name: buf.build/bufbuild/validate-cpp
 plugin_version: v0.6.13
 source_url: https://github.com/bufbuild/protoc-gen-validate
-description: Plugin to generate message validators for C++
+description: Generates C++ code to validate Protobuf messages using protoc-gen-validate constraints.
 default_opts:
   - lang=cc
 output_languages:
