@@ -2,7 +2,7 @@ version: v1
 name: buf.build/protocolbuffers/kotlin
 plugin_version: v21.7
 source_url: https://github.com/protocolbuffers/protobuf
-description: Generates Kotlin code from protobuf schemas.
+description: Base types for Kotlin. Generates message and enum types.
 output_languages:
   - kotlin
 spdx_license_id: BSD-3-Clause

@@ -2,7 +2,7 @@ version: v1
 name: buf.build/protocolbuffers/ruby
 plugin_version: v21.7
 source_url: https://github.com/protocolbuffers/protobuf
-description: Generates Ruby code from protobuf schemas.
+description: Base types for Ruby. Generates message and enum types.
 output_languages:
   - ruby
 spdx_license_id: BSD-3-Clause

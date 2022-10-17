@@ -2,7 +2,7 @@ version: v1
 name: buf.build/protocolbuffers/csharp
 plugin_version: v21.7
 source_url: https://github.com/protocolbuffers/protobuf
-description: Generates C# code from protobuf schemas.
+description: Base types for C#. Generates message and enum types.
 output_languages:
   - csharp
 spdx_license_id: BSD-3-Clause
