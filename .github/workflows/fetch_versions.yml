@@ -26,7 +26,7 @@ jobs:
       - name: Checkout repository code
         uses: actions/checkout@v3
         with:
-          token: ${{ steps.generate_token.outputs.github_token }}
+          token: ${{ steps.generate_token.outputs.token }}
       - name: Create Pull Request
         id: cpr
         uses: peter-evans/create-pull-request@v4
