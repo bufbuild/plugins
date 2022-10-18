@@ -22,7 +22,7 @@ jobs:
           private_key: ${{ secrets.TOKEN_EXCHANGE_GH_APP_PRIVATE_KEY }}
           repository: ${{ github.repository }}
           permissions: >-
-            {"contents": "write", "pull-requests": "write"}
+            {"contents": "write", "pull_requests": "write"}
       - name: Checkout repository code
         uses: actions/checkout@v3
         with:
