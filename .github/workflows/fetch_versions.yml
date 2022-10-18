@@ -39,6 +39,7 @@ jobs:
           branch: example-patches
           delete-branch: true
           title: '[Example] Update report'
+          base: main
           body: |
             Update report
             - Updated with *today's* date
