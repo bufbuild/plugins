@@ -4,19 +4,27 @@ on:
   schedule:
     - cron: "0 0 * * *" # Run once a day
   workflow_dispatch:
-permissions:
-  contents: write
-  pull-requests: write
 
 jobs:
   fetch-versions:
     runs-on: ubuntu-22.04
     steps:
+      - name: Generate token
+        id: generate_token
+        uses: tibdex/github-app-token@v1
+        with:
+          app_id: 249762
+          private_key: ${{ secrets.TOKEN_EXCHANGE_GH_APP_PRIVATE_KEY }}
+          repository: ${{ github.repository }}
+          permissions: >-
+            {"contents": "write", "pull_requests": "write"}
       - name: Checkout repository code
         uses: actions/checkout@v3
+        with:
+          token: ${{ steps.generate_token.outputs.token }}
       - name: Fetch all versions
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ steps.generate_token.outputs.token }}
         run: |
           go run ./cmd/fetcher .
       - name: Create PR
@@ -29,4 +37,4 @@ jobs:
           title: "Found new plugin versions"
           body: "New plugin versions found. Please review."
           assignees: mfridman, pkwarren
-          
+          token: ${{ steps.generate_token.outputs.token }}
