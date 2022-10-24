@@ -16,3 +16,4 @@ registry:
       - module: github.com/bufbuild/connect-go
         version: v1.0.0
 spdx_license_id: Apache-2.0
+license_url: https://github.com/bufbuild/connect-go/blob/v1.0.0/LICENSE

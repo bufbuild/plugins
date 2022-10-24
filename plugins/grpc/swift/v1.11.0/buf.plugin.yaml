@@ -6,3 +6,4 @@ description: Generates Swift client and server stubs for the gRPC framework.
 output_languages:
   - swift
 spdx_license_id: Apache-2.0
+license_url: https://github.com/grpc/grpc-swift/blob/1.11.0/LICENSE
