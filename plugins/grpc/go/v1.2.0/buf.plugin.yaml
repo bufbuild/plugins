@@ -20,3 +20,4 @@ registry:
     - require_unimplemented_servers=false
     - separate_package=true
 spdx_license_id: Apache-2.0
+license_url: https://github.com/grpc/grpc-go/blob/v1.2.0/LICENSE

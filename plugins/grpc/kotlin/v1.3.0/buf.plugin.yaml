@@ -6,3 +6,4 @@ description: Generates Kotlin client and server stubs for the gRPC framework.
 output_languages:
   - kotlin
 spdx_license_id: Apache-2.0
+license_url: https://github.com/grpc/grpc-kotlin/blob/v1.3.0/LICENSE

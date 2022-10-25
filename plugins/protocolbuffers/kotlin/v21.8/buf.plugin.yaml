@@ -6,3 +6,4 @@ description: Base types for Kotlin. Generates message and enum types.
 output_languages:
   - kotlin
 spdx_license_id: BSD-3-Clause
+license_url: https://github.com/protocolbuffers/protobuf/blob/v21.8/LICENSE

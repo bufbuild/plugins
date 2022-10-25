@@ -13,3 +13,4 @@ registry:
       - package: '@bufbuild/protobuf'
         version: ^0.1.1
 spdx_license_id: Apache-2.0
+license_url: https://github.com/bufbuild/protobuf-es/blob/v0.1.1/LICENSE

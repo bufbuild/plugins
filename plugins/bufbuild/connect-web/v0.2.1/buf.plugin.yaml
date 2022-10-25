@@ -15,3 +15,4 @@ registry:
       - package: '@bufbuild/connect-web'
         version: ^0.2.1
 spdx_license_id: Apache-2.0
+license_url: https://github.com/bufbuild/connect-web/blob/v0.2.1/LICENSE

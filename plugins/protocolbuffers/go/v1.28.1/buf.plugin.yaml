@@ -13,3 +13,4 @@ registry:
       - module: google.golang.org/protobuf
         version: v1.28.1
 spdx_license_id: BSD-3-Clause
+license_url: https://github.com/protocolbuffers/protobuf-go/blob/v1.28.1/LICENSE

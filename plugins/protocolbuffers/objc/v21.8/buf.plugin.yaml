@@ -6,3 +6,4 @@ description: Base types for Objective-C. Generates message and enum types.
 output_languages:
   - objective_c
 spdx_license_id: BSD-3-Clause
+license_url: https://github.com/protocolbuffers/protobuf/blob/v21.8/LICENSE

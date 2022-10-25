@@ -6,3 +6,4 @@ description: Generates Ruby client and server stubs for the gRPC framework.
 output_languages:
   - ruby
 spdx_license_id: Apache-2.0
+license_url: https://github.com/grpc/grpc/blob/v1.50.0/LICENSE
