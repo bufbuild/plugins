@@ -20,15 +20,15 @@ jobs:
       with:
         go-version: 1.19.x
         check-latest: true
-    - name: Install buf cli
-      run: |
-        go install github.com/bufbuild/buf/cmd/buf@main
     - name: Cache
       uses: actions/cache@v3
       with:
         path: ~/go/pkg/mod
         key: ${{ runner.os }}-plugins-ci-${{ hashFiles('**/go.sum') }}
         restore-keys: ${{ runner.os }}-plugins-ci
+    - name: Install buf cli
+      run: |
+        go install github.com/bufbuild/buf/cmd/buf@main
     - name: Set up QEMU
       uses: docker/setup-qemu-action@v2
     - name: Set up Docker Buildx
