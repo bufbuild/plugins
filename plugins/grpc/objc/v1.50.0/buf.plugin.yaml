@@ -6,3 +6,4 @@ description: Generates Objective-C client and server stubs for the gRPC framewor
 output_languages:
   - objective_c
 spdx_license_id: Apache-2.0
+license_url: https://github.com/grpc/grpc/blob/v1.50.0/LICENSE

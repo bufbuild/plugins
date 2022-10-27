@@ -6,3 +6,4 @@ description: Base types for Dart. Generates message and enum types.
 output_languages:
   - dart
 spdx_license_id: BSD-3-Clause
+license_url: https://github.com/google/protobuf.dart/blob/protoc_plugin-v20.0.1/LICENSE

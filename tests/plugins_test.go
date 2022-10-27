@@ -124,6 +124,7 @@ func TestBufPluginConfig(t *testing.T) {
 		assert.NotEmpty(t, config.Name)
 		assert.NotEmpty(t, config.PluginVersion)
 		assert.NotEmpty(t, config.SPDXLicenseID)
+		assert.NotEmpty(t, config.LicenseURL)
 	}
 }
 

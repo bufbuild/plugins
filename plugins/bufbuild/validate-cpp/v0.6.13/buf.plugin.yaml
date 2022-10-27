@@ -8,3 +8,4 @@ default_opts:
 output_languages:
   - cpp
 spdx_license_id: Apache-2.0
+license_url: https://github.com/bufbuild/protoc-gen-validate/blob/v0.6.13/LICENSE
