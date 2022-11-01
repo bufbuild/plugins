@@ -4,7 +4,7 @@ WORKDIR /app
 COPY --link package*.json .
 RUN npm ci
 
-FROM node:16.18.0-bullseye-slim
+FROM node:18.12.0-bullseye-slim
 COPY --link --from=build /app /app
 USER nobody
 ENTRYPOINT [ "/app/node_modules/.bin/protoc-gen-es" ]
