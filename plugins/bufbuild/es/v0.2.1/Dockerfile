@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1.4
-FROM node:16.18.0-bullseye-slim AS build
+FROM node:18.12.0-bullseye-slim AS build
 WORKDIR /app
 COPY --link package*.json .
 RUN npm ci
