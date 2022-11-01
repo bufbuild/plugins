@@ -18,11 +18,6 @@ updates:
     directory: "/plugins/bufbuild/connect-web/v0.2.1"
     schedule:
       interval: "weekly"
-  # node full plugin
-  - package-ecosystem: "docker"
-    directory: "/plugins/grpc/node/v1.11.3"
-    schedule:
-      interval: "weekly"
   # dart plugin
   - package-ecosystem: "docker"
     directory: "/plugins/protocolbuffers/dart/v20.0.1"
