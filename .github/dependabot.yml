@@ -10,12 +10,12 @@ updates:
       interval: "weekly"
   # go plugin
   - package-ecosystem: "docker"
-    directory: "/plugins/bufbuild/connect-go/v1.0.0"
+    directory: "/plugins/bufbuild/connect-go/v1.1.0"
     schedule:
       interval: "weekly"
   # node slim plugin
   - package-ecosystem: "docker"
-    directory: "/plugins/bufbuild/connect-web/v0.2.1"
+    directory: "/plugins/bufbuild/connect-web/v0.3.1"
     schedule:
       interval: "weekly"
   # node full plugin
@@ -40,6 +40,6 @@ updates:
       interval: "weekly"
   # debian bullseye
   - package-ecosystem: "docker"
-    directory: "/plugins/protocolbuffers/cpp/v21.7"
+    directory: "/plugins/protocolbuffers/cpp/v21.9"
     schedule:
       interval: "weekly"
