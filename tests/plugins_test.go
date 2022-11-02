@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 	"text/template"
@@ -51,7 +52,7 @@ func TestGeneration(t *testing.T) {
 		t.Skip("skipping code generation test")
 	}
 	t.Parallel()
-
+	allowEmpty, _ := strconv.ParseBool(os.Getenv("ALLOW_EMPTY_PLUGIN_SUM"))
 	testPluginWithImage := func(t *testing.T, pluginMeta *plugin.Plugin, image string) {
 		imageDir, err := filepath.Abs(filepath.Join("testdata", "images"))
 		require.NoError(t, err)
@@ -70,7 +71,7 @@ func TestGeneration(t *testing.T) {
 			genDirHash, err := dirhash.HashDir(pluginGenDir, "", dirhash.Hash1)
 			require.NoError(t, err)
 			pluginImageSumFile := filepath.Join(pluginDir, "plugin.sum")
-			existingPluginSum, err := os.ReadFile(pluginImageSumFile)
+			existingPluginSumBytes, err := os.ReadFile(pluginImageSumFile)
 			if err != nil {
 				if os.IsNotExist(err) {
 					t.Logf("plugin sum file does not exist: %s", pluginImageSumFile)
@@ -78,7 +79,12 @@ func TestGeneration(t *testing.T) {
 					t.Error(err)
 				}
 			}
-			assert.Equal(t, genDirHash, strings.TrimSpace(string(existingPluginSum)))
+			existingPluginSum := strings.TrimSpace(string(existingPluginSumBytes))
+			if allowEmpty && existingPluginSum == "" {
+				t.Log("allowing empty plugin.sum file (used by fetcher command)")
+			} else {
+				assert.Equal(t, genDirHash, existingPluginSum)
+			}
 			require.NoError(t, os.WriteFile(pluginImageSumFile, []byte(genDirHash+"\n"), 0644))
 		})
 	}

@@ -4,8 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io/fs"
 	"log"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
@@ -30,23 +32,162 @@ func main() {
 		os.Exit(2)
 	}
 	depth = 1 - depth
-	if err := run(context.Background(), root, depth); err != nil {
+	created, err := run(context.Background(), root)
+	if err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "failed to fetch versions: %v\n", err)
+		os.Exit(1)
+	}
+	if err := postProcessCreatedPlugins(created); err != nil {
+		_, _ = fmt.Fprintf(os.Stderr, "failed to run post-processing on plugins: %v", err)
 		os.Exit(1)
 	}
 }
 
-func run(ctx context.Context, root string, depth int) error {
+type createdPlugin struct {
+	org             string
+	name            string
+	pluginDir       string
+	previousVersion string
+	newVersion      string
+}
+
+func postProcessCreatedPlugins(plugins []createdPlugin) error {
+	for _, plugin := range plugins {
+		if err := runGoModTidy(plugin); err != nil {
+			return err
+		}
+		if err := recreateNPMPackageLock(plugin); err != nil {
+			return err
+		}
+		if err := runPluginTests(plugin); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// runGoModTidy runs 'go mod tidy' for plugins (like twirp-go) which don't use modules.
+// In order to get more reproducible builds, we check in a go.mod/go.sum file.
+func runGoModTidy(plugin createdPlugin) error {
+	versionDir := filepath.Join(plugin.pluginDir, plugin.newVersion)
+	goMod := filepath.Join(versionDir, "go.mod")
+	_, err := os.Stat(goMod)
+	if err != nil {
+		if !errors.Is(err, fs.ErrNotExist) {
+			return err
+		}
+		// no go.mod/go.sum to update
+		return nil
+	}
+	goPath, err := exec.LookPath("go")
+	if err != nil {
+		return err
+	}
+	log.Printf("running go mod tidy for %s/%s:%s", plugin.org, plugin.name, plugin.newVersion)
+	cmd := exec.Cmd{
+		Path:   goPath,
+		Args:   []string{goPath, "mod", "tidy"},
+		Dir:    versionDir,
+		Stdout: os.Stdout,
+		Stderr: os.Stderr,
+	}
+	return cmd.Run()
+}
+
+// recreateNPMPackageLock will remove an existing package-lock.json file and recreate it.
+// This will ensure that we correctly resolve any updated versions in package.json.
+func recreateNPMPackageLock(plugin createdPlugin) error {
+	versionDir := filepath.Join(plugin.pluginDir, plugin.newVersion)
+	npmPackageLock := filepath.Join(versionDir, "package-lock.json")
+	_, err := os.Stat(npmPackageLock)
+	if err != nil {
+		if !errors.Is(err, fs.ErrNotExist) {
+			return err
+		}
+		// no package-lock to update
+		return nil
+	}
+	if err := os.Remove(npmPackageLock); err != nil {
+		return err
+	}
+	npmPath, err := exec.LookPath("npm")
+	if err != nil {
+		return err
+	}
+	log.Printf("recreating package-lock.json for %s/%s:%s", plugin.org, plugin.name, plugin.newVersion)
+	cmd := exec.Cmd{
+		Path:   npmPath,
+		Args:   []string{npmPath, "install"},
+		Dir:    versionDir,
+		Stdout: os.Stdout,
+		Stderr: os.Stderr,
+	}
+	return cmd.Run()
+}
+
+// runPluginTests runs 'make test PLUGINS="org/name:v<old> org/name:v<new>"' in order to generate plugin.sum files.
+// Additionally, it prints out the diff of generated code between the previous and latest plugin.
+func runPluginTests(plugin createdPlugin) error {
+	basedir := filepath.Dir(filepath.Dir(filepath.Dir(plugin.pluginDir)))
+	makePath, err := exec.LookPath("make")
+	if err != nil {
+		return err
+	}
+	env := os.Environ()
+	env = append(env, "ALLOW_EMPTY_PLUGIN_SUM=true")
+	cmd := exec.Cmd{
+		Path: makePath,
+		Args: []string{
+			makePath,
+			"test",
+			fmt.Sprintf("PLUGINS=%[1]s/%[2]s:%[3]s %[1]s/%[2]s:%[4]s", plugin.org, plugin.name, plugin.previousVersion, plugin.newVersion),
+		},
+		Dir:    basedir,
+		Stdout: os.Stdout,
+		Stderr: os.Stderr,
+		Env:    env,
+	}
+	log.Printf("running tests for %[1]s/%[2]s:%[3]s and %[1]s/%[2]s:%[4]s", plugin.org, plugin.name, plugin.previousVersion, plugin.newVersion)
+	if err := cmd.Run(); err != nil {
+		return err
+	}
+	diffPath, err := exec.LookPath("diff")
+	if err != nil {
+		return err
+	}
+	log.Printf("diff between generated code for %s/%s (%s -> %s)", plugin.org, plugin.name, plugin.previousVersion, plugin.newVersion)
+	diffCmd := exec.Cmd{
+		Path: diffPath,
+		Dir:  filepath.Join(basedir, "tests", "testdata", "buf.build", plugin.org, plugin.name),
+		Args: []string{
+			diffPath,
+			"--exclude",
+			"plugin.sum",
+			"--exclude",
+			"protoc-gen-plugin",
+			"--recursive",
+			"--unified",
+			plugin.previousVersion,
+			plugin.newVersion,
+		},
+		Stdout: os.Stdout,
+		Stderr: os.Stderr,
+	}
+	return diffCmd.Run()
+}
+
+func run(ctx context.Context, root string) ([]createdPlugin, error) {
 	now := time.Now()
 	defer func() {
 		log.Printf("finished running in: %.2fs\n", time.Since(now).Seconds())
 	}()
 	configs, err := source.GatherConfigs(root)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	client := fetchclient.New()
 	latestVersions := make(map[string]string, len(configs))
+	var created []createdPlugin
 	for _, config := range configs {
 		if config.Source.Disabled {
 			log.Printf("skipping source: %s\n", config.Filename)
@@ -56,7 +197,7 @@ func run(ctx context.Context, root string, depth int) error {
 		if newVersion == "" {
 			newVersion, err = client.Fetch(ctx, config)
 			if err != nil {
-				return err
+				return nil, err
 			}
 			latestVersions[config.CacheKey()] = newVersion
 		}
@@ -68,21 +209,28 @@ func run(ctx context.Context, root string, depth int) error {
 		pluginDir := filepath.Dir(config.Filename)
 		ok, err := checkDirExists(filepath.Join(pluginDir, newVersion))
 		if err != nil {
-			return err
+			return nil, err
 		}
 		if ok {
 			continue
 		}
 		previousVersion, err := getLatestVersionFromDir(pluginDir)
 		if err != nil {
-			return fmt.Errorf("failed to get latest known version from dir %s with error: %w", pluginDir, err)
+			return nil, fmt.Errorf("failed to get latest known version from dir %s with error: %w", pluginDir, err)
 		}
 		if err := createPluginDir(pluginDir, previousVersion, newVersion); err != nil {
-			return err
+			return nil, err
 		}
 		log.Printf("created %v/%v\n", pluginDir, newVersion)
+		created = append(created, createdPlugin{
+			org:             filepath.Base(filepath.Dir(pluginDir)),
+			name:            filepath.Base(pluginDir),
+			pluginDir:       pluginDir,
+			previousVersion: previousVersion,
+			newVersion:      newVersion,
+		})
 	}
-	return nil
+	return created, nil
 }
 
 // copyDirectory copies all files from the source directory to the target,

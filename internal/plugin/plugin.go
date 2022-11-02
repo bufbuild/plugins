@@ -77,7 +77,7 @@ func Walk(dir string, f func(plugin *Plugin)) error {
 		}
 		return semver.Compare(p1.Version, p2.Version) < 0
 	})
-	sorted, err := sortByDependencyOrder(unsorted, pluginNames)
+	sorted, err := sortByDependencyOrder(unsorted)
 	if err != nil {
 		return err
 	}
@@ -88,7 +88,7 @@ func Walk(dir string, f func(plugin *Plugin)) error {
 }
 
 // sortByDependencyOrder sorts the passed in plugins such that each dependency comes before a plugin with dependencies.
-func sortByDependencyOrder(original []*Plugin, pluginNames map[string]struct{}) ([]*Plugin, error) {
+func sortByDependencyOrder(original []*Plugin) ([]*Plugin, error) {
 	// Make a defensive copy of the original list
 	plugins := make([]*Plugin, len(original))
 	copy(plugins, original)
