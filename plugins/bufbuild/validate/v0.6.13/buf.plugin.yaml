@@ -1,12 +1,11 @@
 version: v1
-name: buf.build/bufbuild/validate-go
+name: buf.build/bufbuild/validate
 plugin_version: v0.6.13
 source_url: https://github.com/bufbuild/protoc-gen-validate
-description: Generates Go code to validate Protobuf messages using protoc-gen-validate constraints.
-default_opts:
-  - lang=go
-  - paths=source_relative
+description: Generates code to validate Protobuf messages using constraints provided in custom options.
 output_languages:
+  - cpp
   - go
+  - java
 spdx_license_id: Apache-2.0
 license_url: https://github.com/bufbuild/protoc-gen-validate/blob/v0.6.13/LICENSE

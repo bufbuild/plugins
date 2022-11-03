@@ -1,4 +1,0 @@
-source:
-  github:
-    owner: bufbuild
-    repository: protoc-gen-validate
