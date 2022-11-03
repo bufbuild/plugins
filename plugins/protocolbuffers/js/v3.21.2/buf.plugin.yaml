@@ -13,8 +13,8 @@ registry:
     deps:
       - package: 'google-protobuf'
         version: ^3.21.2
-    opts:
-      - import_style=commonjs
-      - binary
+  opts:
+    - import_style=commonjs
+    - binary
 spdx_license_id: BSD-3-Clause
 license_url: https://github.com/protocolbuffers/protobuf-javascript/blob/v3.21.2/LICENSE.md
