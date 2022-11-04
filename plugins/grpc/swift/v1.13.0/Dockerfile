@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1.4
-FROM swift:5.7.0-focal AS build
+FROM swift:5.7.1-focal AS build
 
 WORKDIR /app
 RUN git clone --depth 1 --branch 1.13.0 https://github.com/grpc/grpc-swift --recursive
