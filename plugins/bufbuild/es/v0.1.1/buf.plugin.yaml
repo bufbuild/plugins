@@ -8,6 +8,7 @@ output_languages:
   - typescript
 registry:
   npm:
+    import_style: module
     rewrite_import_path_suffix: pb.js
     deps:
       - package: '@bufbuild/protobuf'
