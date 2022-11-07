@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1.4
-FROM swift:5.7.0-focal AS build
+FROM swift:5.7.1-focal AS build
 
 WORKDIR /app
 RUN git clone --depth 1 --branch 1.20.2 https://github.com/apple/swift-protobuf --recursive
