@@ -7,9 +7,6 @@ output_languages:
   - go
 deps:
   - plugin: buf.build/protocolbuffers/go:v1.28.1
-default_opts:
-  - paths=source_relative
-  - require_unimplemented_servers=false
 registry:
   go:
     deps:

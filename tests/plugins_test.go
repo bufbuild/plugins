@@ -30,9 +30,9 @@ plugins:
     out: gen
     path: ./protoc-gen-plugin
     strategy: all
-{{- if .DefaultOpts }}
+{{- if .Opts }}
     opt:
-{{- range .DefaultOpts }}
+{{- range .Opts }}
       - {{ . }}
 {{- end }}
 {{- end -}}
@@ -58,7 +58,7 @@ func TestGeneration(t *testing.T) {
 		require.NoError(t, err)
 		t.Run(image, func(t *testing.T) {
 			t.Parallel()
-			pluginDir := filepath.Join("testdata", pluginMeta.Name, pluginMeta.Version, image)
+			pluginDir := filepath.Join("testdata", pluginMeta.Name, pluginMeta.PluginVersion, image)
 			pluginGenDir := filepath.Join(pluginDir, "gen")
 			require.NoError(t, os.RemoveAll(pluginGenDir))
 			require.NoError(t, os.MkdirAll(pluginDir, 0755))
@@ -109,10 +109,10 @@ func TestPluginVersionMatchesDirectory(t *testing.T) {
 	for _, toTest := range plugins {
 		dirPath := filepath.Dir(toTest.Path)
 		dirVersion := filepath.Base(dirPath)
-		assert.Equal(t, dirVersion, toTest.Version)
+		assert.Equal(t, dirVersion, toTest.PluginVersion)
 		st, err := os.Stat(filepath.Join(filepath.Dir(toTest.Path), ".dockerignore"))
 		if err != nil {
-			t.Errorf("failed to stat .dockerignore for %s:%s", toTest.Name, toTest.Version)
+			t.Errorf("failed to stat .dockerignore for %s:%s", toTest.Name, toTest.PluginVersion)
 		} else {
 			assert.False(t, st.IsDir())
 		}
@@ -143,9 +143,13 @@ func createBufGenYaml(t *testing.T, basedir string, plugin *plugin.Plugin) error
 	defer func() {
 		require.NoError(t, bufGenYaml.Close())
 	}()
+	opts := plugin.ExternalConfig.Registry.Opts
+	if len(opts) == 0 {
+		opts = plugin.DefaultOpts
+	}
 	return bufGenYamlTemplate.Execute(bufGenYaml, map[string]any{
-		"Name":        filepath.Base(plugin.Name),
-		"DefaultOpts": plugin.DefaultOpts,
+		"Name": filepath.Base(plugin.Name),
+		"Opts": opts,
 	})
 }
 
@@ -193,6 +197,6 @@ func createProtocGenPlugin(t *testing.T, basedir string, plugin *plugin.Plugin) 
 	}
 	return protocGenPluginTemplate.Execute(protocGenPlugin, map[string]any{
 		"ImageName": fmt.Sprintf("%s/plugins-%s-%s", dockerOrg, fields[1], fields[2]),
-		"Version":   plugin.Version,
+		"Version":   plugin.PluginVersion,
 	})
 }

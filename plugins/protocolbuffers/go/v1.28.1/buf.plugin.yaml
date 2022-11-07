@@ -5,12 +5,12 @@ source_url: https://github.com/protocolbuffers/protobuf-go
 description: Base types for Go. Generates message and enum types.
 output_languages:
   - go
-default_opts:
-  - paths=source_relative
 registry:
   go:
     deps:
       - module: google.golang.org/protobuf
         version: v1.28.1
+  opts:
+    - paths=source_relative
 spdx_license_id: BSD-3-Clause
 license_url: https://github.com/protocolbuffers/protobuf-go/blob/v1.28.1/LICENSE
