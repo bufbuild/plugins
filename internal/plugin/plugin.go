@@ -1,7 +1,6 @@
 package plugin
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"io/fs"
@@ -13,9 +12,9 @@ import (
 	"strings"
 
 	"github.com/bufbuild/buf/private/bufpkg/bufplugin/bufpluginconfig"
+	"github.com/bufbuild/buf/private/pkg/encoding"
 	"github.com/sethvargo/go-envconfig"
 	"golang.org/x/mod/semver"
-	"gopkg.in/yaml.v3"
 )
 
 // Plugin represents metadata (and filesystem path) information about a plugin.
@@ -137,7 +136,7 @@ func Load(path string, basedir string) (*Plugin, error) {
 		return nil, err
 	}
 	plugin.Relpath = filepath.ToSlash(plugin.Relpath)
-	if err := yaml.NewDecoder(bytes.NewReader(contents)).Decode(&plugin.ExternalConfig); err != nil {
+	if err := encoding.UnmarshalJSONOrYAMLStrict(contents, &plugin.ExternalConfig); err != nil {
 		return nil, err
 	}
 	return &plugin, nil
