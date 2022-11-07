@@ -13,6 +13,7 @@ registry:
     deps:
       - package: 'google-protobuf'
         version: ^3.21.2
+    import_style: commonjs
   opts:
     - import_style=commonjs
     - binary
