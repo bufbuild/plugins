@@ -143,13 +143,9 @@ func createBufGenYaml(t *testing.T, basedir string, plugin *plugin.Plugin) error
 	defer func() {
 		require.NoError(t, bufGenYaml.Close())
 	}()
-	opts := plugin.ExternalConfig.Registry.Opts
-	if len(opts) == 0 {
-		opts = plugin.DefaultOpts
-	}
 	return bufGenYamlTemplate.Execute(bufGenYaml, map[string]any{
 		"Name": filepath.Base(plugin.Name),
-		"Opts": opts,
+		"Opts": plugin.ExternalConfig.Registry.Opts,
 	})
 }
 
