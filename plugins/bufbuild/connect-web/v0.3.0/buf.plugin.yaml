@@ -10,6 +10,7 @@ output_languages:
   - typescript
 registry:
   npm:
+    import_style: module
     rewrite_import_path_suffix: connectweb.js
     deps:
       - package: '@bufbuild/connect-web'
