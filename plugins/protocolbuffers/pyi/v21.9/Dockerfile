@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1.4
-FROM debian:bullseye-20221004 AS build
+FROM debian:bullseye-20221024 AS build
 
 ARG TARGETARCH
 
@@ -17,7 +17,7 @@ RUN bazel build '//:protoc_lib'
 COPY --link BUILD pyi.cc plugins/
 RUN bazel build '//plugins:protoc-gen-pyi'
 
-FROM debian:bullseye-20221004-slim
+FROM debian:bullseye-20221024-slim
 COPY --from=build --link --chmod=0755 /build/protobuf/bazel-bin/plugins/protoc-gen-pyi .
 USER nobody
 ENTRYPOINT ["/protoc-gen-pyi"]
