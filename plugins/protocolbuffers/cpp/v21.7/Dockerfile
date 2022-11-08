@@ -14,7 +14,7 @@ WORKDIR /build
 RUN git clone https://github.com/protocolbuffers/protobuf --depth 1 --branch v21.7 --recursive
 WORKDIR /build/protobuf/
 RUN bazel build '//:protoc_lib'
-COPY --link BUILD cpp.cc plugins/cpp/
+COPY BUILD cpp.cc plugins/cpp/
 RUN bazel build '//plugins/cpp:protoc-gen-cpp'
 
 FROM debian:bullseye-20221004-slim

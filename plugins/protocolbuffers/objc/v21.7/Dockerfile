@@ -14,7 +14,7 @@ WORKDIR /build
 RUN git clone https://github.com/protocolbuffers/protobuf --depth 1 --branch v21.7 --recursive
 WORKDIR /build/protobuf/
 RUN bazel build '//:protoc_lib'
-COPY --link BUILD objectivec.cc plugins/objc/
+COPY BUILD objectivec.cc plugins/objc/
 RUN bazel build '//plugins/objc:protoc-gen-objectivec'
 
 FROM debian:bullseye-20221004-slim
