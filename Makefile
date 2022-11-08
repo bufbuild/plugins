@@ -44,14 +44,14 @@ test: build
 	if [[ "$(DOCKER_ORG)" = "ghcr.io/bufbuild" ]]; then \
 		$(DOCKER) pull $(DOCKER_ORG)/plugins-$${PLUGIN_OWNER}-$${PLUGIN_NAME}:$${PLUGIN_VERSION} || :; \
 	fi; \
-	cd $(<D) && $(DOCKER) $(DOCKER_BUILD_ARGS) \
+	touch $<; \
+	$(DOCKER) $(DOCKER_BUILD_ARGS) \
 		$(DOCKER_BUILD_EXTRA_ARGS) \
 		--label build.buf.plugins.config.owner=$${PLUGIN_OWNER} \
 		--label build.buf.plugins.config.name=$${PLUGIN_NAME} \
 		--label build.buf.plugins.config.version=$${PLUGIN_VERSION} \
 		-t $(DOCKER_ORG)/plugins-$${PLUGIN_OWNER}-$${PLUGIN_NAME}:$${PLUGIN_VERSION} \
-		-f - \
-		. < Dockerfile
+		$(<D)
 	@mkdir -p $(dir $@) && touch $@
 
 .PHONY: push
