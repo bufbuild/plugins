@@ -4,7 +4,7 @@ SHELL := /usr/bin/env bash -o pipefail
 DOCKER ?= docker
 DOCKER_ORG ?= bufbuild
 DOCKER_BUILD_ARGS ?= buildx build
-DOCKER_BUILD_EXTRA_ARGS ?=
+DOCKER_BUILD_EXTRA_ARGS ?= --progress=plain --no-cache
 
 GO_TEST_FLAGS ?= -race -count=1
 
