@@ -14,6 +14,7 @@ WORKDIR /build
 RUN git clone https://github.com/protocolbuffers/protobuf --depth 1 --branch v21.7 --recursive
 WORKDIR /build/protobuf/
 RUN bazel build '//:protoc_lib'
+RUN mkdir -p plugins/python
 COPY BUILD python.cc plugins/python/
 RUN bazel build '//plugins/python:protoc-gen-python'
 

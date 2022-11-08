@@ -14,6 +14,7 @@ WORKDIR /build
 RUN git clone https://github.com/protocolbuffers/protobuf --depth 1 --branch v21.9 --recursive
 WORKDIR /build/protobuf/
 RUN bazel build '//:protoc_lib'
+RUN mkdir -p plugins/kotlin
 COPY BUILD kotlin.cc plugins/kotlin/
 RUN bazel build '//plugins/kotlin:protoc-gen-kotlin'
 
