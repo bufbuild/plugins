@@ -4,7 +4,7 @@ SHELL := /usr/bin/env bash -o pipefail
 DOCKER ?= docker
 DOCKER_ORG ?= bufbuild
 DOCKER_BUILD_ARGS ?= buildx build
-DOCKER_BUILD_EXTRA_ARGS ?= --progress=plain --no-cache
+DOCKER_BUILD_EXTRA_ARGS ?= --progress=plain
 
 GO_TEST_FLAGS ?= -race -count=1
 
@@ -44,14 +44,17 @@ test: build
 	if [[ "$(DOCKER_ORG)" = "ghcr.io/bufbuild" ]]; then \
 		$(DOCKER) pull $(DOCKER_ORG)/plugins-$${PLUGIN_OWNER}-$${PLUGIN_NAME}:$${PLUGIN_VERSION} || :; \
 	fi; \
-	$(DOCKER) $(DOCKER_BUILD_ARGS) \
-		$(DOCKER_BUILD_EXTRA_ARGS) \
-		--label build.buf.plugins.config.owner=$${PLUGIN_OWNER} \
-		--label build.buf.plugins.config.name=$${PLUGIN_NAME} \
-		--label build.buf.plugins.config.version=$${PLUGIN_VERSION} \
-		-t $(DOCKER_ORG)/plugins-$${PLUGIN_OWNER}-$${PLUGIN_NAME}:$${PLUGIN_VERSION} \
-		$(<D)
-	@mkdir -p $(dir $@) && touch $@
+	if [[ "$(PLUGIN_OWNER)" != "protocolbuffers"]]; then \
+		$(DOCKER) $(DOCKER_BUILD_ARGS) \
+			$(DOCKER_BUILD_EXTRA_ARGS) \
+			-f $(<D)/Dockerfile \
+			--label build.buf.plugins.config.owner=$${PLUGIN_OWNER} \
+			--label build.buf.plugins.config.name=$${PLUGIN_NAME} \
+			--label build.buf.plugins.config.version=$${PLUGIN_VERSION} \
+			-t $(DOCKER_ORG)/plugins-$${PLUGIN_OWNER}-$${PLUGIN_NAME}:$${PLUGIN_VERSION} \
+			$(<D)
+		@mkdir -p $(dir $@) && touch $@
+	fi; \
 
 .PHONY: push
 push: build
