@@ -50,7 +50,8 @@ test: build
 		--label build.buf.plugins.config.name=$${PLUGIN_NAME} \
 		--label build.buf.plugins.config.version=$${PLUGIN_VERSION} \
 		-t $(DOCKER_ORG)/plugins-$${PLUGIN_OWNER}-$${PLUGIN_NAME}:$${PLUGIN_VERSION} \
-		.
+		-f - \
+		. < Dockerfile
 	@mkdir -p $(dir $@) && touch $@
 
 .PHONY: push

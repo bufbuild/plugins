@@ -14,11 +14,10 @@ WORKDIR /build
 RUN git clone https://github.com/protocolbuffers/protobuf --depth 1 --branch v21.7 --recursive
 WORKDIR /build/protobuf/
 RUN bazel build '//:protoc_lib'
-RUN mkdir -p plugins/php
-COPY BUILD php.cc plugins/php/
-RUN bazel build '//plugins/php:protoc-gen-php'
+COPY --link BUILD php.cc plugins/
+RUN bazel build '//plugins:protoc-gen-php'
 
 FROM debian:bullseye-20221004-slim
-COPY --from=build --link --chmod=0755 /build/protobuf/bazel-bin/plugins/php/protoc-gen-php .
+COPY --from=build --link --chmod=0755 /build/protobuf/bazel-bin/plugins/protoc-gen-php .
 USER nobody
 ENTRYPOINT ["/protoc-gen-php"]
