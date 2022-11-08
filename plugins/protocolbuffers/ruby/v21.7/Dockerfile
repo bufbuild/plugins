@@ -14,10 +14,10 @@ WORKDIR /build
 RUN git clone https://github.com/protocolbuffers/protobuf --depth 1 --branch v21.7 --recursive
 WORKDIR /build/protobuf/
 RUN bazel build '//:protoc_lib'
-COPY --link BUILD ruby.cc plugins/
-RUN bazel build '//plugins:protoc-gen-ruby'
+COPY --link BUILD ruby.cc plugins/ruby/
+RUN bazel build '//plugins/ruby:protoc-gen-ruby'
 
 FROM debian:bullseye-20221004-slim
-COPY --from=build --link --chmod=0755 /build/protobuf/bazel-bin/plugins/protoc-gen-ruby .
+COPY --from=build --link --chmod=0755 /build/protobuf/bazel-bin/plugins/ruby/protoc-gen-ruby .
 USER nobody
 ENTRYPOINT ["/protoc-gen-ruby"]

@@ -14,10 +14,10 @@ WORKDIR /build
 RUN git clone https://github.com/protocolbuffers/protobuf --depth 1 --branch v21.7 --recursive
 WORKDIR /build/protobuf/
 RUN bazel build '//:protoc_lib'
-COPY --link BUILD csharp.cc plugins/
-RUN bazel build '//plugins:protoc-gen-csharp'
+COPY --link BUILD csharp.cc plugins/csharp/
+RUN bazel build '//plugins/csharp:protoc-gen-csharp'
 
 FROM debian:bullseye-20221004-slim
-COPY --from=build --link --chmod=0755 /build/protobuf/bazel-bin/plugins/protoc-gen-csharp .
+COPY --from=build --link --chmod=0755 /build/protobuf/bazel-bin/plugins/csharp/protoc-gen-csharp .
 USER nobody
 ENTRYPOINT ["/protoc-gen-csharp"]
