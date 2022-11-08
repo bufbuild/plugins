@@ -17,11 +17,6 @@ jobs:
     env:
       dockerhub_username: ${{ secrets.DOCKERHUB_USERNAME }}
     runs-on: ubuntu-latest
-    services:
-      registry:
-        image: registry:2
-        ports:
-          - 5000:5000
     steps:
     - uses: actions/checkout@v3
       with:
@@ -77,10 +72,10 @@ jobs:
         ALL_MODIFIED_FILES: ${{ steps.changed-files.outputs.all_modified_files }}
         ANY_MODIFIED: ${{ steps.changed-files.outputs.any_modified }}
       shell: bash
-      run: make DOCKER_ORG="localhost:5000/bufbuild" DOCKER_BUILD_EXTRA_ARGS="--push"
+      run: make
     - name: Test
       env:
         ALL_MODIFIED_FILES: ${{ steps.changed-files.outputs.all_modified_files }}
         ANY_MODIFIED: ${{ steps.changed-files.outputs.any_modified }}
       shell: bash
-      run: make test DOCKER_ORG="localhost:5000/bufbuild"
+      run: make test
