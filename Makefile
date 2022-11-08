@@ -44,17 +44,17 @@ test: build
 	if [[ "$(DOCKER_ORG)" = "ghcr.io/bufbuild" ]]; then \
 		$(DOCKER) pull $(DOCKER_ORG)/plugins-$${PLUGIN_OWNER}-$${PLUGIN_NAME}:$${PLUGIN_VERSION} || :; \
 	fi; \
-	if [[ "$(PLUGIN_OWNER)" != "protocolbuffers"]]; then \
-		$(DOCKER) $(DOCKER_BUILD_ARGS) \
-			$(DOCKER_BUILD_EXTRA_ARGS) \
-			-f $(<D)/Dockerfile \
-			--label build.buf.plugins.config.owner=$${PLUGIN_OWNER} \
-			--label build.buf.plugins.config.name=$${PLUGIN_NAME} \
-			--label build.buf.plugins.config.version=$${PLUGIN_VERSION} \
-			-t $(DOCKER_ORG)/plugins-$${PLUGIN_OWNER}-$${PLUGIN_NAME}:$${PLUGIN_VERSION} \
-			$(<D)
-		@mkdir -p $(dir $@) && touch $@
-	fi; \
+ifeq ($(PLUGIN_OWNER), "protocolbuffers")
+	$(DOCKER) $(DOCKER_BUILD_ARGS) \
+		$(DOCKER_BUILD_EXTRA_ARGS) \
+		-f $(<D)/Dockerfile \
+		--label build.buf.plugins.config.owner=$${PLUGIN_OWNER} \
+		--label build.buf.plugins.config.name=$${PLUGIN_NAME} \
+		--label build.buf.plugins.config.version=$${PLUGIN_VERSION} \
+		-t $(DOCKER_ORG)/plugins-$${PLUGIN_OWNER}-$${PLUGIN_NAME}:$${PLUGIN_VERSION} \
+		$(<D)
+	@mkdir -p $(dir $@) && touch $@
+endif
 
 .PHONY: push
 push: build
