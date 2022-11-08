@@ -16,6 +16,7 @@ jobs:
   pr:
     env:
       dockerhub_username: ${{ secrets.DOCKERHUB_USERNAME }}
+      BUILDKIT_PROGRESS: plain
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3

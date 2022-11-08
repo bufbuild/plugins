@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1.4
-FROM debian:bullseye-20221004 AS build
+FROM debian:bullseye-20221024 AS build
 
 ARG TARGETARCH
 
@@ -7,7 +7,7 @@ RUN apt-get update \
  && apt-get install -y curl git cmake build-essential g++ unzip zip
 RUN arch=${TARGETARCH}; \
     if [ "${arch}" = "amd64" ]; then arch="x86_64"; fi; \
-    curl -fsSL -o /usr/local/bin/bazel https://github.com/bazelbuild/bazel/releases/download/5.3.1/bazel-5.3.1-linux-${arch} \
+    curl -fsSL -o /usr/local/bin/bazel https://github.com/bazelbuild/bazel/releases/download/5.3.2/bazel-5.3.2-linux-${arch} \
  && chmod +x /usr/local/bin/bazel
 
 WORKDIR /build
