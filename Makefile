@@ -36,15 +36,15 @@ test: build
 	go test $(GO_TEST_FLAGS) ./...
 
 .build/plugin/%/image: %/Dockerfile %/buf.plugin.yaml
-	PLUGIN_FULL_NAME=$(shell yq '.name' $*/buf.plugin.yaml); \
-	PLUGIN_OWNER=`echo "$${PLUGIN_FULL_NAME}" | cut -d '/' -f 2`; \
-	PLUGIN_NAME=`echo "$${PLUGIN_FULL_NAME}" | cut -d '/' -f 3-`; \
-	PLUGIN_VERSION=$(shell yq '.plugin_version' $*/buf.plugin.yaml); \
-	test -n "$${PLUGIN_NAME}" -a -n "$${PLUGIN_VERSION}" && \
-	if [[ "$(DOCKER_ORG)" = "ghcr.io/bufbuild" ]]; then \
-		$(DOCKER) pull $(DOCKER_ORG)/plugins-$${PLUGIN_OWNER}-$${PLUGIN_NAME}:$${PLUGIN_VERSION} || :; \
-	fi; \
-    @if [[ "${PLUGIN_OWNER}" = "protocolbuffers" ]]; then\
+	ifeq ($(shell yq '.name' $*/buf.plugin.yaml),protocolbuffers)	
+		PLUGIN_FULL_NAME=$(shell yq '.name' $*/buf.plugin.yaml); \
+		PLUGIN_OWNER=`echo "$${PLUGIN_FULL_NAME}" | cut -d '/' -f 2`; \
+		PLUGIN_NAME=`echo "$${PLUGIN_FULL_NAME}" | cut -d '/' -f 3-`; \
+		PLUGIN_VERSION=$(shell yq '.plugin_version' $*/buf.plugin.yaml); \
+		test -n "$${PLUGIN_NAME}" -a -n "$${PLUGIN_VERSION}" && \
+		if [[ "$(DOCKER_ORG)" = "ghcr.io/bufbuild" ]]; then \
+			$(DOCKER) pull $(DOCKER_ORG)/plugins-$${PLUGIN_OWNER}-$${PLUGIN_NAME}:$${PLUGIN_VERSION} || :; \
+		fi; \
 		$(DOCKER) $(DOCKER_BUILD_ARGS) \
 			$(DOCKER_BUILD_EXTRA_ARGS) \
 			-f $(<D)/Dockerfile \
@@ -52,9 +52,9 @@ test: build
 			--label build.buf.plugins.config.name=$${PLUGIN_NAME} \
 			--label build.buf.plugins.config.version=$${PLUGIN_VERSION} \
 			-t $(DOCKER_ORG)/plugins-$${PLUGIN_OWNER}-$${PLUGIN_NAME}:$${PLUGIN_VERSION} \
-			$(<D);\
-		@mkdir -p $(dir $@) && touch $@;\
-    fi
+			$(<D)
+		@mkdir -p $(dir $@) && touch $@
+	endif
 
 .PHONY: push
 push: build
