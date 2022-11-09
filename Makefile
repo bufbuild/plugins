@@ -49,6 +49,7 @@ test: build
 		--label build.buf.plugins.config.owner=$${PLUGIN_OWNER} \
 		--label build.buf.plugins.config.name=$${PLUGIN_NAME} \
 		--label build.buf.plugins.config.version=$${PLUGIN_VERSION} \
+		--build-arg CACHEBUST=$(date +%s) \
 		-t $(DOCKER_ORG)/plugins-$${PLUGIN_OWNER}-$${PLUGIN_NAME}:$${PLUGIN_VERSION} \
 		$(<D)
 	@mkdir -p $(dir $@) && touch $@
