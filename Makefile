@@ -44,6 +44,7 @@ test: build
 	if [[ "$(DOCKER_ORG)" = "ghcr.io/bufbuild" ]]; then \
 		$(DOCKER) pull $(DOCKER_ORG)/plugins-$${PLUGIN_OWNER}-$${PLUGIN_NAME}:$${PLUGIN_VERSION} || :; \
 	fi; \
+	touch $<; \
 	$(DOCKER) $(DOCKER_BUILD_ARGS) \
 		$(DOCKER_BUILD_EXTRA_ARGS) \
 		--label build.buf.plugins.config.owner=$${PLUGIN_OWNER} \

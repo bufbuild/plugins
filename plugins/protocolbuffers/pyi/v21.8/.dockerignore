@@ -1,4 +1,2 @@
 *
-!BUILD
 !Dockerfile
-!pyi.cc
