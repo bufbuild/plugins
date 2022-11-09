@@ -15,7 +15,24 @@ RUN git clone https://github.com/protocolbuffers/protobuf --depth 1 --branch v21
 WORKDIR /build/protobuf/
 RUN bazel build '//:protoc_lib'
 RUN mkdir -p plugins/pyi/
-COPY BUILD pyi.cc plugins/pyi/
+COPY <<'EOF' /build/protobuf/plugins/pyi/pyi.cc
+#include <google/protobuf/compiler/python/pyi_generator.h>
+#include <google/protobuf/compiler/plugin.h>
+
+int main(int argc, char *argv[]) {
+  google::protobuf::compiler::python::PyiGenerator generator;
+  return google::protobuf::compiler::PluginMain(argc, argv, &generator);
+}
+EOF
+COPY <<'EOF' /build/protobuf/plugins/pyi/BUILD
+cc_binary(
+    name = "protoc-gen-pyi",
+    srcs = ["pyi.cc"],
+    deps = [
+        "//:protoc_lib",
+    ],
+)
+EOF
 RUN bazel build '//plugins/pyi:protoc-gen-pyi'
 
 FROM debian:bullseye-20221024-slim
