@@ -14,10 +14,11 @@ WORKDIR /build
 RUN git clone https://github.com/protocolbuffers/protobuf --depth 1 --branch v21.7 --recursive
 WORKDIR /build/protobuf/
 RUN bazel build '//:protoc_lib'
-COPY BUILD pyi.cc plugins/
-RUN bazel build '//plugins:protoc-gen-pyi'
+RUN mkdir plugins/pyi/
+COPY BUILD pyi.cc plugins/pyi/
+RUN bazel build '//plugins/pyi:protoc-gen-pyi'
 
 FROM debian:bullseye-20221024-slim
-COPY --from=build --link --chmod=0755 /build/protobuf/bazel-bin/plugins/protoc-gen-pyi .
+COPY --from=build --link --chmod=0755 /build/protobuf/bazel-bin/plugins/pyi/protoc-gen-pyi .
 USER nobody
 ENTRYPOINT ["/protoc-gen-pyi"]
