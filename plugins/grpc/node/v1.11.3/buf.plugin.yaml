@@ -2,7 +2,7 @@ version: v1
 name: buf.build/grpc/node
 plugin_version: v1.11.3
 source_url: https://github.com/grpc/grpc-node
-description: Generates NPM client and server stubs for the gRPC framework.
+description: Generates Node client and server stubs for the gRPC framework.
 deps:
   - plugin: buf.build/protocolbuffers/js:v3.21.2
 output_languages:
