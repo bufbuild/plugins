@@ -11,19 +11,18 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/bufbuild/buf/private/bufpkg/bufplugin/bufpluginconfig"
+	"github.com/bufbuild/buf/private/pkg/encoding"
 	"github.com/sethvargo/go-envconfig"
 	"golang.org/x/mod/semver"
-	"gopkg.in/yaml.v3"
 )
 
 // Plugin represents metadata (and filesystem path) information about a plugin.
 type Plugin struct {
-	Path        string       `yaml:"-"`
-	Relpath     string       `yaml:"-"`
-	Name        string       `yaml:"name"`
-	Version     string       `yaml:"plugin_version"`
-	Deps        []Dependency `yaml:"deps,omitempty"`
-	DefaultOpts []string     `yaml:"default_opts,omitempty"`
+	Path    string `yaml:"-"`
+	Relpath string `yaml:"-"`
+	// Parsed external yaml config
+	bufpluginconfig.ExternalConfig `yaml:"-"`
 }
 
 func (p *Plugin) String() string {
@@ -75,7 +74,7 @@ func Walk(dir string, f func(plugin *Plugin)) error {
 		if p1.Name != p2.Name {
 			return p1.Name < p2.Name
 		}
-		return semver.Compare(p1.Version, p2.Version) < 0
+		return semver.Compare(p1.PluginVersion, p2.PluginVersion) < 0
 	})
 	sorted, err := sortByDependencyOrder(unsorted)
 	if err != nil {
@@ -101,7 +100,7 @@ func sortByDependencyOrder(original []*Plugin) ([]*Plugin, error) {
 			for _, dep := range plugin.Deps {
 				_, _, ok := strings.Cut(dep.Plugin, ":")
 				if !ok {
-					return nil, fmt.Errorf("invalid plugin dependency: %s", dep)
+					return nil, fmt.Errorf("invalid plugin dependency: %s", dep.Plugin)
 				}
 				if _, ok := resolvedMap[dep.Plugin]; !ok {
 					foundDeps = false
@@ -110,7 +109,7 @@ func sortByDependencyOrder(original []*Plugin) ([]*Plugin, error) {
 			}
 			if foundDeps {
 				resolved = append(resolved, plugin)
-				resolvedMap[plugin.Name+":"+plugin.Version] = struct{}{}
+				resolvedMap[plugin.Name+":"+plugin.PluginVersion] = struct{}{}
 			} else {
 				unresolved = append(unresolved, plugin)
 			}
@@ -126,21 +125,20 @@ func sortByDependencyOrder(original []*Plugin) ([]*Plugin, error) {
 
 // Load loads the buf.plugin.yaml at the specified path and returns a structure containing metadata for the plugin.
 func Load(path string, basedir string) (*Plugin, error) {
-	f, err := os.Open(path)
+	contents, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
 	}
-	defer f.Close()
 	var plugin Plugin
-	if err := yaml.NewDecoder(f).Decode(&plugin); err != nil {
-		return nil, err
-	}
 	plugin.Path = filepath.ToSlash(path)
 	plugin.Relpath, err = filepath.Rel(basedir, path)
 	if err != nil {
 		return nil, err
 	}
 	plugin.Relpath = filepath.ToSlash(plugin.Relpath)
+	if err := encoding.UnmarshalJSONOrYAMLStrict(contents, &plugin.ExternalConfig); err != nil {
+		return nil, err
+	}
 	return &plugin, nil
 }
 
@@ -222,7 +220,7 @@ func FilterByChangedFiles(plugins []*Plugin, lookuper envconfig.Lookuper) ([]*Pl
 				include = true
 				break
 			}
-			if strings.HasPrefix(changedDir, "tests/testdata/"+plugin.Name+"/"+plugin.Version+"/") {
+			if strings.HasPrefix(changedDir, "tests/testdata/"+plugin.Name+"/"+plugin.PluginVersion+"/") {
 				include = true
 				break
 			}
@@ -264,8 +262,8 @@ func getLatestPluginVersionsByName(plugins []*Plugin) map[string]string {
 	latestVersions := make(map[string]string)
 	for _, plugin := range plugins {
 		current := latestVersions[plugin.Name]
-		if current == "" || semver.Compare(current, plugin.Version) < 0 {
-			latestVersions[plugin.Name] = plugin.Version
+		if current == "" || semver.Compare(current, plugin.PluginVersion) < 0 {
+			latestVersions[plugin.Name] = plugin.PluginVersion
 		}
 	}
 	return latestVersions
@@ -284,9 +282,9 @@ func (p includePlugin) Matches(plugin *Plugin, latestVersion string) bool {
 		return true
 	}
 	if p.version == "latest" {
-		return plugin.Version == latestVersion
+		return plugin.PluginVersion == latestVersion
 	}
-	return p.version == plugin.Version
+	return p.version == plugin.PluginVersion
 }
 
 // changedFiles contains data from the tj-actions/changed-files action.
