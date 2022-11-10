@@ -16,5 +16,5 @@ registry:
     - paths=source_relative
     - separate_package=true
 spdx_license_id: Apache-2.0
-license_url: https://github.com/twitchtv/twirp/blob/v1.2.0/LICENSE
+license_url: https://github.com/twitchtv/twirp/blob/v8.1.3/LICENSE
 
