@@ -18,6 +18,6 @@ registry:
         version: '^3.21.2'
   opts:
     - import_style=commonjs+dts
-    - mode=grpcwebtext
+    - mode=grpcweb
 spdx_license_id: Apache-2.0
 license_url: https://github.com/grpc/grpc-web/blob/1.4.2/LICENSE
