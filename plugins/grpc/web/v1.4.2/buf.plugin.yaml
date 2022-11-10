@@ -1,0 +1,23 @@
+version: v1
+name: buf.build/grpc/web
+plugin_version: v1.4.2
+source_url: https://github.com/grpc/grpc-web
+description: gRPC for Web Clients.
+deps:
+  - plugin: buf.build/protocolbuffers/js:v3.21.2
+output_languages:
+  - javascript
+  - typescript
+registry:
+  npm:
+    import_style: commonjs
+    deps:
+      - package: 'grpc-web'
+        version: '^1.4.2'
+      - package: 'google-protobuf'
+        version: '^3.21.2'
+  opts:
+    - import_style=commonjs+dts
+    - mode=grpcweb
+spdx_license_id: Apache-2.0
+license_url: https://github.com/grpc/grpc-web/blob/1.4.2/LICENSE
