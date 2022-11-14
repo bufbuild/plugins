@@ -9,7 +9,7 @@ require (
 	github.com/sethvargo/go-envconfig v0.8.2
 	github.com/stretchr/testify v1.8.1
 	go.uber.org/multierr v1.8.0
-	golang.org/x/mod v0.6.0
+	golang.org/x/mod v0.7.0
 	golang.org/x/oauth2 v0.1.0
 	gopkg.in/yaml.v3 v3.0.1
 )
