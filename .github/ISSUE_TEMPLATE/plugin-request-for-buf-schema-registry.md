@@ -7,6 +7,10 @@ assignees: ''
 
 ---
 
+Not ready to open an issue, but want to chat about your plugin? Come find us on our Public Slack channel:
+
+https://buf.build/links/slack
+
 ## Mandatory
 
 **Where is the source code for the plugin?**
@@ -37,9 +41,3 @@ https://github.com/protocolbuffers/protobuf-go/tree/master/cmd/protoc-gen-go
 **Do you think this plugin will be compatible with the BSR go module proxy or npm registry?**
 
 Unsure? Let's chat!
-
----
-
-Not ready to open an issue, but want to chat about your plugin? Come find us on our Public Slack channel:
-
-https://buf.build/links/slack
