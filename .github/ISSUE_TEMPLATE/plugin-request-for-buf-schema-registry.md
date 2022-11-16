@@ -20,17 +20,13 @@ https://github.com/bufbuild/connect-go/tree/main/cmd/protoc-gen-connect-go
 
 **Does the plugin have a valid semver version?**
 
-What is the latest version, and where did you get this value from? 
-
-**Does the plugin have default options?**
-
-We're interested to know if there is a set of default plugin options that will work for most users.
+What is the latest version, and where did you get this value from?
 
 **Does this plugin have runtime dependencies?**
 
-Example, the generated code for the `protoc-gen-connect-go` plugin has a runtime dependency on the Go module: 
+Example, the generated code for the `protoc-gen-connect-go` plugin has a runtime dependency on the Go module:
 
-https://github.com/bufbuild/connect-go 
+https://github.com/bufbuild/connect-go
 
 **Does the plugin have a dependency on another plugin?**
 
@@ -42,6 +38,8 @@ https://github.com/protocolbuffers/protobuf-go/tree/master/cmd/protoc-gen-go
 
 Unsure? Let's chat!
 
-Not ready to open an issue, but want to chat about your plugin. Come find us on our Public Slack channel
+---
 
-🔗 [https://buf.build/links/slack](https://buf.build/links/slack)
+Not ready to open an issue, but want to chat about your plugin? Come find us on our Public Slack channel:
+
+https://buf.build/links/slack
