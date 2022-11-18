@@ -173,7 +173,17 @@ func runPluginTests(plugin createdPlugin) error {
 		Stdout: os.Stdout,
 		Stderr: os.Stderr,
 	}
-	return diffCmd.Run()
+	if err := diffCmd.Run(); err != nil {
+		var exitErr *exec.ExitError
+		if errors.As(err, &exitErr) {
+			// This is expected if there are differences
+			if exitErr.ExitCode() == 1 {
+				return nil
+			}
+		}
+		return err
+	}
+	return nil
 }
 
 func run(ctx context.Context, root string) ([]createdPlugin, error) {
