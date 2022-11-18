@@ -19,8 +19,9 @@ func main() {
 	basedir := flag.Args()[0]
 
 	plugins := make([]*plugin.Plugin, 0)
-	if err := plugin.Walk(basedir, func(plugin *plugin.Plugin) {
+	if err := plugin.Walk(basedir, func(plugin *plugin.Plugin) error {
 		plugins = append(plugins, plugin)
+		return nil
 	}); err != nil {
 		log.Fatalf("failed to walk directory: %v", err)
 	}

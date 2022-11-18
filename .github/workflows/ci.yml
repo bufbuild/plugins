@@ -60,6 +60,7 @@ jobs:
         username: ${{ secrets.DOCKERHUB_USERNAME }}
         password: ${{ secrets.DOCKERHUB_TOKEN }}
     - name: Login to GitHub Container Registry
+      if: github.repository == 'bufbuild/plugins'
       uses: docker/login-action@v2
       with:
         registry: ghcr.io
@@ -78,6 +79,7 @@ jobs:
       shell: bash
       run: make test DOCKER_ORG="ghcr.io/bufbuild"
     - name: Push
+      if: github.repository == 'bufbuild/plugins'
       shell: bash
       env:
         ALL_MODIFIED_FILES: ${{ steps.changed-files.outputs.all_modified_files }}

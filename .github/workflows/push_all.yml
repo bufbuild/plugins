@@ -10,6 +10,7 @@ concurrency: ci-${{ github.ref }}
 
 jobs:
   push_all:
+    if: github.repository == 'bufbuild/plugins'
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3

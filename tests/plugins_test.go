@@ -152,8 +152,9 @@ func createBufGenYaml(t *testing.T, basedir string, plugin *plugin.Plugin) error
 func loadAllPlugins(t *testing.T) []*plugin.Plugin {
 	t.Helper()
 	var plugins []*plugin.Plugin
-	if err := plugin.Walk("..", func(plugin *plugin.Plugin) {
+	if err := plugin.Walk("..", func(plugin *plugin.Plugin) error {
 		plugins = append(plugins, plugin)
+		return nil
 	}); err != nil {
 		t.Fatalf("failed to find plugins: %v", err)
 	}

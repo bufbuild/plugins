@@ -26,12 +26,6 @@ func main() {
 		os.Exit(2)
 	}
 	root := os.Args[1]
-	depth := strings.Count(root, string(os.PathSeparator))
-	if depth > 1 {
-		_, _ = fmt.Fprintf(os.Stderr, "usage: %s <directory>\n", os.Args)
-		os.Exit(2)
-	}
-	depth = 1 - depth
 	created, err := run(context.Background(), root)
 	if err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "failed to fetch versions: %v\n", err)

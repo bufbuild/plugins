@@ -36,7 +36,7 @@ type Dependency struct {
 
 // Walk loads every buf.plugin.yaml found in the specified root directory and calls the callback function with each plugin.
 // The callback is called in dependency order (all plugin dependencies are printed before the plugin).
-func Walk(dir string, f func(plugin *Plugin)) error {
+func Walk(dir string, f func(plugin *Plugin) error) error {
 	dir, err := filepath.Abs(dir)
 	if err != nil {
 		return err
@@ -81,7 +81,9 @@ func Walk(dir string, f func(plugin *Plugin)) error {
 		return err
 	}
 	for _, p := range sorted {
-		f(p)
+		if err := f(p); err != nil {
+			return err
+		}
 	}
 	return nil
 }

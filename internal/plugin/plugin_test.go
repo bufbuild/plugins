@@ -13,8 +13,9 @@ import (
 func TestWalk(t *testing.T) {
 	t.Parallel()
 	var plugins []*Plugin
-	err := Walk("../..", func(plugin *Plugin) {
+	err := Walk("../..", func(plugin *Plugin) error {
 		plugins = append(plugins, plugin)
+		return nil
 	})
 	require.NoError(t, err)
 	assert.NotEmpty(t, plugins)
@@ -23,8 +24,9 @@ func TestWalk(t *testing.T) {
 func TestFilterByPluginsEnv(t *testing.T) {
 	t.Parallel()
 	var plugins []*Plugin
-	err := Walk("../..", func(plugin *Plugin) {
+	err := Walk("../..", func(plugin *Plugin) error {
 		plugins = append(plugins, plugin)
+		return nil
 	})
 	require.NoError(t, err)
 	assert.Empty(t, runFilterByPluginsEnv(t, plugins, "no-match"))
@@ -44,8 +46,9 @@ func TestFilterByPluginsEnv(t *testing.T) {
 func TestFilterByChangedFiles(t *testing.T) {
 	t.Parallel()
 	var plugins []*Plugin
-	err := Walk("../..", func(plugin *Plugin) {
+	err := Walk("../..", func(plugin *Plugin) error {
 		plugins = append(plugins, plugin)
+		return nil
 	})
 	require.NoError(t, err)
 	assert.Empty(t, runFilterByChangedFiles(t, plugins, nil, false))
