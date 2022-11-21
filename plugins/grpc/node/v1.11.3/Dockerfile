@@ -22,7 +22,7 @@ else
 fi
 EOF
 
-FROM debian:bullseye-20221024-slim
+FROM debian:bullseye-20221114-slim
 COPY --from=build --link --chmod=0755 --chown=root:root /build/grpc_node_plugin .
 USER nobody
 ENTRYPOINT [ "/grpc_node_plugin" ]
