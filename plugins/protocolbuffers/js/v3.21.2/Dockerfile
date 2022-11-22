@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1.4
-FROM debian:bullseye-20221024-slim AS build
+FROM debian:bullseye-20221114 AS build
 
 ARG TARGETARCH
 
@@ -12,7 +12,7 @@ RUN arch=${TARGETARCH}; \
  && tar zxf protobuf-javascript.tar.gz bin/protoc-gen-js \
  && rm -f protobuf-javascript.tar.gz
 
-FROM debian:bullseye-20221024-slim
+FROM gcr.io/distroless/cc-debian11
 COPY --from=build --link --chmod=0755 /tmp/bin/protoc-gen-js .
 USER nobody
 ENTRYPOINT ["/protoc-gen-js"]

@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1.4
-FROM debian:bullseye-20221004 AS build
+FROM debian:bullseye-20221114 AS build
 
 ARG TARGETARCH
 
@@ -15,9 +15,9 @@ WORKDIR /build
 RUN git clone --depth 1 --branch v1.51.0 --recursive https://github.com/grpc/grpc
 WORKDIR /build/grpc
 RUN bazel build //src/compiler:grpc_plugin_support
-RUN bazel build //src/compiler:grpc_ruby_plugin
+RUN bazel build //src/compiler:grpc_ruby_plugin.stripped
 
-FROM debian:bullseye-20221004-slim
+FROM gcr.io/distroless/cc-debian11
 COPY --from=build --link --chmod=0755 /build/grpc/bazel-bin/src/compiler/grpc_ruby_plugin .
 USER nobody
 ENTRYPOINT ["/grpc_ruby_plugin"]
