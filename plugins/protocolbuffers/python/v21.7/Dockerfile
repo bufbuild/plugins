@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1.4
-FROM debian:bullseye-20221004 AS build
+FROM debian:bullseye-20221114-slim AS build
 
 ARG TARGETARCH
 
@@ -15,9 +15,9 @@ RUN git clone https://github.com/protocolbuffers/protobuf --depth 1 --branch v21
 WORKDIR /build/protobuf/
 RUN bazel build '//:protoc_lib'
 COPY --link BUILD python.cc plugins/
-RUN bazel build '//plugins:protoc-gen-python'
+RUN bazel build '//plugins:protoc-gen-python.stripped'
 
-FROM debian:bullseye-20221004-slim
+FROM gcr.io/distroless/cc-debian11
 COPY --from=build --link --chmod=0755 /build/protobuf/bazel-bin/plugins/protoc-gen-python .
 USER nobody
 ENTRYPOINT ["/protoc-gen-python"]

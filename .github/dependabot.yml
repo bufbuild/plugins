@@ -13,33 +13,13 @@ updates:
     directory: "/plugins/bufbuild/connect-go/v1.1.0"
     schedule:
       interval: "weekly"
-  # node slim plugin
-  - package-ecosystem: "docker"
-    directory: "/plugins/bufbuild/connect-web/v0.3.1"
-    schedule:
-      interval: "weekly"
-  # node full plugin
-  - package-ecosystem: "docker"
-    directory: "/plugins/grpc/node/v1.11.3"
-    schedule:
-      interval: "weekly"
   # dart plugin
   - package-ecosystem: "docker"
     directory: "/plugins/protocolbuffers/dart/v20.0.1"
     schedule:
       interval: "weekly"
-  # java plugin
-  - package-ecosystem: "docker"
-    directory: "/plugins/grpc/kotlin/v1.3.0"
-    schedule:
-      interval: "weekly"
   # swift plugin
   - package-ecosystem: "docker"
-    directory: "/plugins/apple/swift/v1.20.2"
-    schedule:
-      interval: "weekly"
-  # debian bullseye
-  - package-ecosystem: "docker"
-    directory: "/plugins/protocolbuffers/cpp/v21.9"
+    directory: "/plugins/apple/swift/v1.20.3"
     schedule:
       interval: "weekly"
