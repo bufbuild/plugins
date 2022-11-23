@@ -134,12 +134,7 @@ func run(root string, minisignPrivateKey string, dryRun bool) error {
 		return fmt.Errorf("failed to determine next release name: %w", err)
 	}
 
-	n := 0
 	if err := plugin.Walk(root, func(plugin *plugin.Plugin) error {
-		n++
-		if n > 2 {
-			return nil
-		}
 		identity, err := bufpluginref.PluginIdentityForString(plugin.Name)
 		if err != nil {
 			return nil
