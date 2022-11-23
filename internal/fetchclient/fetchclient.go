@@ -37,10 +37,9 @@ type Client struct {
 }
 
 // New returns a new client.
-func New() *Client {
+func New(ctx context.Context) *Client {
 	var client *http.Client
 	if ghToken := os.Getenv("GITHUB_TOKEN"); ghToken != "" {
-		ctx := context.Background()
 		ts := oauth2.StaticTokenSource(
 			&oauth2.Token{AccessToken: ghToken},
 		)
@@ -55,7 +54,7 @@ func New() *Client {
 }
 
 // Fetch fetches new versions based on the given config and returns a valid semver version
-// that can be used with the Go semver package. The version is gauranteed to contain a "v" prefix.
+// that can be used with the Go semver package. The version is guaranteed to contain a "v" prefix.
 func (c *Client) Fetch(ctx context.Context, config *source.Config) (string, error) {
 	version, err := c.fetch(ctx, config)
 	if err != nil {
@@ -132,7 +131,7 @@ func (c *Client) fetchGoProxy(ctx context.Context, name string) (string, error) 
 	defer response.Body.Close()
 
 	var data struct {
-		Version string `json:"Version"`
+		Version string `json:"Version"` //nolint:tagliatelle
 	}
 	if err := json.NewDecoder(response.Body).Decode(&data); err != nil {
 		return "", err
@@ -159,7 +158,7 @@ func (c *Client) fetchNPMRegistry(ctx context.Context, name string) (string, err
 	var data struct {
 		DistTags struct {
 			Latest string `json:"latest"`
-		} `json:"dist-tags"`
+		} `json:"dist-tags"` //nolint:tagliatelle
 	}
 	if err := json.NewDecoder(response.Body).Decode(&data); err != nil {
 		return "", err
@@ -222,7 +221,7 @@ func (c *Client) fetchMaven(ctx context.Context, group string, name string) (*ma
 
 type mavenResponse struct {
 	Response struct {
-		NumFound int `json:"numFound"`
+		NumFound int `json:"numFound"` //nolint:tagliatelle
 		Start    int `json:"start"`
 		Docs     []struct {
 			ID        string `json:"id"`

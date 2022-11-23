@@ -48,10 +48,10 @@ exec docker run --log-driver=none --rm -i {{.ImageName}}:{{.Version}} "$@"
 )
 
 func TestGeneration(t *testing.T) {
+	t.Parallel()
 	if testing.Short() {
 		t.Skip("skipping code generation test")
 	}
-	t.Parallel()
 	allowEmpty, _ := strconv.ParseBool(os.Getenv("ALLOW_EMPTY_PLUGIN_SUM"))
 	testPluginWithImage := func(t *testing.T, pluginMeta *plugin.Plugin, image string) {
 		imageDir, err := filepath.Abs(filepath.Join("testdata", "images"))

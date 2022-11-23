@@ -11,6 +11,7 @@ import (
 )
 
 func TestGatherSourceFilenames(t *testing.T) {
+	t.Parallel()
 	// Walk entire directory with a depth of 1
 	filenames, err := gatherSourceFilenames("testdata/success")
 	require.NoError(t, err)
@@ -32,6 +33,7 @@ func TestGatherSourceFilenames(t *testing.T) {
 }
 
 func TestLoadSourceFile(t *testing.T) {
+	t.Parallel()
 	filenames, err := gatherSourceFilenames("testdata/success/connect-go")
 	require.NoError(t, err)
 	assert.Equal(t, 1, len(filenames))
@@ -41,6 +43,7 @@ func TestLoadSourceFile(t *testing.T) {
 }
 
 func TestGatherConfigs(t *testing.T) {
+	t.Parallel()
 	configs, err := GatherConfigs("testdata/success")
 	require.NoError(t, err)
 	assert.Equal(t, 2, len(configs))
@@ -71,6 +74,7 @@ func TestGatherConfigs(t *testing.T) {
 }
 
 func TestConfigLoad(t *testing.T) {
+	t.Parallel()
 	// Strict marshal, detect unknown fields and fail fast.
 	sourceData := `source:
 	disabled: true

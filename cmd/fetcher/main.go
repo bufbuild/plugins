@@ -189,9 +189,9 @@ func run(ctx context.Context, root string) ([]createdPlugin, error) {
 	if err != nil {
 		return nil, err
 	}
-	client := fetchclient.New()
+	client := fetchclient.New(ctx)
 	latestVersions := make(map[string]string, len(configs))
-	var created []createdPlugin
+	created := make([]createdPlugin, 0, len(configs))
 	for _, config := range configs {
 		if config.Source.Disabled {
 			log.Printf("skipping source: %s\n", config.Filename)
@@ -292,7 +292,7 @@ func copyFile(src, dest string, prevVersion, newVersion string) error {
 		return err
 	}
 	replaced := strings.ReplaceAll(string(data), strings.TrimPrefix(prevVersion, "v"), strings.TrimPrefix(newVersion, "v"))
-	return os.WriteFile(dest, []byte(replaced), 0644)
+	return os.WriteFile(dest, []byte(replaced), 0644) //nolint:gosec
 }
 
 func getLatestVersionFromDir(dir string) (string, error) {

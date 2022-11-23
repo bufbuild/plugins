@@ -33,7 +33,7 @@ import (
 
 const (
 	githubOwner = "bufbuild"
-	// This is separate from githubOwner for testing releases (can point at personal fork)
+	// This is separate from githubOwner for testing releases (can point at personal fork).
 	githubReleaseOwner   = githubOwner // "pkwarren"
 	githubRepo           = "plugins"
 	packageTypeContainer = "container"
@@ -235,6 +235,9 @@ func createRelease(ctx context.Context, client *github.Client, releaseName strin
 		return err
 	}
 	return filepath.WalkDir(tmpDir, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
 		if d.IsDir() {
 			return nil
 		}
@@ -309,7 +312,7 @@ func signPluginReleases(dir string, keyPath string, password string) error {
 		return err
 	}
 	signature := minisign.Sign(privateKey, releasesFileBytes)
-	return os.WriteFile(releasesFile+".minisig", signature, 0644)
+	return os.WriteFile(releasesFile+".minisig", signature, 0644) //nolint:gosec
 }
 
 func createPluginZip(basedir string, plugin *plugin.Plugin, imageName string, imageDigest string) (string, error) {

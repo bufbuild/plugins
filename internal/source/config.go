@@ -26,8 +26,8 @@ type Cacheable interface {
 
 // Config is the source config.
 type Config struct {
-	Filename string       `yaml:"-"`
-	Source   SourceConfig `yaml:"source"`
+	Filename string `yaml:"-"`
+	Source   Source `yaml:"source"`
 	// IncludePrerelease includes semver prereleases when fetching versions
 	// from upstream.
 	IncludePrerelease bool `yaml:"include_prerelease"`
@@ -39,8 +39,8 @@ func (c Config) CacheKey() string {
 
 var _ Cacheable = (*Config)(nil)
 
-// SourceConfig is the configuration for the fetch source.
-type SourceConfig struct {
+// Source is the configuration for the fetch source.
+type Source struct {
 	Disabled bool `yaml:"disabled"`
 	// Only one field will be set.
 	GitHub      *GitHubConfig      `yaml:"github"`
@@ -50,9 +50,9 @@ type SourceConfig struct {
 	Maven       *MavenConfig       `yaml:"maven"`
 }
 
-var _ Cacheable = (*SourceConfig)(nil)
+var _ Cacheable = (*Source)(nil)
 
-func (s *SourceConfig) Name() string {
+func (s *Source) Name() string {
 	switch {
 	case s.GitHub != nil:
 		return "github"
@@ -68,7 +68,7 @@ func (s *SourceConfig) Name() string {
 	return "unknown"
 }
 
-func (s *SourceConfig) CacheKey() string {
+func (s *Source) CacheKey() string {
 	name := s.Name()
 	switch {
 	case s.GitHub != nil:
