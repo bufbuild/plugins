@@ -2,6 +2,7 @@ package main
 
 import (
 	"archive/zip"
+	"compress/flate"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
@@ -342,6 +343,9 @@ func createPluginZip(basedir string, plugin *plugin.Plugin, imageName string, im
 		}
 	}()
 	zw := zip.NewWriter(zf)
+	zw.RegisterCompressor(zip.Deflate, func(w io.Writer) (io.WriteCloser, error) {
+		return flate.NewWriter(w, flate.BestCompression)
+	})
 	if err := addFileToZip(zw, plugin.Path); err != nil {
 		return "", err
 	}
