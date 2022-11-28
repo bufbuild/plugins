@@ -6,6 +6,7 @@ on:
   workflow_dispatch:
 
 permissions:
+  contents: write
   packages: read
 
 jobs:
@@ -13,15 +14,6 @@ jobs:
     if: github.repository == 'bufbuild/plugins'
     runs-on: ubuntu-22.04
     steps:
-      - name: Generate token
-        id: generate_token
-        uses: tibdex/github-app-token@021a2405c7f990db57f5eae5397423dcc554159c
-        with:
-          app_id: 249762
-          private_key: ${{ secrets.TOKEN_EXCHANGE_GH_APP_PRIVATE_KEY }}
-          repository: ${{ github.repository }}
-          permissions: >-
-            {"contents": "write", "packages": "read"}
       - name: Checkout repository code
         uses: actions/checkout@v3
         with:
@@ -41,7 +33,7 @@ jobs:
           cache: true
       - name: Create Release
         env:
-          GITHUB_TOKEN: ${{ steps.generate_token.outputs.token }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           MINISIGN_PRIVATE_KEY: ${{ secrets.MINISIGN_PRIVATE_KEY }}
           MINISIGN_PRIVATE_KEY_PASSWORD: ${{ secrets.MINISIGN_PRIVATE_KEY_PASSWORD }}
         run: |
