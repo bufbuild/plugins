@@ -16,8 +16,6 @@ jobs:
     steps:
       - name: Checkout repository code
         uses: actions/checkout@v3
-        with:
-          token: ${{ steps.generate_token.outputs.token }}
       - name: Login to GitHub Container Registry
         if: github.repository == 'bufbuild/plugins'
         uses: docker/login-action@f4ef78c080cd8ba55a85445d5b36e214a81df20a
