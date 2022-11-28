@@ -529,7 +529,8 @@ func fetchGHCRImageNameAndDigest(ctx context.Context, client *github.Client, plu
 			}
 		}
 	}
-	return "", "", fmt.Errorf("no digest found for: %v:%v", identity.IdentityString(), plugin.PluginVersion)
+	// this may occur if this runs prior to publishing a newly added plugin
+	return "", "", nil
 }
 
 func getLatestRelease(ctx context.Context, client *github.Client) (*github.RepositoryRelease, error) {
