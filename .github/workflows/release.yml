@@ -1,4 +1,4 @@
-name: Fetch latest versions
+name: Create Release
 
 on:
   schedule:
@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  fetch-versions:
+  release:
     if: github.repository == 'bufbuild/plugins'
     runs-on: ubuntu-22.04
     steps:
@@ -18,7 +18,7 @@ jobs:
           private_key: ${{ secrets.TOKEN_EXCHANGE_GH_APP_PRIVATE_KEY }}
           repository: ${{ github.repository }}
           permissions: >-
-            {"contents": "write", "pull_requests": "write"}
+            {"contents": "write"}
       - name: Checkout repository code
         uses: actions/checkout@v3
         with:
@@ -29,22 +29,15 @@ jobs:
           go-version: 1.19.x
           check-latest: true
           cache: true
-      - name: Install buf cli
-        run: |
-          go install github.com/bufbuild/buf/cmd/buf@main
-      - name: Fetch all versions
+      - name: Create Release
         env:
           GITHUB_TOKEN: ${{ steps.generate_token.outputs.token }}
+          MINISIGN_PRIVATE_KEY: ${{ secrets.MINISIGN_PRIVATE_KEY }}
+          MINISIGN_PRIVATE_KEY_PASSWORD: ${{ secrets.MINISIGN_PRIVATE_KEY_PASSWORD }}
         run: |
-          go run ./cmd/fetcher .
-      - name: Create PR
-        uses: peter-evans/create-pull-request@d7db273d6c7206ba99224e659c982ae34a1025e3
-        with:
-          add-paths: .
-          commit-message: "detected new plugin versions"
-          branch: fetch-versions
-          delete-branch: true
-          title: "Found new plugin versions"
-          body: "New plugin versions found. Please review."
-          assignees: mfridman, pkwarren
-          token: ${{ steps.generate_token.outputs.token }}
+          echo "${MINISIGN_PRIVATE_KEY}" > minisign.key
+          go run ./cmd/release -minisign-private-key minisign.key .
+      - name: Clean Up
+        if: always()
+        run: |
+          rm -fv minisign.key

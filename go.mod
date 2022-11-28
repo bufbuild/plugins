@@ -3,8 +3,9 @@ module github.com/bufbuild/plugins
 go 1.19
 
 require (
+	aead.dev/minisign v0.2.0
 	github.com/bufbuild/buf v1.9.1-0.20221104204513-91ec6001a5f1
-	github.com/google/go-github/v45 v45.2.0
+	github.com/google/go-github/v48 v48.1.0
 	github.com/hashicorp/go-retryablehttp v0.7.1
 	github.com/sethvargo/go-envconfig v0.8.2
 	github.com/stretchr/testify v1.8.1
@@ -26,6 +27,7 @@ require (
 	go.uber.org/atomic v1.10.0 // indirect
 	golang.org/x/crypto v0.1.0 // indirect
 	golang.org/x/net v0.2.0 // indirect
+	golang.org/x/sys v0.2.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/protobuf v1.28.2-0.20220831092852-f930b1dc76e8 // indirect
 	gopkg.in/check.v1 v1.0.0-20200902074654-038fdea0a05b // indirect

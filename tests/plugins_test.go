@@ -48,10 +48,10 @@ exec docker run --log-driver=none --rm -i {{.ImageName}}:{{.Version}} "$@"
 )
 
 func TestGeneration(t *testing.T) {
+	t.Parallel()
 	if testing.Short() {
 		t.Skip("skipping code generation test")
 	}
-	t.Parallel()
 	allowEmpty, _ := strconv.ParseBool(os.Getenv("ALLOW_EMPTY_PLUGIN_SUM"))
 	testPluginWithImage := func(t *testing.T, pluginMeta *plugin.Plugin, image string) {
 		imageDir, err := filepath.Abs(filepath.Join("testdata", "images"))
@@ -152,8 +152,9 @@ func createBufGenYaml(t *testing.T, basedir string, plugin *plugin.Plugin) error
 func loadAllPlugins(t *testing.T) []*plugin.Plugin {
 	t.Helper()
 	var plugins []*plugin.Plugin
-	if err := plugin.Walk("..", func(plugin *plugin.Plugin) {
+	if err := plugin.Walk("..", func(plugin *plugin.Plugin) error {
 		plugins = append(plugins, plugin)
+		return nil
 	}); err != nil {
 		t.Fatalf("failed to find plugins: %v", err)
 	}
