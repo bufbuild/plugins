@@ -148,6 +148,10 @@ func run(root string, minisignPrivateKey string, dryRun bool) error {
 		if err != nil {
 			return err
 		}
+		if imageDigest == "" {
+			log.Printf("unable to detect image digest for plugin %s/%s:%s", identity.Owner(), identity.Remote(), plugin.PluginVersion)
+			return nil
+		}
 		key := pluginNameVersion{name: identity.Owner() + "/" + identity.Plugin(), version: plugin.PluginVersion}
 		release := pluginNameVersionToRelease[key]
 		// Found existing release - only rebuild if changed image digest or buf.plugin.yaml digest
@@ -507,8 +511,11 @@ func fetchGHCRImageNameAndDigest(ctx context.Context, client *github.Client, plu
 		return "", "", err
 	}
 	packageName := fmt.Sprintf("plugins-%s-%s", identity.Owner(), identity.Plugin())
-	versions, _, err := client.Organizations.PackageGetAllVersions(ctx, githubOwner, packageTypeContainer, packageName, &github.PackageListOptions{})
+	versions, resp, err := client.Organizations.PackageGetAllVersions(ctx, githubOwner, packageTypeContainer, packageName, nil)
 	if err != nil {
+		if resp != nil && resp.StatusCode == http.StatusNotFound {
+			return "", "", nil
+		}
 		return "", "", fmt.Errorf("failed to list package versions for %s: %w", packageName, err)
 	}
 	for _, version := range versions {
@@ -522,7 +529,8 @@ func fetchGHCRImageNameAndDigest(ctx context.Context, client *github.Client, plu
 			}
 		}
 	}
-	return "", "", fmt.Errorf("no digest found for: %v:%v", identity.IdentityString(), plugin.PluginVersion)
+	// this may occur if this runs prior to publishing a newly added plugin
+	return "", "", nil
 }
 
 func getLatestRelease(ctx context.Context, client *github.Client) (*github.RepositoryRelease, error) {
