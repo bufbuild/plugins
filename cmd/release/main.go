@@ -103,7 +103,7 @@ func run(root string, minisignPrivateKey string, dryRun bool) error {
 	}
 
 	ctx := context.Background()
-	client := newGitHubClient()
+	client := newGitHubClient(ctx)
 	latestRelease, err := getLatestRelease(ctx, client)
 	if err != nil {
 		return fmt.Errorf("failed to retrieve latest release: %w", err)
@@ -509,7 +509,7 @@ func fetchGHCRImageNameAndDigest(ctx context.Context, client *github.Client, plu
 	packageName := fmt.Sprintf("plugins-%s-%s", identity.Owner(), identity.Plugin())
 	versions, _, err := client.Organizations.PackageGetAllVersions(ctx, githubOwner, packageTypeContainer, packageName, &github.PackageListOptions{})
 	if err != nil {
-		return "", "", err
+		return "", "", fmt.Errorf("failed to list package versions for %s: %w", packageName, err)
 	}
 	for _, version := range versions {
 		if version.GetMetadata() == nil || version.GetMetadata().GetContainer() == nil {
@@ -570,10 +570,10 @@ func loadPluginReleases(ctx context.Context, client *github.Client, latestReleas
 	return &releases, nil
 }
 
-func newGitHubClient() *github.Client {
+func newGitHubClient(ctx context.Context) *github.Client {
 	var client *http.Client
 	if ghToken := os.Getenv("GITHUB_TOKEN"); ghToken != "" {
-		ctx := context.Background()
+		log.Printf("creating authenticated client with GITHUB_TOKEN")
 		ts := oauth2.StaticTokenSource(
 			&oauth2.Token{AccessToken: ghToken},
 		)
