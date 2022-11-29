@@ -140,7 +140,7 @@ func run(root string, minisignPrivateKey string, dryRun bool) error {
 	if err := plugin.Walk(root, func(plugin *plugin.Plugin) error {
 		identity, err := bufpluginref.PluginIdentityForString(plugin.Name)
 		if err != nil {
-			return nil
+			return err
 		}
 		pluginYamlDigest, err := calculateDigest(plugin.Path)
 		if err != nil {
@@ -215,15 +215,10 @@ func run(root string, minisignPrivateKey string, dryRun bool) error {
 		return fmt.Errorf("failed to create %s: %w", pluginReleasesFile, err)
 	}
 
-	var publicKey *minisign.PublicKey
 	minisignPrivateKeyPassword := os.Getenv("MINISIGN_PRIVATE_KEY_PASSWORD")
-	if minisignPrivateKey != "" && minisignPrivateKeyPassword != "" {
-		publicKey, err = signPluginReleases(tmpDir, minisignPrivateKey, minisignPrivateKeyPassword)
-		if err != nil {
-			return fmt.Errorf("failed to sign %q: %w", filepath.Join(tmpDir, pluginReleasesFile), err)
-		}
-	} else {
-		log.Printf("skipping signing of %s", pluginReleasesFile)
+	publicKey, err := signPluginReleases(tmpDir, minisignPrivateKey, minisignPrivateKeyPassword)
+	if err != nil {
+		return fmt.Errorf("failed to sign %q: %w", filepath.Join(tmpDir, pluginReleasesFile), err)
 	}
 
 	if dryRun {
@@ -328,6 +323,10 @@ func createReleaseBody(name string, plugins []PluginRelease, publicKey *minisign
 }
 
 func signPluginReleases(dir string, keyPath string, password string) (*minisign.PublicKey, error) {
+	if keyPath == "" || password == "" {
+		log.Printf("skipping signing of %s", pluginReleasesFile)
+		return nil, nil
+	}
 	releasesFile := filepath.Join(dir, pluginReleasesFile)
 	log.Printf("signing: %s", releasesFile)
 	privateKey, err := minisign.PrivateKeyFromFile(password, keyPath)
@@ -545,7 +544,7 @@ func fetchGHCRImageNameAndDigests(plugin *plugin.Plugin) (string, string, string
 	cmd.Stdout = &bb
 	if err := cmd.Run(); err != nil {
 		// this may occur if this runs prior to publishing a newly added plugin
-		return "", "", "", nil
+		return "", "", "", nil //nolint:nilerr
 	}
 	type manifestJSON struct {
 		Descriptor struct {

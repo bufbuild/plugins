@@ -55,6 +55,7 @@ func TestGeneration(t *testing.T) {
 	}
 	allowEmpty, _ := strconv.ParseBool(os.Getenv("ALLOW_EMPTY_PLUGIN_SUM"))
 	testPluginWithImage := func(t *testing.T, pluginMeta *plugin.Plugin, image string) {
+		t.Helper()
 		imageDir, err := filepath.Abs(filepath.Join("testdata", "images"))
 		require.NoError(t, err)
 		t.Run(image, func(t *testing.T) {
