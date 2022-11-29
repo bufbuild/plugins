@@ -3,7 +3,6 @@ package main
 import (
 	"archive/zip"
 	"bytes"
-	"compress/flate"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
@@ -28,6 +27,7 @@ import (
 	"github.com/bufbuild/plugins/internal/plugin"
 	"github.com/google/go-github/v48/github"
 	"github.com/hashicorp/go-retryablehttp"
+	"github.com/klauspost/compress/flate"
 	"golang.org/x/mod/semver"
 	"golang.org/x/oauth2"
 )
@@ -212,9 +212,11 @@ func run(root string, minisignPrivateKey string, dryRun bool) error {
 		return fmt.Errorf("failed to create %s: %w", pluginReleasesFile, err)
 	}
 
+	var publicKey *minisign.PublicKey
 	minisignPrivateKeyPassword := os.Getenv("MINISIGN_PRIVATE_KEY_PASSWORD")
 	if minisignPrivateKey != "" && minisignPrivateKeyPassword != "" {
-		if err := signPluginReleases(tmpDir, minisignPrivateKey, minisignPrivateKeyPassword); err != nil {
+		publicKey, err = signPluginReleases(tmpDir, minisignPrivateKey, minisignPrivateKeyPassword)
+		if err != nil {
 			return fmt.Errorf("failed to sign %q: %w", filepath.Join(tmpDir, pluginReleasesFile), err)
 		}
 	} else {
@@ -222,22 +224,25 @@ func run(root string, minisignPrivateKey string, dryRun bool) error {
 	}
 
 	if dryRun {
+		releaseBody := createReleaseBody(releaseName, plugins, publicKey)
+		if err := os.WriteFile(filepath.Join(tmpDir, "RELEASE.md"), []byte(releaseBody), 0644); err != nil { //nolint:gosec
+			return err
+		}
 		log.Printf("skipping GitHub release creation in dry-run mode")
 		log.Printf("release assets created in %q", tmpDir)
 		return nil
 	}
-	if err := createRelease(ctx, client, releaseName, plugins, tmpDir); err != nil {
+	if err := createRelease(ctx, client, releaseName, plugins, tmpDir, publicKey); err != nil {
 		return fmt.Errorf("failed to create GitHub release: %w", err)
 	}
 	return nil
 }
 
-func createRelease(ctx context.Context, client *github.Client, releaseName string, plugins []PluginRelease, tmpDir string) error {
+func createRelease(ctx context.Context, client *github.Client, releaseName string, plugins []PluginRelease, tmpDir string, publicKey *minisign.PublicKey) error {
 	// Create GitHub release
 	release, _, err := client.Repositories.CreateRelease(ctx, githubReleaseOwner, githubRepo, &github.RepositoryRelease{
-		Name:    github.String(releaseName),
-		TagName: github.String("releases/" + releaseName),
-		Body:    github.String(createReleaseBody(releaseName, plugins)),
+		Name: github.String(releaseName),
+		Body: github.String(createReleaseBody(releaseName, plugins, publicKey)),
 	})
 	if err != nil {
 		return err
@@ -261,7 +266,7 @@ func createRelease(ctx context.Context, client *github.Client, releaseName strin
 	})
 }
 
-func createReleaseBody(name string, plugins []PluginRelease) string {
+func createReleaseBody(name string, plugins []PluginRelease, publicKey *minisign.PublicKey) string {
 	var sb strings.Builder
 	pluginsByStatus := make(map[ReleaseStatus][]PluginRelease)
 	for _, p := range plugins {
@@ -305,22 +310,36 @@ func createReleaseBody(name string, plugins []PluginRelease) string {
 		}
 		sb.WriteString("\n")
 	}
+
+	if publicKey != nil {
+		sb.WriteString("## Verifying a release\n\n")
+		sb.WriteString("Releases are signed using our [minisign](https://github.com/jedisct1/minisign) public key:\n\n")
+		sb.WriteString(fmt.Sprintf("```\n%s\n```\n\n", publicKey.String()))
+		sb.WriteString("The release assets can be verified using this command (assuming that minisign is installed):\n\n")
+		releasesFile := fmt.Sprintf("https://github.com/%s/plugins/releases/download/%s/%s", githubReleaseOwner, name, pluginReleasesFile)
+		sb.WriteString(fmt.Sprintf("```\ncurl -OL %s && \\\n", releasesFile))
+		sb.WriteString(fmt.Sprintf("  curl -OL %s && \\\n", releasesFile+".minisig"))
+		sb.WriteString(fmt.Sprintf("  minisign -Vm %s -P %s\n```\n", pluginReleasesFile, publicKey.String()))
+	}
 	return sb.String()
 }
 
-func signPluginReleases(dir string, keyPath string, password string) error {
+func signPluginReleases(dir string, keyPath string, password string) (*minisign.PublicKey, error) {
 	releasesFile := filepath.Join(dir, pluginReleasesFile)
 	log.Printf("signing: %s", releasesFile)
 	privateKey, err := minisign.PrivateKeyFromFile(password, keyPath)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	releasesFileBytes, err := os.ReadFile(releasesFile)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	signature := minisign.Sign(privateKey, releasesFileBytes)
-	return os.WriteFile(releasesFile+".minisig", signature, 0644) //nolint:gosec
+	if err := os.WriteFile(releasesFile+".minisig", signature, 0644); err != nil { //nolint:gosec
+		return nil, err
+	}
+	return privateKey.Public().(*minisign.PublicKey), nil
 }
 
 func createPluginZip(basedir string, plugin *plugin.Plugin, imageName string, imageDigest string) (string, error) {
@@ -343,6 +362,7 @@ func createPluginZip(basedir string, plugin *plugin.Plugin, imageName string, im
 	if err := saveImageToDir(fmt.Sprintf("%s@%s", imageName, imageDigest), pluginTempDir); err != nil {
 		return "", err
 	}
+	log.Printf("creating %s", zipName)
 	zipFile := filepath.Join(basedir, zipName)
 	zf, err := os.OpenFile(zipFile, os.O_CREATE|os.O_RDWR|os.O_TRUNC, 0644)
 	if err != nil {
@@ -451,7 +471,7 @@ func calculateNextRelease(now time.Time, latestRelease *github.RepositoryRelease
 	var releaseName string
 	var latestReleaseName string
 	if latestRelease != nil {
-		latestReleaseName = strings.TrimPrefix(latestRelease.GetTagName(), "releases/")
+		latestReleaseName = latestRelease.GetTagName()
 	}
 	currentDate := now.UTC().Format("20060102")
 	if latestRelease == nil || !strings.HasPrefix(latestReleaseName, currentDate+".") {
@@ -523,7 +543,7 @@ func fetchGHCRImageNameAndDigest(plugin *plugin.Plugin) (string, string, error) 
 	type manifestJSON struct {
 		Descriptor struct {
 			Digest string `json:"digest"`
-		} `json:"Descriptor"`
+		} `json:"Descriptor"` //nolint:tagliatelle
 	}
 	var result manifestJSON
 	if err := json.Unmarshal(bb.Bytes(), &result); err != nil {

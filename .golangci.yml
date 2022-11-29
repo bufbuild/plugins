@@ -54,6 +54,7 @@ linters:
     - goconst
     - gocyclo
     - goerr113
+    - goimports # using gci
     - interfacebloat
     - nestif
     - nilerr
