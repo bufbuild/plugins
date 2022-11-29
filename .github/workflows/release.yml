@@ -7,7 +7,6 @@ on:
 
 permissions:
   contents: write
-  packages: read
 
 jobs:
   release:
@@ -36,7 +35,7 @@ jobs:
           MINISIGN_PRIVATE_KEY_PASSWORD: ${{ secrets.MINISIGN_PRIVATE_KEY_PASSWORD }}
         run: |
           echo "${MINISIGN_PRIVATE_KEY}" > minisign.key
-          go run ./cmd/release -minisign-private-key minisign.key .
+          go run ./cmd/release -minisign-private-key minisign.key -dry-run .
       - name: Clean Up
         if: always()
         run: |

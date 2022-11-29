@@ -2,6 +2,7 @@ package main
 
 import (
 	"archive/zip"
+	"bytes"
 	"compress/flate"
 	"context"
 	"crypto/sha256"
@@ -34,10 +35,9 @@ import (
 const (
 	githubOwner = "bufbuild"
 	// This is separate from githubOwner for testing releases (can point at personal fork).
-	githubReleaseOwner   = githubOwner // "pkwarren"
-	githubRepo           = "plugins"
-	packageTypeContainer = "container"
-	pluginReleasesFile   = "plugin-releases.json"
+	githubReleaseOwner = githubOwner // "pkwarren"
+	githubRepo         = "plugins"
+	pluginReleasesFile = "plugin-releases.json"
 )
 
 type ReleaseStatus int
@@ -144,12 +144,12 @@ func run(root string, minisignPrivateKey string, dryRun bool) error {
 		if err != nil {
 			return err
 		}
-		imageName, imageDigest, err := fetchGHCRImageNameAndDigest(context.Background(), client, plugin)
+		imageName, imageDigest, err := fetchGHCRImageNameAndDigest(plugin)
 		if err != nil {
 			return err
 		}
 		if imageDigest == "" {
-			log.Printf("unable to detect image digest for plugin %s/%s:%s", identity.Owner(), identity.Remote(), plugin.PluginVersion)
+			log.Printf("unable to detect image digest for plugin %s/%s:%s", identity.Owner(), identity.Plugin(), plugin.PluginVersion)
 			return nil
 		}
 		key := pluginNameVersion{name: identity.Owner() + "/" + identity.Plugin(), version: plugin.PluginVersion}
@@ -190,7 +190,11 @@ func run(root string, minisignPrivateKey string, dryRun bool) error {
 	}
 
 	if len(newPlugins) == 0 {
-		log.Printf("no changes to plugins since %v", latestRelease.GetTagName())
+		if tagName := latestRelease.GetTagName(); tagName != "" {
+			log.Printf("no changes to plugins since %v", tagName)
+		} else {
+			log.Printf("no changes to plugins - not creating initial release")
+		}
 		return nil
 	}
 
@@ -393,24 +397,12 @@ func addFileToZip(zipWriter *zip.Writer, path string) error {
 }
 
 func saveImageToDir(imageRef string, dir string) error {
-	dockerCmd, err := exec.LookPath("docker")
+	cmd, err := dockerCmd("save", imageRef, "-o", "image.tar")
 	if err != nil {
 		return err
 	}
-	dockerSave := exec.Cmd{
-		Path: dockerCmd,
-		Args: []string{
-			dockerCmd,
-			"save",
-			imageRef,
-			"-o",
-			"image.tar",
-		},
-		Dir:    dir,
-		Stdout: os.Stdout,
-		Stderr: os.Stderr,
-	}
-	return dockerSave.Run()
+	cmd.Dir = dir
+	return cmd.Run()
 }
 
 func createPluginReleases(dir string, plugins []PluginRelease) error {
@@ -429,23 +421,30 @@ func createPluginReleases(dir string, plugins []PluginRelease) error {
 }
 
 func pullImage(name string, digest string) error {
-	dockerPath, err := exec.LookPath("docker")
+	image := fmt.Sprintf("%s@%s", name, digest)
+	cmd, err := dockerCmd("pull", image)
 	if err != nil {
 		return err
 	}
-	image := fmt.Sprintf("%s@%s", name, digest)
 	log.Printf("pulling image: %s", image)
-	pullCmd := exec.Cmd{
+	return cmd.Run()
+}
+
+func dockerCmd(command string, args ...string) (*exec.Cmd, error) {
+	dockerPath, err := exec.LookPath("docker")
+	if err != nil {
+		return nil, err
+	}
+	cmd := &exec.Cmd{
 		Path: dockerPath,
-		Args: []string{
+		Args: append([]string{
 			dockerPath,
-			"pull",
-			image,
-		},
+			command,
+		}, args...),
 		Stdout: os.Stdout,
 		Stderr: os.Stderr,
 	}
-	return pullCmd.Run()
+	return cmd, nil
 }
 
 func calculateNextRelease(now time.Time, latestRelease *github.RepositoryRelease) (string, error) {
@@ -505,32 +504,35 @@ func calculateDigest(path string) (string, error) {
 	return "sha256:" + hex.EncodeToString(hashBytes), nil
 }
 
-func fetchGHCRImageNameAndDigest(ctx context.Context, client *github.Client, plugin *plugin.Plugin) (string, string, error) {
+func fetchGHCRImageNameAndDigest(plugin *plugin.Plugin) (string, string, error) {
 	identity, err := bufpluginref.PluginIdentityForString(plugin.Name)
 	if err != nil {
 		return "", "", err
 	}
-	packageName := fmt.Sprintf("plugins-%s-%s", identity.Owner(), identity.Plugin())
-	versions, resp, err := client.Organizations.PackageGetAllVersions(ctx, githubOwner, packageTypeContainer, packageName, nil)
+	imageName := fmt.Sprintf("ghcr.io/%s/plugins-%s-%s", githubOwner, identity.Owner(), identity.Plugin())
+	cmd, err := dockerCmd("manifest", "inspect", "--verbose", imageName+":"+plugin.PluginVersion)
 	if err != nil {
-		if resp != nil && resp.StatusCode == http.StatusNotFound {
-			return "", "", nil
-		}
-		return "", "", fmt.Errorf("failed to list package versions for %s: %w", packageName, err)
+		return "", "", err
 	}
-	for _, version := range versions {
-		if version.GetMetadata() == nil || version.GetMetadata().GetContainer() == nil {
-			continue
-		}
-		for _, tag := range version.GetMetadata().GetContainer().Tags {
-			if tag == plugin.PluginVersion {
-				imageName := fmt.Sprintf("ghcr.io/%s/%s", githubOwner, packageName)
-				return imageName, version.GetName(), nil
-			}
-		}
+	var bb bytes.Buffer
+	cmd.Stdout = &bb
+	if err := cmd.Run(); err != nil {
+		// this may occur if this runs prior to publishing a newly added plugin
+		return "", "", nil
 	}
-	// this may occur if this runs prior to publishing a newly added plugin
-	return "", "", nil
+	type manifestJSON struct {
+		Descriptor struct {
+			Digest string `json:"digest"`
+		} `json:"Descriptor"`
+	}
+	var result manifestJSON
+	if err := json.Unmarshal(bb.Bytes(), &result); err != nil {
+		return "", "", fmt.Errorf("unable to parse docker manifest inspect output: %w", err)
+	}
+	if result.Descriptor.Digest == "" {
+		return "", "", fmt.Errorf("unable to parse descriptor digest from docker manifest inspect output")
+	}
+	return imageName, result.Descriptor.Digest, nil
 }
 
 func getLatestRelease(ctx context.Context, client *github.Client) (*github.RepositoryRelease, error) {
