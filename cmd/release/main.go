@@ -25,11 +25,12 @@ import (
 
 	"aead.dev/minisign"
 	"github.com/bufbuild/buf/private/bufpkg/bufplugin/bufpluginref"
-	"github.com/bufbuild/plugins/internal/plugin"
 	"github.com/google/go-github/v48/github"
 	"github.com/hashicorp/go-retryablehttp"
 	"golang.org/x/mod/semver"
 	"golang.org/x/oauth2"
+
+	"github.com/bufbuild/plugins/internal/plugin"
 )
 
 const (
@@ -155,7 +156,7 @@ func run(root string, minisignPrivateKey string, dryRun bool) error {
 		}
 		key := pluginNameVersion{name: identity.Owner() + "/" + identity.Plugin(), version: plugin.PluginVersion}
 		release := pluginNameVersionToRelease[key]
-		// Found existing release - only rebuild if changed GHCR image digest or buf.plugin.yaml digest
+		// Found existing release - only rebuild if changed image digest or buf.plugin.yaml digest
 		if release.ImageDigest != imageDigest || release.PluginYAMLDigest != pluginYamlDigest {
 			downloadURL, err := pluginDownloadURL(plugin, releaseName)
 			if err != nil {

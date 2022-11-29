@@ -12,11 +12,12 @@ import (
 	"text/template"
 
 	"github.com/bufbuild/buf/private/bufpkg/bufplugin/bufpluginconfig"
-	"github.com/bufbuild/plugins/internal/plugin"
 	"github.com/sethvargo/go-envconfig"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/mod/sumdb/dirhash"
+
+	"github.com/bufbuild/plugins/internal/plugin"
 )
 
 var (

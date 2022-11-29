@@ -12,11 +12,12 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/bufbuild/plugins/internal/source"
 	"github.com/google/go-github/v48/github"
 	"github.com/hashicorp/go-retryablehttp"
 	"golang.org/x/mod/semver"
 	"golang.org/x/oauth2"
+
+	"github.com/bufbuild/plugins/internal/source"
 )
 
 const (
