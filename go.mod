@@ -7,7 +7,6 @@ require (
 	github.com/bufbuild/buf v1.9.1-0.20221104204513-91ec6001a5f1
 	github.com/google/go-github/v48 v48.1.0
 	github.com/hashicorp/go-retryablehttp v0.7.1
-	github.com/klauspost/compress v1.15.12
 	github.com/sethvargo/go-envconfig v0.8.2
 	github.com/stretchr/testify v1.8.1
 	go.uber.org/multierr v1.8.0
