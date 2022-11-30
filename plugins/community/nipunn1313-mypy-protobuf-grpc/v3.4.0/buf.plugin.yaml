@@ -1,5 +1,5 @@
 version: v1
-name: buf.build/community/mypy-protobuf-grpc
+name: buf.build/community/nipunn1313-mypy-protobuf-grpc
 plugin_version: v3.4.0
 source_url: https://github.com/nipunn1313/mypy-protobuf
 description: Generate mypy stub files for grpcio generated code.
