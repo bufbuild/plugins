@@ -146,12 +146,12 @@ func run(root string, minisignPrivateKey string, dryRun bool) error {
 		if err != nil {
 			return err
 		}
-		remoteImage, imageID, err := fetchRemoteImageAndImageID(plugin)
+		registryImage, imageID, err := fetchRegistryImageAndImageID(plugin)
 		if err != nil {
 			return err
 		}
-		if remoteImage == "" || imageID == "" {
-			log.Printf("unable to detect remote image and image ID for plugin %s/%s:%s", identity.Owner(), identity.Plugin(), plugin.PluginVersion)
+		if registryImage == "" || imageID == "" {
+			log.Printf("unable to detect registry image and image ID for plugin %s/%s:%s", identity.Owner(), identity.Plugin(), plugin.PluginVersion)
 			return nil
 		}
 		key := pluginNameVersion{name: identity.Owner() + "/" + identity.Plugin(), version: plugin.PluginVersion}
@@ -162,7 +162,7 @@ func run(root string, minisignPrivateKey string, dryRun bool) error {
 			if err != nil {
 				return err
 			}
-			zipDigest, err := createPluginZip(tmpDir, plugin, remoteImage, imageID)
+			zipDigest, err := createPluginZip(tmpDir, plugin, registryImage, imageID)
 			if err != nil {
 				return err
 			}
@@ -175,7 +175,7 @@ func run(root string, minisignPrivateKey string, dryRun bool) error {
 				PluginVersion:    plugin.PluginVersion,
 				PluginZipDigest:  zipDigest,
 				PluginYAMLDigest: pluginYamlDigest,
-				RegistryImage:    remoteImage,
+				RegistryImage:    registryImage,
 				ImageID:          imageID,
 				ReleaseTag:       releaseName,
 				URL:              downloadURL,
@@ -348,8 +348,8 @@ func signPluginReleases(dir string, keyPath string, password string) (*minisign.
 	return &publicKey, nil
 }
 
-func createPluginZip(basedir string, plugin *plugin.Plugin, remoteImage string, imageID string) (string, error) {
-	if err := pullImage(remoteImage); err != nil {
+func createPluginZip(basedir string, plugin *plugin.Plugin, registryImage string, imageID string) (string, error) {
+	if err := pullImage(registryImage); err != nil {
 		return "", err
 	}
 	zipName, err := pluginZipName(plugin)
@@ -529,7 +529,7 @@ func calculateDigest(path string) (string, error) {
 	return "sha256:" + hex.EncodeToString(hashBytes), nil
 }
 
-func fetchRemoteImageAndImageID(plugin *plugin.Plugin) (string, string, error) {
+func fetchRegistryImageAndImageID(plugin *plugin.Plugin) (string, string, error) {
 	identity, err := bufpluginref.PluginIdentityForString(plugin.Name)
 	if err != nil {
 		return "", "", err
