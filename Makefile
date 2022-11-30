@@ -40,6 +40,7 @@ test: build
 	PLUGIN_OWNER=`echo "$${PLUGIN_FULL_NAME}" | cut -d '/' -f 2`; \
 	PLUGIN_NAME=`echo "$${PLUGIN_FULL_NAME}" | cut -d '/' -f 3-`; \
 	PLUGIN_VERSION=$(shell yq '.plugin_version' $*/buf.plugin.yaml); \
+	PLUGIN_DESCRIPTION="$(shell yq '.description' $*/buf.plugin.yaml)"; \
 	PLUGIN_LICENSE="$(shell yq '.spdx_license_id' $*/buf.plugin.yaml)"; \
 	test -n "$${PLUGIN_NAME}" -a -n "$${PLUGIN_VERSION}" && \
 	if [[ "$(DOCKER_ORG)" = "ghcr.io/bufbuild" ]]; then \
@@ -52,6 +53,7 @@ test: build
 		--label build.buf.plugins.config.name=$${PLUGIN_NAME} \
 		--label build.buf.plugins.config.version=$${PLUGIN_VERSION} \
 		--label org.opencontainers.image.source=https://github.com/bufbuild/plugins \
+		--label "org.opencontainers.image.description=$${PLUGIN_DESCRIPTION}" \
 		--label "org.opencontainers.image.licenses=$${PLUGIN_LICENSE}" \
 		-t $(DOCKER_ORG)/plugins-$${PLUGIN_OWNER}-$${PLUGIN_NAME}:$${PLUGIN_VERSION} \
 		$(<D)
