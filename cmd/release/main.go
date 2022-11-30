@@ -343,7 +343,7 @@ func signPluginReleases(dir string, keyPath string, password string) (*minisign.
 	}
 	publicKey, ok := privateKey.Public().(minisign.PublicKey)
 	if !ok {
-		return nil, fmt.Errorf("unable to type assert minisign public key")
+		return nil, errors.New("unable to type assert minisign public key")
 	}
 	return &publicKey, nil
 }
@@ -561,11 +561,11 @@ func fetchRegistryImageAndImageID(plugin *plugin.Plugin) (string, string, error)
 	}
 	descriptorDigest := result.Descriptor.Digest
 	if descriptorDigest == "" {
-		return "", "", fmt.Errorf("unable to parse descriptor digest from docker manifest inspect output")
+		return "", "", errors.New("unable to parse descriptor digest from docker manifest inspect output")
 	}
 	imageDigest := result.SchemaV2Manifest.Config.Digest
 	if imageDigest == "" {
-		return "", "", fmt.Errorf("unable to parse image config digest from docker manifest inspect output")
+		return "", "", errors.New("unable to parse image config digest from docker manifest inspect output")
 	}
 	return fmt.Sprintf("%s@%s", imageName, descriptorDigest), imageDigest, nil
 }

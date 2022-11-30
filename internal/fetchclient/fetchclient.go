@@ -85,7 +85,7 @@ func (c *Client) fetch(ctx context.Context, config *source.Config) (string, erro
 		}
 		return results.latestVersion, nil
 	}
-	return "", fmt.Errorf("failed to match a source")
+	return "", errors.New("failed to match a source")
 }
 
 func (c *Client) fetchDartFlutter(ctx context.Context, name string) (string, error) {
