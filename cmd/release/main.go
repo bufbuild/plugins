@@ -54,14 +54,14 @@ type PluginReleases struct {
 }
 
 type PluginRelease struct {
-	PluginName       string        `json:"name"`              // org/name for the plugin (without remote)
-	PluginVersion    string        `json:"version"`           // version of the plugin (including 'v' prefix)
-	PluginZipDigest  string        `json:"zip_digest"`        // <digest-type>:<digest> for plugin .zip download
-	PluginYAMLDigest string        `json:"yaml_digest"`       // <digest-type>:<digest> for buf.plugin.yaml
-	ImageDigest      string        `json:"image_digest"`      // <digest-type>:<digest> for Docker image
-	GHCRImageDigest  string        `json:"ghcr_image_digest"` // <digest-type>:<digest> for ghcr.io/bufbuild/plugins-<org>-<name>:v<version> image
-	ReleaseTag       string        `json:"release_tag"`       // GitHub release tag - i.e. 20221121.1
-	URL              string        `json:"url"`               // URL to GitHub release zip file for the plugin - i.e. https://github.com/bufbuild/plugins/releases/download/20221121.1/bufbuild-connect-go-v1.1.0.zip
+	PluginName       string        `json:"name"`           // org/name for the plugin (without remote)
+	PluginVersion    string        `json:"version"`        // version of the plugin (including 'v' prefix)
+	PluginZipDigest  string        `json:"zip_digest"`     // <digest-type>:<digest> for plugin .zip download
+	PluginYAMLDigest string        `json:"yaml_digest"`    // <digest-type>:<digest> for buf.plugin.yaml
+	ImageID          string        `json:"image_id"`       // <digest-type>:<digest> - https://github.com/opencontainers/image-spec/blob/main/config.md#imageid
+	RegistryImage    string        `json:"registry_image"` // ghcr.io/bufbuild/plugins-<org>-<name>@<digest-type>:<digest>
+	ReleaseTag       string        `json:"release_tag"`    // GitHub release tag - i.e. 20221121.1
+	URL              string        `json:"url"`            // URL to GitHub release zip file for the plugin - i.e. https://github.com/bufbuild/plugins/releases/download/20221121.1/bufbuild-connect-go-v1.1.0.zip
 	LastUpdated      time.Time     `json:"last_updated"`
 	Status           ReleaseStatus `json:"-"`
 }
@@ -146,28 +146,28 @@ func run(root string, minisignPrivateKey string, dryRun bool) error {
 		if err != nil {
 			return err
 		}
-		imageName, ghcrDigest, imageDigest, err := fetchGHCRImageNameAndDigests(plugin)
+		remoteImage, imageID, err := fetchRemoteImageAndImageID(plugin)
 		if err != nil {
 			return err
 		}
-		if ghcrDigest == "" || imageDigest == "" {
-			log.Printf("unable to detect image digests for plugin %s/%s:%s", identity.Owner(), identity.Plugin(), plugin.PluginVersion)
+		if remoteImage == "" || imageID == "" {
+			log.Printf("unable to detect remote image and image ID for plugin %s/%s:%s", identity.Owner(), identity.Plugin(), plugin.PluginVersion)
 			return nil
 		}
 		key := pluginNameVersion{name: identity.Owner() + "/" + identity.Plugin(), version: plugin.PluginVersion}
 		release := pluginNameVersionToRelease[key]
 		// Found existing release - only rebuild if changed image digest or buf.plugin.yaml digest
-		if release.ImageDigest != imageDigest || release.PluginYAMLDigest != pluginYamlDigest {
+		if release.ImageID != imageID || release.PluginYAMLDigest != pluginYamlDigest {
 			downloadURL, err := pluginDownloadURL(plugin, releaseName)
 			if err != nil {
 				return err
 			}
-			zipDigest, err := createPluginZip(tmpDir, plugin, imageName, ghcrDigest, imageDigest)
+			zipDigest, err := createPluginZip(tmpDir, plugin, remoteImage, imageID)
 			if err != nil {
 				return err
 			}
 			status := UPDATED
-			if release.ImageDigest == "" {
+			if release.ImageID == "" {
 				status = NEW
 			}
 			newPlugins = append(newPlugins, PluginRelease{
@@ -175,8 +175,8 @@ func run(root string, minisignPrivateKey string, dryRun bool) error {
 				PluginVersion:    plugin.PluginVersion,
 				PluginZipDigest:  zipDigest,
 				PluginYAMLDigest: pluginYamlDigest,
-				GHCRImageDigest:  ghcrDigest,
-				ImageDigest:      imageDigest,
+				RegistryImage:    remoteImage,
+				ImageID:          imageID,
 				ReleaseTag:       releaseName,
 				URL:              downloadURL,
 				LastUpdated:      now,
@@ -348,8 +348,8 @@ func signPluginReleases(dir string, keyPath string, password string) (*minisign.
 	return &publicKey, nil
 }
 
-func createPluginZip(basedir string, plugin *plugin.Plugin, imageName string, ghcrImageDigest string, imageDigest string) (string, error) {
-	if err := pullImage(imageName, ghcrImageDigest); err != nil {
+func createPluginZip(basedir string, plugin *plugin.Plugin, remoteImage string, imageID string) (string, error) {
+	if err := pullImage(remoteImage); err != nil {
 		return "", err
 	}
 	zipName, err := pluginZipName(plugin)
@@ -365,7 +365,7 @@ func createPluginZip(basedir string, plugin *plugin.Plugin, imageName string, gh
 			log.Printf("failed to remove %q: %v", pluginTempDir, err)
 		}
 	}()
-	if err := saveImageToDir(imageDigest, pluginTempDir); err != nil {
+	if err := saveImageToDir(imageID, pluginTempDir); err != nil {
 		return "", err
 	}
 	log.Printf("creating %s", zipName)
@@ -446,13 +446,12 @@ func createPluginReleases(dir string, plugins []PluginRelease) error {
 	return encoder.Encode(&PluginReleases{Releases: plugins})
 }
 
-func pullImage(name string, digest string) error {
-	image := fmt.Sprintf("%s@%s", name, digest)
-	cmd, err := dockerCmd("pull", image)
+func pullImage(name string) error {
+	cmd, err := dockerCmd("pull", name)
 	if err != nil {
 		return err
 	}
-	log.Printf("pulling image: %s", image)
+	log.Printf("pulling image: %s", name)
 	return cmd.Run()
 }
 
@@ -530,21 +529,21 @@ func calculateDigest(path string) (string, error) {
 	return "sha256:" + hex.EncodeToString(hashBytes), nil
 }
 
-func fetchGHCRImageNameAndDigests(plugin *plugin.Plugin) (string, string, string, error) {
+func fetchRemoteImageAndImageID(plugin *plugin.Plugin) (string, string, error) {
 	identity, err := bufpluginref.PluginIdentityForString(plugin.Name)
 	if err != nil {
-		return "", "", "", err
+		return "", "", err
 	}
 	imageName := fmt.Sprintf("ghcr.io/%s/plugins-%s-%s", githubOwner, identity.Owner(), identity.Plugin())
 	cmd, err := dockerCmd("manifest", "inspect", "--verbose", imageName+":"+plugin.PluginVersion)
 	if err != nil {
-		return "", "", "", err
+		return "", "", err
 	}
 	var bb bytes.Buffer
 	cmd.Stdout = &bb
 	if err := cmd.Run(); err != nil {
 		// this may occur if this runs prior to publishing a newly added plugin
-		return "", "", "", nil //nolint:nilerr
+		return "", "", nil //nolint:nilerr
 	}
 	type manifestJSON struct {
 		Descriptor struct {
@@ -558,17 +557,17 @@ func fetchGHCRImageNameAndDigests(plugin *plugin.Plugin) (string, string, string
 	}
 	var result manifestJSON
 	if err := json.Unmarshal(bb.Bytes(), &result); err != nil {
-		return "", "", "", fmt.Errorf("unable to parse docker manifest inspect output: %w", err)
+		return "", "", fmt.Errorf("unable to parse docker manifest inspect output: %w", err)
 	}
 	descriptorDigest := result.Descriptor.Digest
 	if descriptorDigest == "" {
-		return "", "", "", fmt.Errorf("unable to parse descriptor digest from docker manifest inspect output")
+		return "", "", fmt.Errorf("unable to parse descriptor digest from docker manifest inspect output")
 	}
 	imageDigest := result.SchemaV2Manifest.Config.Digest
 	if imageDigest == "" {
-		return "", "", "", fmt.Errorf("unable to parse image config digest from docker manifest inspect output")
+		return "", "", fmt.Errorf("unable to parse image config digest from docker manifest inspect output")
 	}
-	return imageName, descriptorDigest, imageDigest, nil
+	return fmt.Sprintf("%s@%s", imageName, descriptorDigest), imageDigest, nil
 }
 
 func getLatestRelease(ctx context.Context, client *github.Client) (*github.RepositoryRelease, error) {
