@@ -6,7 +6,8 @@ ADD /requirements.txt requirements.txt
 RUN source ./bin/activate \
  && pip install --no-cache-dir -r requirements.txt \
  && pip uninstall --yes pip setuptools \
- && rm -f requirements.txt bin/activate.fish bin/activate.csh bin/Activate.ps1
+ && rm -f requirements.txt bin/activate.fish bin/activate.csh bin/Activate.ps1 \
+ && rm -f bin/protoc-gen-mypy
 
 FROM python:3.11.0-alpine3.17
 COPY --from=build --link /app /app
