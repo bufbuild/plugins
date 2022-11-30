@@ -12,11 +12,12 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/bufbuild/plugins/internal/source"
 	"github.com/google/go-github/v48/github"
 	"github.com/hashicorp/go-retryablehttp"
 	"golang.org/x/mod/semver"
 	"golang.org/x/oauth2"
+
+	"github.com/bufbuild/plugins/internal/source"
 )
 
 const (
@@ -84,7 +85,7 @@ func (c *Client) fetch(ctx context.Context, config *source.Config) (string, erro
 		}
 		return results.latestVersion, nil
 	}
-	return "", fmt.Errorf("failed to match a source")
+	return "", errors.New("failed to match a source")
 }
 
 func (c *Client) fetchDartFlutter(ctx context.Context, name string) (string, error) {

@@ -2,6 +2,7 @@ package main
 
 import (
 	"archive/zip"
+	"bytes"
 	"compress/flate"
 	"context"
 	"crypto/sha256"
@@ -24,20 +25,20 @@ import (
 
 	"aead.dev/minisign"
 	"github.com/bufbuild/buf/private/bufpkg/bufplugin/bufpluginref"
-	"github.com/bufbuild/plugins/internal/plugin"
 	"github.com/google/go-github/v48/github"
 	"github.com/hashicorp/go-retryablehttp"
 	"golang.org/x/mod/semver"
 	"golang.org/x/oauth2"
+
+	"github.com/bufbuild/plugins/internal/plugin"
 )
 
 const (
 	githubOwner = "bufbuild"
 	// This is separate from githubOwner for testing releases (can point at personal fork).
-	githubReleaseOwner   = githubOwner // "pkwarren"
-	githubRepo           = "plugins"
-	packageTypeContainer = "container"
-	pluginReleasesFile   = "plugin-releases.json"
+	githubReleaseOwner = githubOwner // "pkwarren"
+	githubRepo         = "plugins"
+	pluginReleasesFile = "plugin-releases.json"
 )
 
 type ReleaseStatus int
@@ -53,13 +54,14 @@ type PluginReleases struct {
 }
 
 type PluginRelease struct {
-	PluginName       string        `json:"name"`              // org/name for the plugin (without remote)
-	PluginVersion    string        `json:"version"`           // version of the plugin (including 'v' prefix)
-	PluginZipDigest  string        `json:"zip_digest"`        // <digest-type>:<digest> for plugin .zip download
-	PluginYAMLDigest string        `json:"yaml_digest"`       // <digest-type>:<digest> for buf.plugin.yaml
-	GHCRImageDigest  string        `json:"ghcr_image_digest"` // <digest-type>:<digest> for ghcr.io/bufbuild/plugins-<org>-<name>:v<version> image
-	ReleaseTag       string        `json:"release_tag"`       // GitHub release tag - i.e. 20221121.1
-	URL              string        `json:"url"`               // URL to GitHub release zip file for the plugin - i.e. https://github.com/bufbuild/plugins/releases/download/20221121.1/bufbuild-connect-go-v1.1.0.zip
+	PluginName       string        `json:"name"`           // org/name for the plugin (without remote)
+	PluginVersion    string        `json:"version"`        // version of the plugin (including 'v' prefix)
+	PluginZipDigest  string        `json:"zip_digest"`     // <digest-type>:<digest> for plugin .zip download
+	PluginYAMLDigest string        `json:"yaml_digest"`    // <digest-type>:<digest> for buf.plugin.yaml
+	ImageID          string        `json:"image_id"`       // <digest-type>:<digest> - https://github.com/opencontainers/image-spec/blob/main/config.md#imageid
+	RegistryImage    string        `json:"registry_image"` // ghcr.io/bufbuild/plugins-<org>-<name>@<digest-type>:<digest>
+	ReleaseTag       string        `json:"release_tag"`    // GitHub release tag - i.e. 20221121.1
+	URL              string        `json:"url"`            // URL to GitHub release zip file for the plugin - i.e. https://github.com/bufbuild/plugins/releases/download/20221121.1/bufbuild-connect-go-v1.1.0.zip
 	LastUpdated      time.Time     `json:"last_updated"`
 	Status           ReleaseStatus `json:"-"`
 }
@@ -138,34 +140,34 @@ func run(root string, minisignPrivateKey string, dryRun bool) error {
 	if err := plugin.Walk(root, func(plugin *plugin.Plugin) error {
 		identity, err := bufpluginref.PluginIdentityForString(plugin.Name)
 		if err != nil {
-			return nil
+			return err
 		}
 		pluginYamlDigest, err := calculateDigest(plugin.Path)
 		if err != nil {
 			return err
 		}
-		imageName, imageDigest, err := fetchGHCRImageNameAndDigest(context.Background(), client, plugin)
+		registryImage, imageID, err := fetchRegistryImageAndImageID(plugin)
 		if err != nil {
 			return err
 		}
-		if imageDigest == "" {
-			log.Printf("unable to detect image digest for plugin %s/%s:%s", identity.Owner(), identity.Remote(), plugin.PluginVersion)
+		if registryImage == "" || imageID == "" {
+			log.Printf("unable to detect registry image and image ID for plugin %s/%s:%s", identity.Owner(), identity.Plugin(), plugin.PluginVersion)
 			return nil
 		}
 		key := pluginNameVersion{name: identity.Owner() + "/" + identity.Plugin(), version: plugin.PluginVersion}
 		release := pluginNameVersionToRelease[key]
 		// Found existing release - only rebuild if changed image digest or buf.plugin.yaml digest
-		if release.GHCRImageDigest != imageDigest || release.PluginYAMLDigest != pluginYamlDigest {
+		if release.ImageID != imageID || release.PluginYAMLDigest != pluginYamlDigest {
 			downloadURL, err := pluginDownloadURL(plugin, releaseName)
 			if err != nil {
 				return err
 			}
-			zipDigest, err := createPluginZip(tmpDir, plugin, imageName, imageDigest)
+			zipDigest, err := createPluginZip(tmpDir, plugin, registryImage, imageID)
 			if err != nil {
 				return err
 			}
 			status := UPDATED
-			if release.GHCRImageDigest == "" {
+			if release.ImageID == "" {
 				status = NEW
 			}
 			newPlugins = append(newPlugins, PluginRelease{
@@ -173,7 +175,8 @@ func run(root string, minisignPrivateKey string, dryRun bool) error {
 				PluginVersion:    plugin.PluginVersion,
 				PluginZipDigest:  zipDigest,
 				PluginYAMLDigest: pluginYamlDigest,
-				GHCRImageDigest:  imageDigest,
+				RegistryImage:    registryImage,
+				ImageID:          imageID,
 				ReleaseTag:       releaseName,
 				URL:              downloadURL,
 				LastUpdated:      now,
@@ -190,7 +193,11 @@ func run(root string, minisignPrivateKey string, dryRun bool) error {
 	}
 
 	if len(newPlugins) == 0 {
-		log.Printf("no changes to plugins since %v", latestRelease.GetTagName())
+		if tagName := latestRelease.GetTagName(); tagName != "" {
+			log.Printf("no changes to plugins since %v", tagName)
+		} else {
+			log.Printf("no changes to plugins - not creating initial release")
+		}
 		return nil
 	}
 
@@ -209,31 +216,31 @@ func run(root string, minisignPrivateKey string, dryRun bool) error {
 	}
 
 	minisignPrivateKeyPassword := os.Getenv("MINISIGN_PRIVATE_KEY_PASSWORD")
-	if minisignPrivateKey != "" && minisignPrivateKeyPassword != "" {
-		if err := signPluginReleases(tmpDir, minisignPrivateKey, minisignPrivateKeyPassword); err != nil {
-			return fmt.Errorf("failed to sign %q: %w", filepath.Join(tmpDir, pluginReleasesFile), err)
-		}
-	} else {
-		log.Printf("skipping signing of %s", pluginReleasesFile)
+	publicKey, err := signPluginReleases(tmpDir, minisignPrivateKey, minisignPrivateKeyPassword)
+	if err != nil {
+		return fmt.Errorf("failed to sign %q: %w", filepath.Join(tmpDir, pluginReleasesFile), err)
 	}
 
 	if dryRun {
+		releaseBody := createReleaseBody(releaseName, plugins, publicKey)
+		if err := os.WriteFile(filepath.Join(tmpDir, "RELEASE.md"), []byte(releaseBody), 0644); err != nil { //nolint:gosec
+			return err
+		}
 		log.Printf("skipping GitHub release creation in dry-run mode")
 		log.Printf("release assets created in %q", tmpDir)
 		return nil
 	}
-	if err := createRelease(ctx, client, releaseName, plugins, tmpDir); err != nil {
+	if err := createRelease(ctx, client, releaseName, plugins, tmpDir, publicKey); err != nil {
 		return fmt.Errorf("failed to create GitHub release: %w", err)
 	}
 	return nil
 }
 
-func createRelease(ctx context.Context, client *github.Client, releaseName string, plugins []PluginRelease, tmpDir string) error {
+func createRelease(ctx context.Context, client *github.Client, releaseName string, plugins []PluginRelease, tmpDir string, publicKey *minisign.PublicKey) error {
 	// Create GitHub release
 	release, _, err := client.Repositories.CreateRelease(ctx, githubReleaseOwner, githubRepo, &github.RepositoryRelease{
-		Name:    github.String(releaseName),
-		TagName: github.String("releases/" + releaseName),
-		Body:    github.String(createReleaseBody(releaseName, plugins)),
+		Name: github.String(releaseName),
+		Body: github.String(createReleaseBody(releaseName, plugins, publicKey)),
 	})
 	if err != nil {
 		return err
@@ -257,7 +264,7 @@ func createRelease(ctx context.Context, client *github.Client, releaseName strin
 	})
 }
 
-func createReleaseBody(name string, plugins []PluginRelease) string {
+func createReleaseBody(name string, plugins []PluginRelease, publicKey *minisign.PublicKey) string {
 	var sb strings.Builder
 	pluginsByStatus := make(map[ReleaseStatus][]PluginRelease)
 	for _, p := range plugins {
@@ -301,26 +308,48 @@ func createReleaseBody(name string, plugins []PluginRelease) string {
 		}
 		sb.WriteString("\n")
 	}
+
+	if publicKey != nil {
+		sb.WriteString("## Verifying a release\n\n")
+		sb.WriteString("Releases are signed using our [minisign](https://github.com/jedisct1/minisign) public key:\n\n")
+		sb.WriteString(fmt.Sprintf("```\n%s\n```\n\n", publicKey.String()))
+		sb.WriteString("The release assets can be verified using this command (assuming that minisign is installed):\n\n")
+		releasesFile := fmt.Sprintf("https://github.com/%s/plugins/releases/download/%s/%s", githubReleaseOwner, name, pluginReleasesFile)
+		sb.WriteString(fmt.Sprintf("```\ncurl -OL %s && \\\n", releasesFile))
+		sb.WriteString(fmt.Sprintf("  curl -OL %s && \\\n", releasesFile+".minisig"))
+		sb.WriteString(fmt.Sprintf("  minisign -Vm %s -P %s\n```\n", pluginReleasesFile, publicKey.String()))
+	}
 	return sb.String()
 }
 
-func signPluginReleases(dir string, keyPath string, password string) error {
+func signPluginReleases(dir string, keyPath string, password string) (*minisign.PublicKey, error) {
+	if keyPath == "" || password == "" {
+		log.Printf("skipping signing of %s", pluginReleasesFile)
+		return nil, nil
+	}
 	releasesFile := filepath.Join(dir, pluginReleasesFile)
 	log.Printf("signing: %s", releasesFile)
 	privateKey, err := minisign.PrivateKeyFromFile(password, keyPath)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	releasesFileBytes, err := os.ReadFile(releasesFile)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	signature := minisign.Sign(privateKey, releasesFileBytes)
-	return os.WriteFile(releasesFile+".minisig", signature, 0644) //nolint:gosec
+	if err := os.WriteFile(releasesFile+".minisig", signature, 0644); err != nil { //nolint:gosec
+		return nil, err
+	}
+	publicKey, ok := privateKey.Public().(minisign.PublicKey)
+	if !ok {
+		return nil, errors.New("unable to type assert minisign public key")
+	}
+	return &publicKey, nil
 }
 
-func createPluginZip(basedir string, plugin *plugin.Plugin, imageName string, imageDigest string) (string, error) {
-	if err := pullImage(imageName, imageDigest); err != nil {
+func createPluginZip(basedir string, plugin *plugin.Plugin, registryImage string, imageID string) (string, error) {
+	if err := pullImage(registryImage); err != nil {
 		return "", err
 	}
 	zipName, err := pluginZipName(plugin)
@@ -336,9 +365,10 @@ func createPluginZip(basedir string, plugin *plugin.Plugin, imageName string, im
 			log.Printf("failed to remove %q: %v", pluginTempDir, err)
 		}
 	}()
-	if err := saveImageToDir(fmt.Sprintf("%s@%s", imageName, imageDigest), pluginTempDir); err != nil {
+	if err := saveImageToDir(imageID, pluginTempDir); err != nil {
 		return "", err
 	}
+	log.Printf("creating %s", zipName)
 	zipFile := filepath.Join(basedir, zipName)
 	zf, err := os.OpenFile(zipFile, os.O_CREATE|os.O_RDWR|os.O_TRUNC, 0644)
 	if err != nil {
@@ -393,24 +423,12 @@ func addFileToZip(zipWriter *zip.Writer, path string) error {
 }
 
 func saveImageToDir(imageRef string, dir string) error {
-	dockerCmd, err := exec.LookPath("docker")
+	cmd, err := dockerCmd("save", imageRef, "-o", "image.tar")
 	if err != nil {
 		return err
 	}
-	dockerSave := exec.Cmd{
-		Path: dockerCmd,
-		Args: []string{
-			dockerCmd,
-			"save",
-			imageRef,
-			"-o",
-			"image.tar",
-		},
-		Dir:    dir,
-		Stdout: os.Stdout,
-		Stderr: os.Stderr,
-	}
-	return dockerSave.Run()
+	cmd.Dir = dir
+	return cmd.Run()
 }
 
 func createPluginReleases(dir string, plugins []PluginRelease) error {
@@ -428,31 +446,37 @@ func createPluginReleases(dir string, plugins []PluginRelease) error {
 	return encoder.Encode(&PluginReleases{Releases: plugins})
 }
 
-func pullImage(name string, digest string) error {
-	dockerPath, err := exec.LookPath("docker")
+func pullImage(name string) error {
+	cmd, err := dockerCmd("pull", name)
 	if err != nil {
 		return err
 	}
-	image := fmt.Sprintf("%s@%s", name, digest)
-	log.Printf("pulling image: %s", image)
-	pullCmd := exec.Cmd{
+	log.Printf("pulling image: %s", name)
+	return cmd.Run()
+}
+
+func dockerCmd(command string, args ...string) (*exec.Cmd, error) {
+	dockerPath, err := exec.LookPath("docker")
+	if err != nil {
+		return nil, err
+	}
+	cmd := &exec.Cmd{
 		Path: dockerPath,
-		Args: []string{
+		Args: append([]string{
 			dockerPath,
-			"pull",
-			image,
-		},
+			command,
+		}, args...),
 		Stdout: os.Stdout,
 		Stderr: os.Stderr,
 	}
-	return pullCmd.Run()
+	return cmd, nil
 }
 
 func calculateNextRelease(now time.Time, latestRelease *github.RepositoryRelease) (string, error) {
 	var releaseName string
 	var latestReleaseName string
 	if latestRelease != nil {
-		latestReleaseName = strings.TrimPrefix(latestRelease.GetTagName(), "releases/")
+		latestReleaseName = latestRelease.GetTagName()
 	}
 	currentDate := now.UTC().Format("20060102")
 	if latestRelease == nil || !strings.HasPrefix(latestReleaseName, currentDate+".") {
@@ -505,32 +529,45 @@ func calculateDigest(path string) (string, error) {
 	return "sha256:" + hex.EncodeToString(hashBytes), nil
 }
 
-func fetchGHCRImageNameAndDigest(ctx context.Context, client *github.Client, plugin *plugin.Plugin) (string, string, error) {
+func fetchRegistryImageAndImageID(plugin *plugin.Plugin) (string, string, error) {
 	identity, err := bufpluginref.PluginIdentityForString(plugin.Name)
 	if err != nil {
 		return "", "", err
 	}
-	packageName := fmt.Sprintf("plugins-%s-%s", identity.Owner(), identity.Plugin())
-	versions, resp, err := client.Organizations.PackageGetAllVersions(ctx, githubOwner, packageTypeContainer, packageName, nil)
+	imageName := fmt.Sprintf("ghcr.io/%s/plugins-%s-%s", githubOwner, identity.Owner(), identity.Plugin())
+	cmd, err := dockerCmd("manifest", "inspect", "--verbose", imageName+":"+plugin.PluginVersion)
 	if err != nil {
-		if resp != nil && resp.StatusCode == http.StatusNotFound {
-			return "", "", nil
-		}
-		return "", "", fmt.Errorf("failed to list package versions for %s: %w", packageName, err)
+		return "", "", err
 	}
-	for _, version := range versions {
-		if version.GetMetadata() == nil || version.GetMetadata().GetContainer() == nil {
-			continue
-		}
-		for _, tag := range version.GetMetadata().GetContainer().Tags {
-			if tag == plugin.PluginVersion {
-				imageName := fmt.Sprintf("ghcr.io/%s/%s", githubOwner, packageName)
-				return imageName, version.GetName(), nil
-			}
-		}
+	var bb bytes.Buffer
+	cmd.Stdout = &bb
+	if err := cmd.Run(); err != nil {
+		// this may occur if this runs prior to publishing a newly added plugin
+		return "", "", nil //nolint:nilerr
 	}
-	// this may occur if this runs prior to publishing a newly added plugin
-	return "", "", nil
+	type manifestJSON struct {
+		Descriptor struct {
+			Digest string `json:"digest"`
+		} `json:"Descriptor"` //nolint:tagliatelle
+		SchemaV2Manifest struct {
+			Config struct {
+				Digest string `json:"digest"`
+			} `json:"config"`
+		} `json:"SchemaV2Manifest"` //nolint:tagliatelle
+	}
+	var result manifestJSON
+	if err := json.Unmarshal(bb.Bytes(), &result); err != nil {
+		return "", "", fmt.Errorf("unable to parse docker manifest inspect output: %w", err)
+	}
+	descriptorDigest := result.Descriptor.Digest
+	if descriptorDigest == "" {
+		return "", "", errors.New("unable to parse descriptor digest from docker manifest inspect output")
+	}
+	imageDigest := result.SchemaV2Manifest.Config.Digest
+	if imageDigest == "" {
+		return "", "", errors.New("unable to parse image config digest from docker manifest inspect output")
+	}
+	return fmt.Sprintf("%s@%s", imageName, descriptorDigest), imageDigest, nil
 }
 
 func getLatestRelease(ctx context.Context, client *github.Client) (*github.RepositoryRelease, error) {

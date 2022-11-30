@@ -12,10 +12,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/bufbuild/plugins/internal/fetchclient"
-	"github.com/bufbuild/plugins/internal/source"
 	"go.uber.org/multierr"
 	"golang.org/x/mod/semver"
+
+	"github.com/bufbuild/plugins/internal/fetchclient"
+	"github.com/bufbuild/plugins/internal/source"
 )
 
 var errNoVersions = errors.New("no versions found")

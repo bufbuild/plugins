@@ -14,7 +14,7 @@ var (
 	ErrSourceFileNotFound = errors.New("source file not found")
 )
 
-func GatherConfigs(root string) (_ []*Config, retErr error) {
+func GatherConfigs(root string) ([]*Config, error) {
 	filenames, err := gatherSourceFilenames(root)
 	if err != nil {
 		return nil, err

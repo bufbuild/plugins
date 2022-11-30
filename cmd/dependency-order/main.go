@@ -6,8 +6,9 @@ import (
 	"log"
 	"os"
 
-	"github.com/bufbuild/plugins/internal/plugin"
 	"github.com/sethvargo/go-envconfig"
+
+	"github.com/bufbuild/plugins/internal/plugin"
 )
 
 func main() {
