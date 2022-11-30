@@ -239,8 +239,9 @@ func run(root string, minisignPrivateKey string, dryRun bool) error {
 func createRelease(ctx context.Context, client *github.Client, releaseName string, plugins []PluginRelease, tmpDir string, publicKey *minisign.PublicKey) error {
 	// Create GitHub release
 	release, _, err := client.Repositories.CreateRelease(ctx, githubReleaseOwner, githubRepo, &github.RepositoryRelease{
-		Name: github.String(releaseName),
-		Body: github.String(createReleaseBody(releaseName, plugins, publicKey)),
+		TagName: github.String(releaseName),
+		Name:    github.String(releaseName),
+		Body:    github.String(createReleaseBody(releaseName, plugins, publicKey)),
 	})
 	if err != nil {
 		return err
