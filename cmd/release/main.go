@@ -300,6 +300,8 @@ func createReleaseBody(name string, plugins []PluginRelease, publicKey *minisign
 
 	if existingPlugins := pluginsByStatus[EXISTING]; len(existingPlugins) > 0 {
 		sb.WriteString(`## Previously Released Plugins
+<details>
+    <summary>Expand</summary>
 
 | Plugin | Version | Release | Link |
 |--------|---------|---------|------|
@@ -307,6 +309,7 @@ func createReleaseBody(name string, plugins []PluginRelease, publicKey *minisign
 		for _, p := range existingPlugins {
 			sb.WriteString(fmt.Sprintf("| %s | %s | %s | [Download](%s) |\n", p.PluginName, p.PluginVersion, p.ReleaseTag, p.URL))
 		}
+		sb.WriteString("</details>\n")
 		sb.WriteString("\n")
 	}
 
