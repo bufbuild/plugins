@@ -128,6 +128,9 @@ func (c *Client) fetchCrate(ctx context.Context, name string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	// See https://github.com/bufbuild/plugins/issues/252 for more information.
+	// We must be careful with this API and respect the crawling policy.
+	request.Header.Set("User-Agent", "bufbuild (github.com/bufbuild/plugins)")
 	response, err := c.httpClient.Do(request)
 	if err != nil {
 		return "", err
