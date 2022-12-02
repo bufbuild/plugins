@@ -21,7 +21,7 @@ import (
 )
 
 const (
-	cratesURL = "https://crates.io/api/v1/crates"
+	cratesURL = "https://crates.io/api/v1"
 	// docs: https://pub.dev/help/api
 	dartFlutterAPIURL = "https://pub.dev/api/packages"
 	goProxyURL        = "https://proxy.golang.org"
@@ -122,7 +122,7 @@ func (c *Client) fetchCrate(ctx context.Context, name string) (string, error) {
 	request, err := http.NewRequestWithContext(
 		ctx,
 		http.MethodGet,
-		fmt.Sprintf("%s/%s", cratesURL, strings.TrimPrefix(name, "/")),
+		fmt.Sprintf("%s/crates/%s", cratesURL, strings.TrimPrefix(name, "/")),
 		nil,
 	)
 	if err != nil {
