@@ -176,12 +176,7 @@ func (c *command) calculateNewReleasePlugins(currentRelease *release.PluginRelea
 	var newPlugins []release.PluginRelease
 	var existingPlugins []release.PluginRelease
 
-	n := 0
 	if err := plugin.Walk(c.rootDir, func(plugin *plugin.Plugin) error {
-		n++
-		if n > 4 {
-			return nil
-		}
 		identity, err := bufpluginref.PluginIdentityForString(plugin.Name)
 		if err != nil {
 			return err
