@@ -5,8 +5,6 @@ import (
 	"bytes"
 	"compress/flate"
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"flag"
@@ -14,7 +12,6 @@ import (
 	"io"
 	"io/fs"
 	"log"
-	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -26,123 +23,170 @@ import (
 	"aead.dev/minisign"
 	"github.com/bufbuild/buf/private/bufpkg/bufplugin/bufpluginref"
 	"github.com/google/go-github/v48/github"
-	"github.com/hashicorp/go-retryablehttp"
 	"golang.org/x/mod/semver"
-	"golang.org/x/oauth2"
 
 	"github.com/bufbuild/plugins/internal/plugin"
+	"github.com/bufbuild/plugins/internal/release"
 )
-
-const (
-	githubOwner = "bufbuild"
-	// This is separate from githubOwner for testing releases (can point at personal fork).
-	githubReleaseOwner = githubOwner // "pkwarren"
-	githubRepo         = "plugins"
-	pluginReleasesFile = "plugin-releases.json"
-)
-
-type ReleaseStatus int
-
-const (
-	EXISTING ReleaseStatus = iota
-	NEW
-	UPDATED
-)
-
-type PluginReleases struct {
-	Releases []PluginRelease `json:"releases"`
-}
-
-type PluginRelease struct {
-	PluginName       string        `json:"name"`           // org/name for the plugin (without remote)
-	PluginVersion    string        `json:"version"`        // version of the plugin (including 'v' prefix)
-	PluginZipDigest  string        `json:"zip_digest"`     // <digest-type>:<digest> for plugin .zip download
-	PluginYAMLDigest string        `json:"yaml_digest"`    // <digest-type>:<digest> for buf.plugin.yaml
-	ImageID          string        `json:"image_id"`       // <digest-type>:<digest> - https://github.com/opencontainers/image-spec/blob/main/config.md#imageid
-	RegistryImage    string        `json:"registry_image"` // ghcr.io/bufbuild/plugins-<org>-<name>@<digest-type>:<digest>
-	ReleaseTag       string        `json:"release_tag"`    // GitHub release tag - i.e. 20221121.1
-	URL              string        `json:"url"`            // URL to GitHub release zip file for the plugin - i.e. https://github.com/bufbuild/plugins/releases/download/20221121.1/bufbuild-connect-go-v1.1.0.zip
-	LastUpdated      time.Time     `json:"last_updated"`
-	Status           ReleaseStatus `json:"-"`
-}
 
 type pluginNameVersion struct {
 	name, version string
 }
 
 func main() {
-	var (
-		minisignPrivateKey string
-		dryRun             bool
+	dryRun := flag.Bool("dry-run", false, "perform a dry-run (no GitHub modifications)")
+	githubReleaseOwner := flag.String(
+		"github-release-owner",
+		string(release.GithubOwnerBufbuild),
+		"GitHub release owner (set to personal account to test against a fork)",
 	)
-	flag.BoolVar(&dryRun, "dry-run", false, "perform a dry-run (no GitHub modifications)")
-	flag.StringVar(&minisignPrivateKey, "minisign-private-key", "", "path to minisign private key file")
+	minisignPrivateKey := flag.String("minisign-private-key", "", "path to minisign private key file")
+	minisignPublicKey := flag.String(
+		"minisign-public-key",
+		"",
+		"path to public key used to verify the latest release's plugin-releases.json file (if different than private key)",
+	)
 	flag.Parse()
 
 	if len(flag.Args()) != 1 {
-		_, _ = fmt.Fprintf(os.Stderr, "usage: %s [-dry-run] [-minisign-private-key <file>] <directory>\n", os.Args)
+		_, _ = fmt.Fprintln(flag.CommandLine.Output(), "usage: release <directory>")
+		flag.PrintDefaults()
 		os.Exit(2)
 	}
 	root := flag.Args()[0]
-	if err := run(root, minisignPrivateKey, dryRun); err != nil {
+	cmd := &command{
+		minisignPrivateKey: *minisignPrivateKey,
+		minisignPublicKey:  *minisignPublicKey,
+		githubReleaseOwner: release.GithubOwner(*githubReleaseOwner),
+		dryRun:             *dryRun,
+		rootDir:            root,
+	}
+	if err := cmd.run(); err != nil {
 		log.Fatalln(err.Error())
 	}
 }
 
-func run(root string, minisignPrivateKey string, dryRun bool) error {
+type command struct {
+	minisignPrivateKey string
+	minisignPublicKey  string
+	githubReleaseOwner release.GithubOwner
+	dryRun             bool
+	rootDir            string
+}
+
+func (c *command) run() error {
 	// Create temporary directory
 	tmpDir, err := os.MkdirTemp("", "plugins-release")
 	if err != nil {
 		return fmt.Errorf("failed to create temporary directory: %w", err)
 	}
 	log.Printf("created tmp dir: %s", tmpDir)
-	if !dryRun {
-		defer func() {
-			if err := os.RemoveAll(tmpDir); err != nil {
-				log.Printf("failed to remove %q: %v", tmpDir, err)
-			}
-		}()
-	}
+	defer func() {
+		if c.dryRun {
+			return
+		}
+		if err := os.RemoveAll(tmpDir); err != nil {
+			log.Printf("failed to remove %q: %v", tmpDir, err)
+		}
+	}()
 
 	ctx := context.Background()
-	client := newGitHubClient(ctx)
-	latestRelease, err := getLatestRelease(ctx, client)
-	if err != nil {
+	client := release.NewClient(ctx)
+	latestRelease, err := client.GetLatestRelease(ctx, c.githubReleaseOwner, release.GithubRepoPlugins)
+	if err != nil && !errors.Is(err, release.ErrNotFound) {
 		return fmt.Errorf("failed to retrieve latest release: %w", err)
 	}
 
-	releases, err := loadPluginReleases(ctx, client, latestRelease)
+	var privateKey minisign.PrivateKey
+	if minisignPrivateKeyPassword := os.Getenv("MINISIGN_PRIVATE_KEY_PASSWORD"); minisignPrivateKeyPassword != "" {
+		privateKey, err = minisign.PrivateKeyFromFile(minisignPrivateKeyPassword, c.minisignPrivateKey)
+		if err != nil {
+			return err
+		}
+	}
+	publicKey, err := c.loadMinisignPublicKeyFromFileOrPrivateKey(privateKey)
 	if err != nil {
+		return err
+	}
+	releases, err := client.LoadPluginReleases(ctx, latestRelease, publicKey)
+	if err != nil && !errors.Is(err, release.ErrNotFound) {
 		return fmt.Errorf("failed to determine latest plugin releases: %w", err)
 	}
 	if releases == nil {
 		log.Printf("no current release found")
-		releases = &PluginReleases{}
+		releases = &release.PluginReleases{}
 	}
 
-	pluginNameVersionToRelease := make(map[pluginNameVersion]PluginRelease, len(releases.Releases))
-	for _, release := range releases.Releases {
-		key := pluginNameVersion{name: release.PluginName, version: release.PluginVersion}
-		if _, ok := pluginNameVersionToRelease[key]; ok {
-			return fmt.Errorf("duplicate plugin discovered in releases file: %+v", key)
-		}
-		pluginNameVersionToRelease[key] = release
-	}
-
-	var newPlugins []PluginRelease
-	var existingPlugins []PluginRelease
 	now := time.Now().UTC().Truncate(time.Second)
 	releaseName, err := calculateNextRelease(now, latestRelease)
 	if err != nil {
 		return fmt.Errorf("failed to determine next release name: %w", err)
 	}
 
-	if err := plugin.Walk(root, func(plugin *plugin.Plugin) error {
+	plugins, err := c.calculateNewReleasePlugins(releases, releaseName, now, tmpDir)
+	if err != nil {
+		return fmt.Errorf("failed to calculate new release contents: %w", err)
+	}
+	if len(plugins) == 0 {
+		if tagName := latestRelease.GetTagName(); tagName != "" {
+			log.Printf("no changes to plugins since %v", tagName)
+		} else {
+			log.Printf("no changes to plugins - not creating initial release")
+		}
+		return nil
+	}
+	if err := createPluginReleases(tmpDir, plugins); err != nil {
+		return fmt.Errorf("failed to create %s: %w", release.PluginReleasesFile, err)
+	}
+
+	if err := signPluginReleases(tmpDir, privateKey); err != nil {
+		return fmt.Errorf("failed to sign %q: %w", filepath.Join(tmpDir, release.PluginReleasesFile), err)
+	}
+
+	if c.dryRun {
+		releaseBody, err := c.createReleaseBody(releaseName, plugins, privateKey)
+		if err != nil {
+			return err
+		}
+		if err := os.WriteFile(filepath.Join(tmpDir, "RELEASE.md"), []byte(releaseBody), 0644); err != nil { //nolint:gosec
+			return err
+		}
+		log.Printf("skipping GitHub release creation in dry-run mode")
+		log.Printf("release assets created in %q", tmpDir)
+		return nil
+	}
+	if err := c.createRelease(ctx, client, releaseName, plugins, tmpDir, privateKey); err != nil {
+		return fmt.Errorf("failed to create GitHub release: %w", err)
+	}
+	return nil
+}
+
+func (c *command) calculateNewReleasePlugins(currentRelease *release.PluginReleases, releaseName string, now time.Time, tmpDir string) (
+	[]release.PluginRelease, error,
+) {
+	pluginNameVersionToRelease := make(map[pluginNameVersion]release.PluginRelease, len(currentRelease.Releases))
+	for _, pluginRelease := range currentRelease.Releases {
+		key := pluginNameVersion{name: pluginRelease.PluginName, version: pluginRelease.PluginVersion}
+		if _, ok := pluginNameVersionToRelease[key]; ok {
+			return nil, fmt.Errorf("duplicate plugin discovered in releases file: %+v", key)
+		}
+		pluginNameVersionToRelease[key] = pluginRelease
+	}
+
+	var newPlugins []release.PluginRelease
+	var existingPlugins []release.PluginRelease
+
+	n := 0
+	if err := plugin.Walk(c.rootDir, func(plugin *plugin.Plugin) error {
+		n++
+		if n > 4 {
+			return nil
+		}
 		identity, err := bufpluginref.PluginIdentityForString(plugin.Name)
 		if err != nil {
 			return err
 		}
-		pluginYamlDigest, err := calculateDigest(plugin.Path)
+		pluginYamlDigest, err := release.CalculateDigest(plugin.Path)
 		if err != nil {
 			return err
 		}
@@ -155,10 +199,10 @@ func run(root string, minisignPrivateKey string, dryRun bool) error {
 			return nil
 		}
 		key := pluginNameVersion{name: identity.Owner() + "/" + identity.Plugin(), version: plugin.PluginVersion}
-		release := pluginNameVersionToRelease[key]
+		pluginRelease := pluginNameVersionToRelease[key]
 		// Found existing release - only rebuild if changed image digest or buf.plugin.yaml digest
-		if release.ImageID != imageID || release.PluginYAMLDigest != pluginYamlDigest {
-			downloadURL, err := pluginDownloadURL(plugin, releaseName)
+		if pluginRelease.ImageID != imageID || pluginRelease.PluginYAMLDigest != pluginYamlDigest {
+			downloadURL, err := c.pluginDownloadURL(plugin, releaseName)
 			if err != nil {
 				return err
 			}
@@ -166,11 +210,11 @@ func run(root string, minisignPrivateKey string, dryRun bool) error {
 			if err != nil {
 				return err
 			}
-			status := UPDATED
-			if release.ImageID == "" {
-				status = NEW
+			status := release.StatusUpdated
+			if pluginRelease.ImageID == "" {
+				status = release.StatusNew
 			}
-			newPlugins = append(newPlugins, PluginRelease{
+			newPlugins = append(newPlugins, release.PluginRelease{
 				PluginName:       fmt.Sprintf("%s/%s", identity.Owner(), identity.Plugin()),
 				PluginVersion:    plugin.PluginVersion,
 				PluginZipDigest:  zipDigest,
@@ -183,27 +227,45 @@ func run(root string, minisignPrivateKey string, dryRun bool) error {
 				Status:           status,
 			})
 		} else {
-			log.Printf("plugin %s:%s unchanged", release.PluginName, release.PluginVersion)
-			release.Status = EXISTING
-			existingPlugins = append(existingPlugins, release)
+			log.Printf("plugin %s:%s unchanged", pluginRelease.PluginName, pluginRelease.PluginVersion)
+			pluginRelease.Status = release.StatusExisting
+			existingPlugins = append(existingPlugins, pluginRelease)
 		}
 		return nil
 	}); err != nil {
-		return fmt.Errorf("failed to discover plugins in path %q: %w", root, err)
+		return nil, fmt.Errorf("failed to discover plugins in path %q: %w", c.rootDir, err)
 	}
 
 	if len(newPlugins) == 0 {
-		if tagName := latestRelease.GetTagName(); tagName != "" {
-			log.Printf("no changes to plugins since %v", tagName)
-		} else {
-			log.Printf("no changes to plugins - not creating initial release")
-		}
-		return nil
+		return nil, nil
 	}
 
-	plugins := make([]PluginRelease, 0, len(newPlugins)+len(existingPlugins))
+	plugins := make([]release.PluginRelease, 0, len(newPlugins)+len(existingPlugins))
 	plugins = append(plugins, newPlugins...)
 	plugins = append(plugins, existingPlugins...)
+	sortPluginsByNameVersion(plugins)
+	return plugins, nil
+}
+
+func (c *command) loadMinisignPublicKeyFromFileOrPrivateKey(privateKey minisign.PrivateKey) (minisign.PublicKey, error) {
+	var publicKey minisign.PublicKey
+	if c.minisignPublicKey != "" {
+		var err error
+		publicKey, err = minisign.PublicKeyFromFile(c.minisignPublicKey)
+		if err != nil {
+			return minisign.PublicKey{}, err
+		}
+	} else if !privateKey.Equal(minisign.PrivateKey{}) {
+		var ok bool
+		publicKey, ok = privateKey.Public().(minisign.PublicKey)
+		if !ok {
+			return minisign.PublicKey{}, fmt.Errorf("unable to retrieve minisign public key from private key")
+		}
+	}
+	return publicKey, nil
+}
+
+func sortPluginsByNameVersion(plugins []release.PluginRelease) {
 	sort.Slice(plugins, func(i, j int) bool {
 		p1, p2 := plugins[i], plugins[j]
 		if p1.PluginName != p2.PluginName {
@@ -211,70 +273,55 @@ func run(root string, minisignPrivateKey string, dryRun bool) error {
 		}
 		return semver.Compare(p1.PluginVersion, p2.PluginVersion) < 0
 	})
-	if err := createPluginReleases(tmpDir, plugins); err != nil {
-		return fmt.Errorf("failed to create %s: %w", pluginReleasesFile, err)
-	}
-
-	minisignPrivateKeyPassword := os.Getenv("MINISIGN_PRIVATE_KEY_PASSWORD")
-	publicKey, err := signPluginReleases(tmpDir, minisignPrivateKey, minisignPrivateKeyPassword)
-	if err != nil {
-		return fmt.Errorf("failed to sign %q: %w", filepath.Join(tmpDir, pluginReleasesFile), err)
-	}
-
-	if dryRun {
-		releaseBody := createReleaseBody(releaseName, plugins, publicKey)
-		if err := os.WriteFile(filepath.Join(tmpDir, "RELEASE.md"), []byte(releaseBody), 0644); err != nil { //nolint:gosec
-			return err
-		}
-		log.Printf("skipping GitHub release creation in dry-run mode")
-		log.Printf("release assets created in %q", tmpDir)
-		return nil
-	}
-	if err := createRelease(ctx, client, releaseName, plugins, tmpDir, publicKey); err != nil {
-		return fmt.Errorf("failed to create GitHub release: %w", err)
-	}
-	return nil
 }
 
-func createRelease(ctx context.Context, client *github.Client, releaseName string, plugins []PluginRelease, tmpDir string, publicKey *minisign.PublicKey) error {
+func (c *command) createRelease(ctx context.Context, client *release.Client, releaseName string, plugins []release.PluginRelease, tmpDir string, privateKey minisign.PrivateKey) error {
+	releaseBody, err := c.createReleaseBody(releaseName, plugins, privateKey)
+	if err != nil {
+		return err
+	}
 	// Create GitHub release
-	release, _, err := client.Repositories.CreateRelease(ctx, githubReleaseOwner, githubRepo, &github.RepositoryRelease{
+	repositoryRelease, err := client.CreateRelease(ctx, c.githubReleaseOwner, release.GithubRepoPlugins, &github.RepositoryRelease{
 		TagName: github.String(releaseName),
 		Name:    github.String(releaseName),
-		Body:    github.String(createReleaseBody(releaseName, plugins, publicKey)),
+		Body:    github.String(releaseBody),
+		// Start release as a draft until all assets are uploaded
+		Draft: github.Bool(true),
 	})
 	if err != nil {
 		return err
 	}
-	return filepath.WalkDir(tmpDir, func(path string, d fs.DirEntry, err error) error {
+	if err := filepath.WalkDir(tmpDir, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
 		if d.IsDir() {
 			return nil
 		}
-		f, err := os.Open(path)
-		if err != nil {
-			return err
-		}
 		log.Printf("uploading: %s", d.Name())
-		_, _, err = client.Repositories.UploadReleaseAsset(ctx, githubReleaseOwner, githubRepo, release.GetID(), &github.UploadOptions{
-			Name: d.Name(),
-		}, f)
+		return client.UploadReleaseAsset(ctx, c.githubReleaseOwner, release.GithubRepoPlugins, repositoryRelease.GetID(), path)
+	}); err != nil {
 		return err
-	})
+	}
+	// Publish release
+	if _, err := client.EditRelease(ctx, c.githubReleaseOwner, release.GithubRepoPlugins, repositoryRelease.GetID(), &github.RepositoryRelease{
+		Draft: github.Bool(false),
+	}); err != nil {
+		return err
+	}
+	return nil
 }
 
-func createReleaseBody(name string, plugins []PluginRelease, publicKey *minisign.PublicKey) string {
+func (c *command) createReleaseBody(name string, plugins []release.PluginRelease, privateKey minisign.PrivateKey) (string, error) {
 	var sb strings.Builder
-	pluginsByStatus := make(map[ReleaseStatus][]PluginRelease)
+	pluginsByStatus := make(map[release.Status][]release.PluginRelease)
 	for _, p := range plugins {
 		pluginsByStatus[p.Status] = append(pluginsByStatus[p.Status], p)
 	}
 
 	sb.WriteString(fmt.Sprintf("# Buf Remote Plugins Release %s\n\n", name))
 
-	if newPlugins := pluginsByStatus[NEW]; len(newPlugins) > 0 {
+	if newPlugins := pluginsByStatus[release.StatusNew]; len(newPlugins) > 0 {
 		sb.WriteString(`## New Plugins
 
 | Plugin | Version | Link |
@@ -286,7 +333,7 @@ func createReleaseBody(name string, plugins []PluginRelease, publicKey *minisign
 		sb.WriteString("\n")
 	}
 
-	if updatedPlugins := pluginsByStatus[UPDATED]; len(updatedPlugins) > 0 {
+	if updatedPlugins := pluginsByStatus[release.StatusUpdated]; len(updatedPlugins) > 0 {
 		sb.WriteString(`## Updated Plugins
 
 | Plugin | Version | Link |
@@ -298,7 +345,7 @@ func createReleaseBody(name string, plugins []PluginRelease, publicKey *minisign
 		sb.WriteString("\n")
 	}
 
-	if existingPlugins := pluginsByStatus[EXISTING]; len(existingPlugins) > 0 {
+	if existingPlugins := pluginsByStatus[release.StatusExisting]; len(existingPlugins) > 0 {
 		sb.WriteString(`## Previously Released Plugins
 <details>
     <summary>Expand</summary>
@@ -313,43 +360,39 @@ func createReleaseBody(name string, plugins []PluginRelease, publicKey *minisign
 		sb.WriteString("\n")
 	}
 
-	if publicKey != nil {
+	if !privateKey.Equal(minisign.PrivateKey{}) {
+		publicKey, ok := privateKey.Public().(minisign.PublicKey)
+		if !ok {
+			return "", fmt.Errorf("failed to retrieve minisign public key from private key")
+		}
 		sb.WriteString("## Verifying a release\n\n")
 		sb.WriteString("Releases are signed using our [minisign](https://github.com/jedisct1/minisign) public key:\n\n")
 		sb.WriteString(fmt.Sprintf("```\n%s\n```\n\n", publicKey.String()))
 		sb.WriteString("The release assets can be verified using this command (assuming that minisign is installed):\n\n")
-		releasesFile := fmt.Sprintf("https://github.com/%s/plugins/releases/download/%s/%s", githubReleaseOwner, name, pluginReleasesFile)
+		releasesFile := fmt.Sprintf("https://github.com/%s/%s/releases/download/%s/%s", c.githubReleaseOwner, release.GithubRepoPlugins, name, release.PluginReleasesFile)
 		sb.WriteString(fmt.Sprintf("```\ncurl -OL %s && \\\n", releasesFile))
 		sb.WriteString(fmt.Sprintf("  curl -OL %s && \\\n", releasesFile+".minisig"))
-		sb.WriteString(fmt.Sprintf("  minisign -Vm %s -P %s\n```\n", pluginReleasesFile, publicKey.String()))
+		sb.WriteString(fmt.Sprintf("  minisign -Vm %s -P %s\n```\n", release.PluginReleasesFile, publicKey.String()))
 	}
-	return sb.String()
+	return sb.String(), nil
 }
 
-func signPluginReleases(dir string, keyPath string, password string) (*minisign.PublicKey, error) {
-	if keyPath == "" || password == "" {
-		log.Printf("skipping signing of %s", pluginReleasesFile)
-		return nil, nil
+func signPluginReleases(dir string, privateKey minisign.PrivateKey) error {
+	releasesFile := filepath.Join(dir, release.PluginReleasesFile)
+	if privateKey.Equal(minisign.PrivateKey{}) { // Private key not initialized
+		log.Printf("skipping signing of %s", releasesFile)
+		return nil
 	}
-	releasesFile := filepath.Join(dir, pluginReleasesFile)
 	log.Printf("signing: %s", releasesFile)
-	privateKey, err := minisign.PrivateKeyFromFile(password, keyPath)
-	if err != nil {
-		return nil, err
-	}
 	releasesFileBytes, err := os.ReadFile(releasesFile)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	signature := minisign.Sign(privateKey, releasesFileBytes)
-	if err := os.WriteFile(releasesFile+".minisig", signature, 0644); err != nil { //nolint:gosec
-		return nil, err
+	if err := os.WriteFile(filepath.Join(dir, release.PluginReleasesSignatureFile), signature, 0644); err != nil { //nolint:gosec
+		return err
 	}
-	publicKey, ok := privateKey.Public().(minisign.PublicKey)
-	if !ok {
-		return nil, errors.New("unable to type assert minisign public key")
-	}
-	return &publicKey, nil
+	return nil
 }
 
 func createPluginZip(basedir string, plugin *plugin.Plugin, registryImage string, imageID string) (string, error) {
@@ -379,7 +422,7 @@ func createPluginZip(basedir string, plugin *plugin.Plugin, registryImage string
 		return "", err
 	}
 	defer func() {
-		if err := zf.Close(); !errors.Is(err, os.ErrClosed) {
+		if err := zf.Close(); err != nil && !errors.Is(err, os.ErrClosed) {
 			log.Printf("failed to close: %v", err)
 		}
 	}()
@@ -399,7 +442,7 @@ func createPluginZip(basedir string, plugin *plugin.Plugin, registryImage string
 	if err := zf.Close(); err != nil {
 		return "", err
 	}
-	digest, err := calculateDigest(zipFile)
+	digest, err := release.CalculateDigest(zipFile)
 	if err != nil {
 		return "", err
 	}
@@ -435,8 +478,8 @@ func saveImageToDir(imageRef string, dir string) error {
 	return cmd.Run()
 }
 
-func createPluginReleases(dir string, plugins []PluginRelease) error {
-	f, err := os.OpenFile(filepath.Join(dir, pluginReleasesFile), os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
+func createPluginReleases(dir string, plugins []release.PluginRelease) error {
+	f, err := os.OpenFile(filepath.Join(dir, release.PluginReleasesFile), os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
 	if err != nil {
 		return err
 	}
@@ -447,7 +490,7 @@ func createPluginReleases(dir string, plugins []PluginRelease) error {
 	}()
 	encoder := json.NewEncoder(f)
 	encoder.SetIndent("", "  ")
-	return encoder.Encode(&PluginReleases{Releases: plugins})
+	return encoder.Encode(&release.PluginReleases{Releases: plugins})
 }
 
 func pullImage(name string) error {
@@ -499,12 +542,12 @@ func calculateNextRelease(now time.Time, latestRelease *github.RepositoryRelease
 	return releaseName, nil
 }
 
-func pluginDownloadURL(plugin *plugin.Plugin, releaseName string) (string, error) {
+func (c *command) pluginDownloadURL(plugin *plugin.Plugin, releaseName string) (string, error) {
 	zipName, err := pluginZipName(plugin)
 	if err != nil {
 		return "", err
 	}
-	return fmt.Sprintf("https://github.com/%s/%s/releases/download/%s/%s", githubReleaseOwner, githubRepo, releaseName, zipName), nil
+	return fmt.Sprintf("https://github.com/%s/%s/releases/download/%s/%s", c.githubReleaseOwner, release.GithubRepoPlugins, releaseName, zipName), nil
 }
 
 func pluginZipName(plugin *plugin.Plugin) (string, error) {
@@ -515,30 +558,12 @@ func pluginZipName(plugin *plugin.Plugin) (string, error) {
 	return fmt.Sprintf("%s-%s-%s.zip", identity.Owner(), identity.Plugin(), plugin.PluginVersion), nil
 }
 
-func calculateDigest(path string) (string, error) {
-	f, err := os.Open(path)
-	if err != nil {
-		return "", err
-	}
-	defer func() {
-		if err := f.Close(); err != nil {
-			log.Printf("failed to close: %v", err)
-		}
-	}()
-	hash := sha256.New()
-	if _, err := io.Copy(hash, f); err != nil {
-		return "", err
-	}
-	hashBytes := hash.Sum(nil)
-	return "sha256:" + hex.EncodeToString(hashBytes), nil
-}
-
 func fetchRegistryImageAndImageID(plugin *plugin.Plugin) (string, string, error) {
 	identity, err := bufpluginref.PluginIdentityForString(plugin.Name)
 	if err != nil {
 		return "", "", err
 	}
-	imageName := fmt.Sprintf("ghcr.io/%s/plugins-%s-%s", githubOwner, identity.Owner(), identity.Plugin())
+	imageName := fmt.Sprintf("ghcr.io/%s/plugins-%s-%s", release.GithubOwnerBufbuild, identity.Owner(), identity.Plugin())
 	cmd, err := dockerCmd("manifest", "inspect", "--verbose", imageName+":"+plugin.PluginVersion)
 	if err != nil {
 		return "", "", err
@@ -572,63 +597,4 @@ func fetchRegistryImageAndImageID(plugin *plugin.Plugin) (string, string, error)
 		return "", "", errors.New("unable to parse image config digest from docker manifest inspect output")
 	}
 	return fmt.Sprintf("%s@%s", imageName, descriptorDigest), imageDigest, nil
-}
-
-func getLatestRelease(ctx context.Context, client *github.Client) (*github.RepositoryRelease, error) {
-	release, resp, err := client.Repositories.GetLatestRelease(ctx, githubReleaseOwner, githubRepo)
-	if err != nil {
-		if resp != nil && resp.StatusCode == http.StatusNotFound {
-			// no latest release
-			return nil, nil
-		}
-		return nil, err
-	}
-	return release, nil
-}
-
-func loadPluginReleases(ctx context.Context, client *github.Client, latestRelease *github.RepositoryRelease) (*PluginReleases, error) {
-	if latestRelease == nil {
-		return nil, nil
-	}
-
-	var pluginVersionsAssetID int64
-	for _, asset := range latestRelease.Assets {
-		if asset.GetName() == pluginReleasesFile {
-			// Found asset
-			pluginVersionsAssetID = asset.GetID()
-			break
-		}
-	}
-	if pluginVersionsAssetID == 0 {
-		// no plugin-versions.json in latest release
-		return nil, nil
-	}
-	rc, _, err := client.Repositories.DownloadReleaseAsset(ctx, githubReleaseOwner, githubRepo, pluginVersionsAssetID, http.DefaultClient)
-	if err != nil {
-		return nil, err
-	}
-	defer func() {
-		if err := rc.Close(); err != nil {
-			log.Printf("failed to close: %v", err)
-		}
-	}()
-	var releases PluginReleases
-	if err := json.NewDecoder(rc).Decode(&releases); err != nil {
-		return nil, err
-	}
-	return &releases, nil
-}
-
-func newGitHubClient(ctx context.Context) *github.Client {
-	var client *http.Client
-	if ghToken := os.Getenv("GITHUB_TOKEN"); ghToken != "" {
-		log.Printf("creating authenticated client with GITHUB_TOKEN")
-		ts := oauth2.StaticTokenSource(
-			&oauth2.Token{AccessToken: ghToken},
-		)
-		client = oauth2.NewClient(ctx, ts)
-	} else {
-		client = retryablehttp.NewClient().StandardClient()
-	}
-	return github.NewClient(client)
 }
