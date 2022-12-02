@@ -18,8 +18,8 @@ import (
 	"golang.org/x/oauth2"
 )
 
-type GithubRepo string
 type GithubOwner string
+type GithubRepo string
 
 const (
 	GithubOwnerBufbuild GithubOwner = "bufbuild"
@@ -106,20 +106,25 @@ func (c *Client) GetReleaseByTag(ctx context.Context, owner GithubOwner, repo Gi
 	return repositoryRelease, nil
 }
 
-func getOrgRepoFromReleaseURL(url string) (string, string, error) {
-	_, orgRepo, found := strings.Cut(url, "/repos/")
+// getOwnerRepoFromReleaseURL parses a URL in the format:
+//
+//	https://api.github.com/repos/{owner}/{repo}/releases/{release_id}
+//
+// into '{owner}' and '{repo}'. If not in the expected format, it will return an non-nil error.
+func getOwnerRepoFromReleaseURL(url string) (string, string, error) {
+	_, ownerRepo, found := strings.Cut(url, "/repos/")
 	if !found {
 		return "", "", fmt.Errorf("unsupported release URL format - no /repos/ found: %q", url)
 	}
-	orgRepo, _, found = strings.Cut(orgRepo, "/releases/")
+	ownerRepo, _, found = strings.Cut(ownerRepo, "/releases/")
 	if !found {
 		return "", "", fmt.Errorf("unsupported release URL format - no /releases/ found: %q", url)
 	}
-	org, repo, found := strings.Cut(orgRepo, "/")
+	owner, repo, found := strings.Cut(ownerRepo, "/")
 	if !found {
-		return "", "", fmt.Errorf("unsupported release URL format no org/repo found: %q", url)
+		return "", "", fmt.Errorf("unsupported release URL format no owner/repo found: %q", url)
 	}
-	return org, repo, nil
+	return owner, repo, nil
 }
 
 // LoadPluginReleases loads the plugin-releases.json file from the specified GitHub release.
@@ -143,6 +148,8 @@ func (c *Client) LoadPluginReleases(ctx context.Context, release *github.Reposit
 	return &releases, nil
 }
 
+// downloadAsset uses the GitHub API to download the asset with the given name from the release.
+// If the asset isn't found, returns ErrNotFound.
 func (c *Client) downloadAsset(ctx context.Context, release *github.RepositoryRelease, assetName string) ([]byte, error) {
 	var assetID int64
 	for _, asset := range release.Assets {
@@ -154,11 +161,11 @@ func (c *Client) downloadAsset(ctx context.Context, release *github.RepositoryRe
 	if assetID == 0 {
 		return nil, ErrNotFound
 	}
-	org, repo, err := getOrgRepoFromReleaseURL(release.GetURL())
+	owner, repo, err := getOwnerRepoFromReleaseURL(release.GetURL())
 	if err != nil {
 		return nil, err
 	}
-	rc, _, err := c.GitHub.Repositories.DownloadReleaseAsset(ctx, org, repo, assetID, http.DefaultClient)
+	rc, _, err := c.GitHub.Repositories.DownloadReleaseAsset(ctx, owner, repo, assetID, http.DefaultClient)
 	if err != nil {
 		return nil, err
 	}
