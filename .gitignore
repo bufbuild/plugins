@@ -1,7 +1,6 @@
 .build/
 .idea/
 .vscode/
-minisign.*
 node_modules/
 tests/testdata/**/buf.gen.yaml
 tests/testdata/**/gen/
