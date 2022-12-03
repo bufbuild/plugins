@@ -48,6 +48,7 @@ type Source struct {
 	GoProxy     *GoProxyConfig     `yaml:"goproxy"`
 	NPMRegistry *NPMRegistryConfig `yaml:"npm_registry"`
 	Maven       *MavenConfig       `yaml:"maven"`
+	Crates      *CratesConfig      `yaml:"crates"`
 }
 
 var _ Cacheable = (*Source)(nil)
@@ -64,6 +65,8 @@ func (s *Source) Name() string {
 		return "npm_registry"
 	case s.Maven != nil:
 		return "maven"
+	case s.Crates != nil:
+		return "crates"
 	}
 	return "unknown"
 }
@@ -81,8 +84,21 @@ func (s *Source) CacheKey() string {
 		return name + "-" + s.NPMRegistry.CacheKey()
 	case s.Maven != nil:
 		return name + "-" + s.Maven.CacheKey()
+	case s.Crates != nil:
+		return name + "-" + s.Crates.CacheKey()
 	}
 	return name
+}
+
+// CratesConfig is the crates.io API configuration.
+type CratesConfig struct {
+	CrateName string `yaml:"crate_name"`
+}
+
+var _ Cacheable = (*CratesConfig)(nil)
+
+func (c CratesConfig) CacheKey() string {
+	return c.CrateName
 }
 
 // GitHubConfig is the GitHub configuration.

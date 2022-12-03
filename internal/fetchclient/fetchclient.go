@@ -21,6 +21,7 @@ import (
 )
 
 const (
+	cratesURL = "https://crates.io/api/v1"
 	// docs: https://pub.dev/help/api
 	dartFlutterAPIURL = "https://pub.dev/api/packages"
 	goProxyURL        = "https://proxy.golang.org"
@@ -84,6 +85,8 @@ func (c *Client) fetch(ctx context.Context, config *source.Config) (string, erro
 			return "", err
 		}
 		return results.latestVersion, nil
+	case config.Source.Crates != nil:
+		return c.fetchCrate(ctx, config.Source.Crates.CrateName)
 	}
 	return "", errors.New("failed to match a source")
 }
@@ -113,6 +116,52 @@ func (c *Client) fetchDartFlutter(ctx context.Context, name string) (string, err
 		return "", err
 	}
 	return data.Latest.Version, nil
+}
+
+func (c *Client) fetchCrate(ctx context.Context, name string) (string, error) {
+	request, err := http.NewRequestWithContext(
+		ctx,
+		http.MethodGet,
+		fmt.Sprintf("%s/crates/%s", cratesURL, strings.TrimPrefix(name, "/")),
+		nil,
+	)
+	if err != nil {
+		return "", err
+	}
+	// See https://github.com/bufbuild/plugins/issues/252 for more information.
+	// We must be careful with this API and respect the crawling policy.
+	request.Header.Set("User-Agent", "bufbuild (github.com/bufbuild/plugins)")
+	response, err := c.httpClient.Do(request)
+	if err != nil {
+		return "", err
+	}
+	defer response.Body.Close()
+
+	var data struct {
+		Versions []struct {
+			Yanked bool   `json:"yanked"`
+			Num    string `json:"num"`
+		} `json:"versions"`
+	}
+	if err := json.NewDecoder(response.Body).Decode(&data); err != nil {
+		return "", err
+	}
+	var versions []string
+	for _, version := range data.Versions {
+		if version.Yanked {
+			// A yanked version a is a published crate's version that has been removed
+			// from the server's index.
+			continue
+		}
+		if versionWithPrefix, ok := ensureSemverPrefix(version.Num); ok {
+			versions = append(versions, versionWithPrefix)
+		}
+	}
+	if len(versions) == 0 {
+		return "", errors.New("no versions found")
+	}
+	semver.Sort(versions)
+	return versions[len(versions)-1], nil
 }
 
 func (c *Client) fetchGoProxy(ctx context.Context, name string) (string, error) {
