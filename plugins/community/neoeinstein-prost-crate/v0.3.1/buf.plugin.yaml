@@ -1,0 +1,8 @@
+version: v1
+name: buf.build/community/neoeinstein-prost-crate
+plugin_version: v0.3.1
+source_url: https://crates.io/crates/protoc-gen-prost-crate
+description: Generates Tonic gRPC server and client code using the Prost! code generation engine.
+# TODO(mf): repository has no license, but crates.io does. Is it even correct?
+spdx_license_id: Apache-2.0
+license_url: https://choosealicense.com/licenses/apache-2.0/
