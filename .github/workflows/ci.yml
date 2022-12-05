@@ -23,8 +23,7 @@ jobs:
       id: last_successful_commit_push
       with:
         main-branch-name: ${{ github.ref_name }}
-        workflow_id: 'ci.yml'
-        github_token: ${{ secrets.GITHUB_TOKEN }}
+        workflow-id: 'ci.yml'
     - name: Get changed files
       id: changed-files
       uses: tj-actions/changed-files@8a4cc4fbd67975557b6d85dd302f5f9400b9c92e
