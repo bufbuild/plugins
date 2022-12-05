@@ -6,6 +6,8 @@ on:
 
 # Ref: https://docs.github.com/en/actions/reference/workflow-syntax-for-github-actions#permissions
 permissions:
+  actions: read
+  contents: read
   packages: write
 
 concurrency: ci-${{ github.ref }}
