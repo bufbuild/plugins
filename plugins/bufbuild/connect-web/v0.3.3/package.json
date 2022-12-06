@@ -1,0 +1,7 @@
+{
+  "name": "plugins-bufbuild-connect-web",
+  "version": "1.0.0",
+  "dependencies": {
+    "@bufbuild/protoc-gen-connect-web": "0.3.3"
+  }
+}
