@@ -1,0 +1,25 @@
+version: v1
+name: buf.build/grpc/gateway
+plugin_version: v2.14.0
+source_url: https://github.com/grpc/grpc-gateway
+description: gRPC to JSON proxy generator following the gRPC HTTP spec.
+output_languages:
+  - go
+deps:
+  - plugin: buf.build/protocolbuffers/go:v1.28.1
+  - plugin: buf.build/grpc/go:v1.2.0
+registry:
+  go:
+    deps:
+      - module: github.com/grpc-ecosystem/grpc-gateway
+        version: v2.14.0
+      - module: google.golang.org/grpc
+        version: v1.51.0
+      - module: google.golang.org/protobuf
+        version: v1.28.1
+  opts:
+    - paths=source_relative
+    - standalone=true
+    - separate_package=true
+spdx_license_id: BSD-3-Clause
+license_url: https://github.com/grpc-ecosystem/grpc-gateway/blob/v2.14.0/LICENSE.txt
