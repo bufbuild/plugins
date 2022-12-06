@@ -12,7 +12,7 @@ registry:
   go:
     min_version: "1.17"
     deps:
-      - module: github.com/grpc-ecosystem/grpc-gateway
+      - module: github.com/grpc-ecosystem/grpc-gateway/v2
         version: v2.14.0
       - module: google.golang.org/grpc
         version: v1.51.0
