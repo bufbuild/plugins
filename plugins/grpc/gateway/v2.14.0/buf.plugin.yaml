@@ -10,6 +10,7 @@ deps:
   - plugin: buf.build/grpc/go:v1.2.0
 registry:
   go:
+    min_version: "1.17"
     deps:
       - module: github.com/grpc-ecosystem/grpc-gateway
         version: v2.14.0
