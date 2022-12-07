@@ -1,8 +1,16 @@
 diff --git a/internal/descriptor/registry.go b/internal/descriptor/registry.go
-index fdb7717f..6624a2e2 100644
+index fdb7717f..5b3cf2f3 100644
 --- a/internal/descriptor/registry.go
 +++ b/internal/descriptor/registry.go
-@@ -136,6 +136,8 @@ type Registry struct {
+@@ -2,6 +2,7 @@ package descriptor
+ 
+ import (
+ 	"fmt"
++	"path"
+ 	"sort"
+ 	"strings"
+ 
+@@ -136,6 +137,8 @@ type Registry struct {
  	// disableDefaultResponses disables the generation of default responses.
  	// Useful if you have to support custom response codes that are not 200.
  	disableDefaultResponses bool
@@ -11,7 +19,7 @@ index fdb7717f..6624a2e2 100644
  }
  
  type repeatedFieldSeparator struct {
-@@ -216,7 +218,7 @@ func (r *Registry) load(gen *protogen.Plugin) error {
+@@ -216,9 +219,19 @@ func (r *Registry) load(gen *protogen.Plugin) error {
  }
  
  // loadFile loads messages, enumerations and fields from "file".
@@ -19,8 +27,20 @@ index fdb7717f..6624a2e2 100644
 +// It does not load services and methods in "file".  You need to call
  // loadServices after loadFiles is called for all files to load services and methods.
  func (r *Registry) loadFile(filePath string, file *protogen.File) {
++	if r.separatePackage {
++		file.GoPackageName += "gateway"
++		dir := path.Dir(file.GeneratedFilenamePrefix)
++		base := path.Base(file.GeneratedFilenamePrefix)
++		file.GeneratedFilenamePrefix = path.Join(
++			dir,
++			string(file.GoPackageName),
++			base,
++		)
++	}
  	pkg := GoPackage{
-@@ -399,6 +401,11 @@ func (r *Registry) SetStandalone(standalone bool) {
+ 		Path: string(file.GoImportPath),
+ 		Name: string(file.GoPackageName),
+@@ -399,6 +412,11 @@ func (r *Registry) SetStandalone(standalone bool) {
  	r.standalone = standalone
  }
  
@@ -120,7 +140,7 @@ index bb487f4d..a0993e1c 100644
  
  // Method wraps descriptorpb.MethodDescriptorProto for richer features.
 diff --git a/protoc-gen-grpc-gateway/internal/gengateway/generator.go b/protoc-gen-grpc-gateway/internal/gengateway/generator.go
-index 849d199a..c05076be 100644
+index 849d199a..52351a5c 100644
 --- a/protoc-gen-grpc-gateway/internal/gengateway/generator.go
 +++ b/protoc-gen-grpc-gateway/internal/gengateway/generator.go
 @@ -5,6 +5,8 @@ import (
@@ -154,29 +174,7 @@ index 849d199a..c05076be 100644
  	}
  }
  
-@@ -86,10 +90,19 @@ func (g *generator) Generate(targets []*descriptor.File) ([]*descriptor.Response
- 			glog.Errorf("%v: %s", err, code)
- 			return nil, err
- 		}
-+		goPkg := file.GoPkg
-+		filePrefix := file.GeneratedFilenamePrefix
-+		if g.separatePackage {
-+			goPkg = descriptor.GoPackage{
-+				Path: path.Join(goPkg.Path, filepath.Base(goPkg.Path)+"gateway"),
-+				Name: goPkg.Name + "gateway",
-+			}
-+			filePrefix = path.Join(filepath.Dir(file.GeneratedFilenamePrefix), filepath.Base(goPkg.Path), filepath.Base(file.GeneratedFilenamePrefix))
-+		}
- 		files = append(files, &descriptor.ResponseFile{
--			GoPkg: file.GoPkg,
-+			GoPkg: goPkg,
- 			CodeGeneratorResponse_File: &pluginpb.CodeGeneratorResponse_File{
--				Name:    proto.String(file.GeneratedFilenamePrefix + ".pb.gw.go"),
-+				Name:    proto.String(filePrefix + ".pb.gw.go"),
- 				Content: proto.String(string(formatted)),
- 			},
- 		})
-@@ -108,6 +121,14 @@ func (g *generator) generate(file *descriptor.File) (string, error) {
+@@ -108,6 +112,14 @@ func (g *generator) generate(file *descriptor.File) (string, error) {
  	if g.standalone {
  		imports = append(imports, file.GoPkg)
  	}
@@ -191,6 +189,78 @@ index 849d199a..c05076be 100644
  
  	for _, svc := range file.Services {
  		for _, m := range svc.Methods {
+diff --git a/protoc-gen-grpc-gateway/internal/gengateway/generator_test.go b/protoc-gen-grpc-gateway/internal/gengateway/generator_test.go
+index 2c5fe023..75f14fac 100644
+--- a/protoc-gen-grpc-gateway/internal/gengateway/generator_test.go
++++ b/protoc-gen-grpc-gateway/internal/gengateway/generator_test.go
+@@ -1,9 +1,13 @@
+ package gengateway
+ 
+ import (
++	"path/filepath"
++	"strings"
+ 	"testing"
+ 
+ 	"github.com/grpc-ecosystem/grpc-gateway/v2/internal/descriptor"
++	"golang.org/x/text/cases"
++	"golang.org/x/text/language"
+ 	"google.golang.org/protobuf/proto"
+ 	"google.golang.org/protobuf/types/descriptorpb"
+ )
+@@ -96,3 +100,53 @@ func TestGenerator_Generate(t *testing.T) {
+ 		t.Fatalf("invalid name %q, expected %q", gotName, expectedName)
+ 	}
+ }
++
++func TestGenerator_GenerateSeparatePackage(t *testing.T) {
++	reg := descriptor.NewRegistry()
++	reg.SetSeparatePackage(true)
++	reg.SetStandalone(true)
++	g := New(reg, true, "Handler", true, true, true)
++	targets := []*descriptor.File{
++		crossLinkFixture(newExampleFileDescriptorWithGoPkg(&descriptor.GoPackage{
++			Path:  "example.com/path/to/example",
++			Name:  "example",
++			Alias: "ext" + cases.Title(language.AmericanEnglish).String("example"),
++		}, "path/to/example")),
++	}
++	// Set ForcePrefixedName (usually set when standalone=true).
++	for _, f := range targets {
++		for _, msg := range f.Messages {
++			msg.ForcePrefixedName = true
++			for _, field := range msg.Fields {
++				field.ForcePrefixedName = true
++			}
++		}
++		for _, enum := range f.Enums {
++			enum.ForcePrefixedName = true
++		}
++		for _, svc := range f.Services {
++			svc.ForcePrefixedName = true
++			// replicates behavior in internal/descriptor/services.go (loadServices)
++			svc.GRPCFile = &descriptor.File{
++				FileDescriptorProto: svc.File.FileDescriptorProto,
++				GoPkg: descriptor.GoPackage{
++					Path:  svc.File.GoPkg.Path + "/" + filepath.Base(svc.File.GoPkg.Path) + "grpc",
++					Name:  svc.File.GoPkg.Name + "grpc",
++					Alias: "extGRPC" + strings.TrimPrefix(svc.File.GoPkg.Alias, "ext"),
++				},
++			}
++		}
++	}
++	result, err := g.Generate(targets)
++	if err != nil {
++		t.Fatalf("failed to generate stubs: %v", err)
++	}
++	if len(result) != 1 {
++		t.Fatalf("expected to generate one file, got: %d", len(result))
++	}
++	expectedName := "path/to/examplegateway/example.pb.gw.go"
++	gotName := result[0].GetName()
++	if gotName != expectedName {
++		t.Fatalf("invalid name %q, expected %q", gotName, expectedName)
++	}
++}
 diff --git a/protoc-gen-grpc-gateway/main.go b/protoc-gen-grpc-gateway/main.go
 index fca2f83f..70160b9b 100644
 --- a/protoc-gen-grpc-gateway/main.go
