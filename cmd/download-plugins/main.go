@@ -83,9 +83,17 @@ func run() error {
 }
 
 func pluginExistsMatchingDigest(plugin release.PluginRelease, downloadDir string) (bool, error) {
-	digest, err := release.CalculateDigest(filepath.Join(downloadDir, filepath.Base(plugin.URL)))
+	filename := filepath.Join(downloadDir, filepath.Base(plugin.URL))
+	_, err := os.Stat(filename)
 	if err != nil {
+		if os.IsNotExist(err) {
+			return false, nil
+		}
 		return false, err
+	}
+	digest, err := release.CalculateDigest(filename)
+	if err != nil {
+		return false, fmt.Errorf("failed to calculate digest for plugin %s: %w", plugin.URL, err)
 	}
 	return digest == plugin.PluginZipDigest, nil
 }
@@ -93,11 +101,11 @@ func pluginExistsMatchingDigest(plugin release.PluginRelease, downloadDir string
 func downloadReleaseToDir(ctx context.Context, client *http.Client, plugin release.PluginRelease, downloadDir string) error {
 	expectedDigest, err := parseDigest(plugin.PluginZipDigest)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to parse digest for plugin: %w", err)
 	}
 	f, err := os.CreateTemp(downloadDir, "."+strings.ReplaceAll(plugin.PluginName, "/", "-"))
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to create tempo file: %w", err)
 	}
 	defer func() {
 		if err := f.Close(); err != nil && !errors.Is(err, os.ErrClosed) {
@@ -110,11 +118,11 @@ func downloadReleaseToDir(ctx context.Context, client *http.Client, plugin relea
 	log.Printf("downloading: %v", plugin.URL)
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, plugin.URL, nil)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to make HTTP request: %w", err)
 	}
 	resp, err := client.Do(req)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to perform HTTP request: %w", err)
 	}
 	defer func() {
 		if err := resp.Body.Close(); err != nil {
@@ -127,17 +135,17 @@ func downloadReleaseToDir(ctx context.Context, client *http.Client, plugin relea
 	digest := sha256.New()
 	w := io.MultiWriter(f, digest)
 	if _, err := io.Copy(w, resp.Body); err != nil {
-		return err
+		return fmt.Errorf("failed to copy file: %w", err)
 	}
 	sha256Digest := hex.EncodeToString(digest.Sum(nil))
 	if sha256Digest != expectedDigest {
 		return fmt.Errorf("checksum mismatch for %s: %q (expected) != %q (actual)", plugin.URL, expectedDigest, sha256Digest)
 	}
 	if err := f.Close(); err != nil {
-		return err
+		return fmt.Errorf("failed to close file: %w", err)
 	}
 	if err := os.Rename(f.Name(), filepath.Join(downloadDir, filepath.Base(plugin.URL))); err != nil {
-		return err
+		return fmt.Errorf("failed to rename temporary file: %w", err)
 	}
 	return nil
 }
