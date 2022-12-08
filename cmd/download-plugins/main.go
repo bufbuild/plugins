@@ -92,7 +92,7 @@ func pluginExistsMatchingDigest(plugin release.PluginRelease, downloadDir string
 	}
 	digest, err := release.CalculateDigest(filename)
 	if err != nil {
-		return false, fmt.Errorf("failed to calculate digest for plugin %s: %w", plugin.URL, err)
+		return false, fmt.Errorf("failed to calculate digest for %s: %w", filename, err)
 	}
 	return digest == plugin.PluginZipDigest, nil
 }
