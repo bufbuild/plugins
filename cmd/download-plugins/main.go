@@ -84,8 +84,7 @@ func run() error {
 
 func pluginExistsMatchingDigest(plugin release.PluginRelease, downloadDir string) (bool, error) {
 	filename := filepath.Join(downloadDir, filepath.Base(plugin.URL))
-	_, err := os.Stat(filename)
-	if err != nil {
+	if _, err := os.Stat(filename); err != nil {
 		if os.IsNotExist(err) {
 			return false, nil
 		}
