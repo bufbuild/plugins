@@ -104,7 +104,7 @@ func downloadReleaseToDir(ctx context.Context, client *http.Client, plugin relea
 	}
 	f, err := os.CreateTemp(downloadDir, "."+strings.ReplaceAll(plugin.PluginName, "/", "-"))
 	if err != nil {
-		return fmt.Errorf("failed to create tempo file: %w", err)
+		return fmt.Errorf("failed to create temporary file: %w", err)
 	}
 	defer func() {
 		if err := f.Close(); err != nil && !errors.Is(err, os.ErrClosed) {
