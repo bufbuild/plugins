@@ -4,7 +4,7 @@ RUN apk add --no-cache musl-dev
 WORKDIR /app
 RUN cargo install protoc-gen-prost --version 0.2.1 --locked --root /app
 
-FROM gcr.io/distroless/cc
+FROM gcr.io/distroless/static
 COPY --from=builder /app/bin/protoc-gen-prost /protoc-gen-prost
 USER nobody
 ENTRYPOINT ["/protoc-gen-prost"]
