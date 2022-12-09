@@ -42,7 +42,9 @@ func NewClient(ctx context.Context) *Client {
 		)
 		httpClient = oauth2.NewClient(ctx, ts)
 	} else {
-		httpClient = retryablehttp.NewClient().StandardClient()
+		client := retryablehttp.NewClient()
+		client.Logger = nil
+		httpClient = client.StandardClient()
 	}
 	return &Client{
 		GitHub: github.NewClient(httpClient),
