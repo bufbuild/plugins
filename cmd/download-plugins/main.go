@@ -32,7 +32,7 @@ func run() error {
 		minisignPublicKey string
 		releaseTag        string
 	)
-	flag.StringVar(&minisignPublicKey, "minisign-public-key", "", "path to minisign public key file")
+	flag.StringVar(&minisignPublicKey, "minisign-public-key", "", "path to minisign public key file (default: bufbuild/plugins public key)")
 	flag.StringVar(&releaseTag, "release-tag", "", "release to download (default: latest release)")
 	flag.Parse()
 
@@ -73,13 +73,21 @@ func run() error {
 		if err != nil {
 			return err
 		}
-		if exists {
-			log.Printf("already downloaded: %s", filepath.Join(downloadDir, filepath.Base(pluginRelease.URL)))
-		} else if err := downloadReleaseToDir(ctx, client.GitHub.Client(), pluginRelease, downloadDir); err != nil {
+		if !exists {
+			if err := downloadReleaseToDir(ctx, client.GitHub.Client(), pluginRelease, downloadDir); err != nil {
+				return err
+			}
+		}
+		if err := setPluginZipTimestamp(pluginRelease, downloadDir); err != nil {
 			return err
 		}
 	}
 	return nil
+}
+
+func setPluginZipTimestamp(plugin release.PluginRelease, downloadDir string) error {
+	filename := filepath.Join(downloadDir, filepath.Base(plugin.URL))
+	return os.Chtimes(filename, plugin.LastUpdated, plugin.LastUpdated)
 }
 
 func pluginExistsMatchingDigest(plugin release.PluginRelease, downloadDir string) (bool, error) {
