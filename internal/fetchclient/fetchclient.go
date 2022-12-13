@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
+	"log"
 	"math"
 	"net/http"
 	"net/url"
@@ -108,6 +110,9 @@ func (c *Client) fetchDartFlutter(ctx context.Context, name string) (string, err
 		return "", err
 	}
 	defer response.Body.Close()
+	if response.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("received status code %d retrieving %q", response.StatusCode, request.URL.String())
+	}
 
 	var data struct {
 		Latest struct {
@@ -138,6 +143,9 @@ func (c *Client) fetchCrate(ctx context.Context, name string) (string, error) {
 		return "", err
 	}
 	defer response.Body.Close()
+	if response.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("received status code %d retrieving %q", response.StatusCode, request.URL.String())
+	}
 
 	var data struct {
 		Versions []struct {
@@ -181,6 +189,9 @@ func (c *Client) fetchGoProxy(ctx context.Context, name string) (string, error) 
 		return "", err
 	}
 	defer response.Body.Close()
+	if response.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("received status code %d retrieving %q", response.StatusCode, request.URL.String())
+	}
 
 	var data struct {
 		Version string `json:"Version"` //nolint:tagliatelle
@@ -206,6 +217,9 @@ func (c *Client) fetchNPMRegistry(ctx context.Context, name string) (string, err
 		return "", err
 	}
 	defer response.Body.Close()
+	if response.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("received status code %d retrieving %q", response.StatusCode, request.URL.String())
+	}
 
 	var data struct {
 		DistTags struct {
@@ -306,6 +320,12 @@ func (c *Client) fetchMavenPage(ctx context.Context, targetURL *url.URL, group s
 		return nil, err
 	}
 	defer response.Body.Close()
+	if response.StatusCode != http.StatusOK {
+		if errorBody, err := io.ReadAll(response.Body); err != nil {
+			log.Println("error:", string(errorBody))
+		}
+		return nil, fmt.Errorf("received status code %d retrieving %q", response.StatusCode, request.URL.String())
+	}
 
 	var data mavenResponse
 	if err := json.NewDecoder(response.Body).Decode(&data); err != nil {
