@@ -6,7 +6,6 @@ import (
 	"encoding/xml"
 	"errors"
 	"fmt"
-	"log"
 	"net/http"
 	"net/url"
 	"os"
@@ -286,7 +285,6 @@ func (c *Client) fetchMaven(ctx context.Context, group string, name string) (*ma
 	if results.latestVersion == "" {
 		return nil, errors.New("failed to determine latest version from response docs")
 	}
-	log.Printf("%+v", *results)
 	return results, nil
 }
 
