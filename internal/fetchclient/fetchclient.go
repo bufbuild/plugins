@@ -78,11 +78,7 @@ func (c *Client) fetch(ctx context.Context, config *source.Config) (string, erro
 	case config.Source.NPMRegistry != nil:
 		return c.fetchNPMRegistry(ctx, config.Source.NPMRegistry.Name)
 	case config.Source.Maven != nil:
-		results, err := c.fetchMaven(ctx, config.Source.Maven.Group, config.Source.Maven.Name)
-		if err != nil {
-			return "", err
-		}
-		return results.latestVersion, nil
+		return c.fetchMaven(ctx, config.Source.Maven.Group, config.Source.Maven.Name)
 	case config.Source.Crates != nil:
 		return c.fetchCrate(ctx, config.Source.Crates.CrateName)
 	}
@@ -226,28 +222,23 @@ func (c *Client) fetchNPMRegistry(ctx context.Context, name string) (string, err
 	return data.DistTags.Latest, nil
 }
 
-type mavenResults struct {
-	latestVersion       string
-	latestPatchVersions map[string]string
-}
-
-func (c *Client) fetchMaven(ctx context.Context, group string, name string) (*mavenResults, error) {
+func (c *Client) fetchMaven(ctx context.Context, group string, name string) (string, error) {
 	groupComponents := strings.Split(group, ".")
 	targetURL, err := url.JoinPath(mavenURL, append(groupComponents, name, "maven-metadata.xml")...)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 	request, err := http.NewRequestWithContext(ctx, http.MethodGet, targetURL, nil)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 	response, err := c.httpClient.Do(request)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 	defer response.Body.Close()
 	if response.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("received status code %d retrieving %q", response.StatusCode, request.URL.String())
+		return "", fmt.Errorf("received status code %d retrieving %q", response.StatusCode, request.URL.String())
 	}
 	var metadata struct {
 		GroupID    string `xml:"groupId"`
@@ -260,12 +251,9 @@ func (c *Client) fetchMaven(ctx context.Context, group string, name string) (*ma
 		} `xml:"versioning"`
 	}
 	if err := xml.NewDecoder(response.Body).Decode(&metadata); err != nil {
-		return nil, err
+		return "", err
 	}
-	results := &mavenResults{
-		latestVersion:       "",
-		latestPatchVersions: make(map[string]string),
-	}
+	latestVersion := ""
 	for _, version := range metadata.Versioning.Versions {
 		if !strings.HasPrefix(version, "v") {
 			version = "v" + version
@@ -274,18 +262,14 @@ func (c *Client) fetchMaven(ctx context.Context, group string, name string) (*ma
 			continue
 		}
 		version = semver.Canonical(version)
-		if results.latestVersion == "" || semver.Compare(results.latestVersion, version) < 0 {
-			results.latestVersion = version
-		}
-		release := semver.MajorMinor(version)
-		if results.latestPatchVersions[release] == "" || semver.Compare(results.latestPatchVersions[release], version) < 0 {
-			results.latestPatchVersions[release] = version
+		if latestVersion == "" || semver.Compare(latestVersion, version) < 0 {
+			latestVersion = version
 		}
 	}
-	if results.latestVersion == "" {
-		return nil, errors.New("failed to determine latest version from response docs")
+	if latestVersion == "" {
+		return "", errors.New("failed to determine latest version from metadata")
 	}
-	return results, nil
+	return latestVersion, nil
 }
 
 func (c *Client) fetchGithub(ctx context.Context, owner string, repository string) (string, error) {
