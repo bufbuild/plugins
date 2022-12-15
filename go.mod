@@ -4,7 +4,7 @@ go 1.19
 
 require (
 	aead.dev/minisign v0.2.0
-	github.com/bufbuild/buf v1.10.0
+	github.com/bufbuild/buf v1.10.1-0.20221214040745-bc1fb9464910
 	github.com/google/go-github/v48 v48.2.0
 	github.com/hashicorp/go-retryablehttp v0.7.1
 	github.com/sethvargo/go-envconfig v0.8.3
@@ -26,7 +26,7 @@ require (
 	go.opencensus.io v0.24.0 // indirect
 	go.uber.org/atomic v1.10.0 // indirect
 	golang.org/x/crypto v0.1.0 // indirect
-	golang.org/x/net v0.3.0 // indirect
+	golang.org/x/net v0.4.0 // indirect
 	golang.org/x/sys v0.3.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/protobuf v1.28.2-0.20220831092852-f930b1dc76e8 // indirect
