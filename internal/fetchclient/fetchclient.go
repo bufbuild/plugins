@@ -3,15 +3,13 @@ package fetchclient
 import (
 	"context"
 	"encoding/json"
+	"encoding/xml"
 	"errors"
 	"fmt"
-	"io"
 	"log"
-	"math"
 	"net/http"
 	"net/url"
 	"os"
-	"strconv"
 	"strings"
 
 	"github.com/google/go-github/v48/github"
@@ -28,10 +26,7 @@ const (
 	dartFlutterAPIURL = "https://pub.dev/api/packages"
 	goProxyURL        = "https://proxy.golang.org"
 	npmRegistryURL    = "https://registry.npmjs.org"
-	// docs: https://central.sonatype.org/search/rest-api-guide/
-	mavenSearchURL = "https://search.maven.org/solrsearch/select"
-	mavenPageSize  = 50
-	mavenMaxFetch  = 1000
+	mavenURL          = "https://repo1.maven.org/maven2"
 )
 
 // Client is a client used to fetch latest package version.
@@ -238,80 +233,12 @@ type mavenResults struct {
 }
 
 func (c *Client) fetchMaven(ctx context.Context, group string, name string) (*mavenResults, error) {
-	targetURL, err := url.Parse(mavenSearchURL)
+	groupComponents := strings.Split(group, ".")
+	targetURL, err := url.JoinPath(mavenURL, append(groupComponents, name, "maven-metadata.xml")...)
 	if err != nil {
 		return nil, err
 	}
-	results := &mavenResults{
-		latestPatchVersions: make(map[string]string),
-	}
-	numFound := math.MaxInt
-	for start := 0; start < numFound; start += mavenPageSize {
-		response, err := c.fetchMavenPage(ctx, targetURL, group, name, start)
-		if err != nil {
-			return nil, err
-		}
-		if numFound == math.MaxInt {
-			numFound = response.Response.NumFound
-		}
-		// Limit pagination in case API calls return a large number of versions.
-		if numFound > mavenMaxFetch {
-			numFound = mavenMaxFetch
-		}
-		if len(response.Response.Docs) == 0 {
-			break
-		}
-		for _, doc := range response.Response.Docs {
-			version := doc.Version
-			if !strings.HasPrefix(version, "v") {
-				version = "v" + version
-			}
-			if !semver.IsValid(version) || semver.Prerelease(version) != "" {
-				continue
-			}
-			version = semver.Canonical(version)
-			if results.latestVersion == "" || semver.Compare(results.latestVersion, version) < 0 {
-				results.latestVersion = version
-			}
-			release := semver.MajorMinor(version)
-			if results.latestPatchVersions[release] == "" || semver.Compare(results.latestPatchVersions[release], version) < 0 {
-				results.latestPatchVersions[release] = version
-			}
-		}
-	}
-	if results.latestVersion == "" {
-		return nil, errors.New("failed to determine latest version from response docs")
-	}
-	return results, nil
-}
-
-type mavenResponse struct {
-	Response struct {
-		NumFound int `json:"numFound"` //nolint:tagliatelle
-		Start    int `json:"start"`
-		Docs     []struct {
-			ID        string `json:"id"`
-			Group     string `json:"g"`
-			Artifact  string `json:"a"`
-			Version   string `json:"v"`
-			Packaging string `json:"p"`
-		} `json:"docs"`
-	} `json:"response"`
-}
-
-func (c *Client) fetchMavenPage(ctx context.Context, targetURL *url.URL, group string, name string, start int) (*mavenResponse, error) {
-	q := url.Values{}
-	q.Set("wt", "json")
-	q.Set("rows", strconv.Itoa(mavenPageSize))
-	q.Set("core", "gav")
-	q.Set("start", strconv.Itoa(start))
-	q.Set("q", fmt.Sprintf("g:%s+AND+a:%s", group, name))
-	unescapedQuery, err := url.QueryUnescape(q.Encode())
-	if err != nil {
-		return nil, err
-	}
-	targetURL.RawQuery = unescapedQuery
-	request, err := http.NewRequestWithContext(ctx, http.MethodGet, targetURL.String(), nil)
+	request, err := http.NewRequestWithContext(ctx, http.MethodGet, targetURL, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -321,17 +248,46 @@ func (c *Client) fetchMavenPage(ctx context.Context, targetURL *url.URL, group s
 	}
 	defer response.Body.Close()
 	if response.StatusCode != http.StatusOK {
-		if errorBody, err := io.ReadAll(response.Body); err != nil {
-			log.Println("error:", string(errorBody))
-		}
 		return nil, fmt.Errorf("received status code %d retrieving %q", response.StatusCode, request.URL.String())
 	}
-
-	var data mavenResponse
-	if err := json.NewDecoder(response.Body).Decode(&data); err != nil {
+	var metadata struct {
+		GroupID    string `xml:"groupId"`
+		ArtifactID string `xml:"artifactId"`
+		Versioning struct {
+			Latest      string   `xml:"latest"`
+			Release     string   `xml:"release"`
+			Versions    []string `xml:"versions>version"`
+			LastUpdated string   `xml:"lastUpdated"`
+		} `xml:"versioning"`
+	}
+	if err := xml.NewDecoder(response.Body).Decode(&metadata); err != nil {
 		return nil, err
 	}
-	return &data, nil
+	results := &mavenResults{
+		latestVersion:       "",
+		latestPatchVersions: make(map[string]string),
+	}
+	for _, version := range metadata.Versioning.Versions {
+		if !strings.HasPrefix(version, "v") {
+			version = "v" + version
+		}
+		if !semver.IsValid(version) || semver.Prerelease(version) != "" {
+			continue
+		}
+		version = semver.Canonical(version)
+		if results.latestVersion == "" || semver.Compare(results.latestVersion, version) < 0 {
+			results.latestVersion = version
+		}
+		release := semver.MajorMinor(version)
+		if results.latestPatchVersions[release] == "" || semver.Compare(results.latestPatchVersions[release], version) < 0 {
+			results.latestPatchVersions[release] = version
+		}
+	}
+	if results.latestVersion == "" {
+		return nil, errors.New("failed to determine latest version from response docs")
+	}
+	log.Printf("%+v", *results)
+	return results, nil
 }
 
 func (c *Client) fetchGithub(ctx context.Context, owner string, repository string) (string, error) {
