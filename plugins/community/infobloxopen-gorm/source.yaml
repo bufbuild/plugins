@@ -1,0 +1,4 @@
+source:
+  github:
+    owner: infobloxopen
+    repository: protoc-gen-gorm
