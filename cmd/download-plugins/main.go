@@ -42,6 +42,9 @@ func run() error {
 		os.Exit(2)
 	}
 	downloadDir := flag.Arg(0)
+	if err := createDownloadDir(downloadDir); err != nil {
+		return err
+	}
 
 	ctx := context.Background()
 	client := release.NewClient(ctx)
@@ -83,6 +86,16 @@ func run() error {
 		}
 	}
 	return nil
+}
+
+func createDownloadDir(downloadDir string) error {
+	st, err := os.Stat(downloadDir)
+	if err == nil && !st.IsDir() {
+		return fmt.Errorf("not a directory: %q", downloadDir)
+	} else if err != nil && !os.IsNotExist(err) {
+		return err
+	}
+	return os.MkdirAll(downloadDir, 0755)
 }
 
 func setPluginZipTimestamp(plugin release.PluginRelease, downloadDir string) error {
