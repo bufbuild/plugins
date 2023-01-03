@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1.4
-FROM rust:1.65.0-alpine3.16 as builder
+FROM rust:1.66.0-alpine3.17 as builder
 RUN apk add --no-cache musl-dev
 WORKDIR /app
 RUN --mount=type=cache,target=/usr/local/cargo/registry --mount=type=cache,target=/root/target \
