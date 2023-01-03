@@ -1,0 +1,3 @@
+source:
+  npm_registry:
+    name: ts-proto
