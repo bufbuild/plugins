@@ -1,0 +1,11 @@
+version: v1
+name: buf.build/grpc/java
+plugin_version: v1.51.1
+source_url: https://github.com/grpc/grpc-java
+description: Generates Java client and server stubs for the gRPC framework.
+deps:
+  - plugin: buf.build/protocolbuffers/java:v21.12
+output_languages:
+  - java
+spdx_license_id: Apache-2.0
+license_url: https://github.com/grpc/grpc-java/blob/v1.51.1/LICENSE

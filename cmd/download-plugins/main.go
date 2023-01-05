@@ -32,7 +32,7 @@ func run() error {
 		minisignPublicKey string
 		releaseTag        string
 	)
-	flag.StringVar(&minisignPublicKey, "minisign-public-key", "", "path to minisign public key file")
+	flag.StringVar(&minisignPublicKey, "minisign-public-key", "", "path to minisign public key file (default: bufbuild/plugins public key)")
 	flag.StringVar(&releaseTag, "release-tag", "", "release to download (default: latest release)")
 	flag.Parse()
 
@@ -42,6 +42,9 @@ func run() error {
 		os.Exit(2)
 	}
 	downloadDir := flag.Arg(0)
+	if err := createDownloadDir(downloadDir); err != nil {
+		return err
+	}
 
 	ctx := context.Background()
 	client := release.NewClient(ctx)
@@ -73,19 +76,44 @@ func run() error {
 		if err != nil {
 			return err
 		}
-		if exists {
-			log.Printf("already downloaded: %s", filepath.Join(downloadDir, filepath.Base(pluginRelease.URL)))
-		} else if err := downloadReleaseToDir(ctx, client.GitHub.Client(), pluginRelease, downloadDir); err != nil {
+		if !exists {
+			if err := downloadReleaseToDir(ctx, client.GitHub.Client(), pluginRelease, downloadDir); err != nil {
+				return err
+			}
+		}
+		if err := setPluginZipTimestamp(pluginRelease, downloadDir); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
+func createDownloadDir(downloadDir string) error {
+	st, err := os.Stat(downloadDir)
+	if err == nil && !st.IsDir() {
+		return fmt.Errorf("not a directory: %q", downloadDir)
+	} else if err != nil && !os.IsNotExist(err) {
+		return err
+	}
+	return os.MkdirAll(downloadDir, 0755)
+}
+
+func setPluginZipTimestamp(plugin release.PluginRelease, downloadDir string) error {
+	filename := filepath.Join(downloadDir, filepath.Base(plugin.URL))
+	return os.Chtimes(filename, plugin.LastUpdated, plugin.LastUpdated)
+}
+
 func pluginExistsMatchingDigest(plugin release.PluginRelease, downloadDir string) (bool, error) {
-	digest, err := release.CalculateDigest(filepath.Join(downloadDir, filepath.Base(plugin.URL)))
-	if err != nil {
+	filename := filepath.Join(downloadDir, filepath.Base(plugin.URL))
+	if _, err := os.Stat(filename); err != nil {
+		if os.IsNotExist(err) {
+			return false, nil
+		}
 		return false, err
+	}
+	digest, err := release.CalculateDigest(filename)
+	if err != nil {
+		return false, fmt.Errorf("failed to calculate digest for %s: %w", filename, err)
 	}
 	return digest == plugin.PluginZipDigest, nil
 }
@@ -93,11 +121,11 @@ func pluginExistsMatchingDigest(plugin release.PluginRelease, downloadDir string
 func downloadReleaseToDir(ctx context.Context, client *http.Client, plugin release.PluginRelease, downloadDir string) error {
 	expectedDigest, err := parseDigest(plugin.PluginZipDigest)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to parse digest for plugin: %w", err)
 	}
 	f, err := os.CreateTemp(downloadDir, "."+strings.ReplaceAll(plugin.PluginName, "/", "-"))
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to create temporary file: %w", err)
 	}
 	defer func() {
 		if err := f.Close(); err != nil && !errors.Is(err, os.ErrClosed) {
@@ -110,11 +138,11 @@ func downloadReleaseToDir(ctx context.Context, client *http.Client, plugin relea
 	log.Printf("downloading: %v", plugin.URL)
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, plugin.URL, nil)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to make HTTP request: %w", err)
 	}
 	resp, err := client.Do(req)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to perform HTTP request: %w", err)
 	}
 	defer func() {
 		if err := resp.Body.Close(); err != nil {
@@ -127,17 +155,17 @@ func downloadReleaseToDir(ctx context.Context, client *http.Client, plugin relea
 	digest := sha256.New()
 	w := io.MultiWriter(f, digest)
 	if _, err := io.Copy(w, resp.Body); err != nil {
-		return err
+		return fmt.Errorf("failed to copy file: %w", err)
 	}
 	sha256Digest := hex.EncodeToString(digest.Sum(nil))
 	if sha256Digest != expectedDigest {
 		return fmt.Errorf("checksum mismatch for %s: %q (expected) != %q (actual)", plugin.URL, expectedDigest, sha256Digest)
 	}
 	if err := f.Close(); err != nil {
-		return err
+		return fmt.Errorf("failed to close file: %w", err)
 	}
 	if err := os.Rename(f.Name(), filepath.Join(downloadDir, filepath.Base(plugin.URL))); err != nil {
-		return err
+		return fmt.Errorf("failed to rename temporary file: %w", err)
 	}
 	return nil
 }

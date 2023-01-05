@@ -16,6 +16,7 @@ jobs:
   pr:
     env:
       BUILDKIT_PROGRESS: plain
+      DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
@@ -23,7 +24,7 @@ jobs:
         fetch-depth: 0
     - name: Get changed files
       id: changed-files
-      uses: tj-actions/changed-files@8a4cc4fbd67975557b6d85dd302f5f9400b9c92e
+      uses: tj-actions/changed-files@1d1287f9fafd92be283f99b781fb5f00f00dd471
       with:
         files: |
           plugins/**
@@ -56,7 +57,7 @@ jobs:
         driver: docker
         driver-opts: network=host
     - name: Login to Docker Hub
-      if: github.repository == 'bufbuild/plugins'
+      if: ${{ env.DOCKERHUB_USERNAME != '' }}
       uses: docker/login-action@f4ef78c080cd8ba55a85445d5b36e214a81df20a
       with:
         username: ${{ secrets.DOCKERHUB_USERNAME }}
