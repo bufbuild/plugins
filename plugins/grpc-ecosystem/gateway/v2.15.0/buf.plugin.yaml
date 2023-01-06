@@ -1,5 +1,5 @@
 version: v1
-name: buf.build/grpc/gateway
+name: buf.build/grpc-ecosystem/gateway
 plugin_version: v2.15.0
 source_url: https://github.com/grpc/grpc-gateway
 description: gRPC to JSON proxy generator following the gRPC HTTP spec.
