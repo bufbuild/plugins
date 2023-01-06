@@ -21,6 +21,5 @@ registry:
   opts:
     - paths=source_relative
     - standalone=true
-    - separate_package=true
 spdx_license_id: BSD-3-Clause
 license_url: https://github.com/grpc-ecosystem/grpc-gateway/blob/v2.15.0/LICENSE.txt
