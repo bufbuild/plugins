@@ -4,6 +4,7 @@ plugin_version: v2.8.2
 source_url: https://github.com/timostamm/protobuf-ts
 description: Generates Protobuf and RPC for TypeScript.
 output_languages:
+  - javascript
   - typescript
 registry:
   npm:
