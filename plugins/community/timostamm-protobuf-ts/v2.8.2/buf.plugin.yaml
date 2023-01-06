@@ -14,5 +14,7 @@ registry:
         version: ^2.8.2
       - package: '@protobuf-ts/runtime-rpc'
         version: ^2.8.2
+  opts:
+    - output_javascript,optimize_code_size,long_type_string,add_pb_suffix,ts_nocheck,eslint_disable
 spdx_license_id: Apache-2.0
 license_url: https://github.com/timostamm/protobuf-ts/blob/v2.8.2/LICENSE
