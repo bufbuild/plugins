@@ -12,6 +12,6 @@ RUN curl -fsSL -o scalapbc.zip https://github.com/scalapb/ScalaPB/releases/downl
     && unzip scalapbc
 
 FROM gcr.io/distroless/base-debian11
-COPY --from=build --chown=root:root /build/protoc-gen-scala .
+COPY --from=build --link /build/protoc-gen-scala .
 USER nobody
 ENTRYPOINT [ "/protoc-gen-scala" ]

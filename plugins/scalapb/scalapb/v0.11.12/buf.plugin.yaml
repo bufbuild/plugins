@@ -1,6 +1,6 @@
 version: v1
 name: buf.build/scalapb/scalapb
-plugin_version:v0.11.12
+plugin_version: v0.11.12
 source_url: https://github.com/scalapb/scalapb
 description: Base types for Scala. Generates message and enum types.
 output_languages:
