@@ -1,6 +1,6 @@
 version: v1
 name: buf.build/community/stephenh-ts-proto
-plugin_version: v1.137.0
+plugin_version: v1.137.2
 source_url: https://github.com/stephenh/ts-proto
 description: An idiomatic protobuf generator for TypeScript.
 output_languages:
