@@ -1,0 +1,9 @@
+version: v1
+name: buf.build/community/neoeinstein-tonic
+plugin_version: v0.2.1
+source_url: https://crates.io/crates/protoc-gen-tonic
+description: Generates Tonic gRPC server and client code using the Prost! code generation engine.
+output_languages:
+  - rust
+spdx_license_id: Apache-2.0
+license_url: https://github.com/neoeinstein/protoc-gen-prost/blob/1daacefaef6a5627d8a33d7258f58f972a845bba/LICENSE
