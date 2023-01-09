@@ -26,7 +26,7 @@ jobs:
         workflow-id: 'ci.yml'
     - name: Get changed files
       id: changed-files
-      uses: tj-actions/changed-files@1d1287f9fafd92be283f99b781fb5f00f00dd471
+      uses: tj-actions/changed-files@9a6dabf8d15381f97f1c770257a1a0db59c28a47
       with:
         base_sha: ${{ steps.last_successful_commit_push.outputs.base }}
         files: |
