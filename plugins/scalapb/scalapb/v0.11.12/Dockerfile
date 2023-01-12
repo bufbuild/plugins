@@ -11,6 +11,6 @@ RUN curl -fsSL -o protoc-gen-scala.sh https://repo1.maven.org/maven2/com/thesame
 
 FROM gcr.io/distroless/java11-debian11
 COPY --from=build /bin/sh /bin/sh
-COPY --from=build --link --chmod=0755 /protoc-gen-scala.sh .
+COPY --from=build --link /protoc-gen-scala.sh .
 USER nobody
 ENTRYPOINT [ "/bin/sh", "/protoc-gen-scala.sh" ]
