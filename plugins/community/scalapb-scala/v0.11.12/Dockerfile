@@ -11,6 +11,7 @@ RUN curl -fsSL -o protoc-gen-scala.sh https://repo1.maven.org/maven2/com/thesame
     && chmod +x protoc-gen-scala.sh
 
 FROM gcr.io/distroless/java11-debian11
+#We need shell access to run the script, we don't use the debug container as it contains more than what we need
 COPY --from=build /bin/sh /bin/sh
 COPY --from=build --link /protoc-gen-scala.sh .
 USER nobody
