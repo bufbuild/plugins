@@ -2,7 +2,7 @@ version: v1
 name: buf.build/bufbuild/connect-swift
 plugin_version: v0.1.0
 source_url: https://github.com/bufbuild/connect-swift
-description: Generates client stubs for calling Connect and gRPC-Web services from Swift.
+description: Idiomatic gRPC & Connect RPCs for Swift.
 deps:
   - plugin: buf.build/apple/swift:v1.20.3
 output_languages:
