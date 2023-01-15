@@ -1,0 +1,9 @@
+version: v1
+name: buf.build/community/typelevel-fs2-grpc
+plugin_version: v2.5.6
+source_url: https://github.com/typelevel/fs2-grpc
+description: Enables writing purely functional gRPC services using FS2.
+output_languages:
+  - scala
+spdx_license_id: MIT
+license_url: https://github.com/typelevel/fs2-grpc/blob/v2.5.6/LICENSE
