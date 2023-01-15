@@ -1,0 +1,9 @@
+version: v1
+name: buf.build/community/lightbend-akka-grpc
+plugin_version: v2.2.1
+source_url: https://github.com/akka/akka-grpc
+description: Support for building streaming gRPC servers and clients on top of Akka Streams.
+output_languages:
+  - scala
+spdx_license_id: BUSL-1.1
+license_url: https://github.com/akka/akka-grpc/blob/v2.2.1/LICENSE
