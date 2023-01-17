@@ -8,18 +8,5 @@ output_languages:
 deps:
   - plugin: buf.build/protocolbuffers/go:v1.28.1
   - plugin: buf.build/grpc/go:v1.2.0
-registry:
-  go:
-    min_version: "1.17"
-    deps:
-      - module: github.com/grpc-ecosystem/grpc-gateway/v2
-        version: v2.15.0
-      - module: google.golang.org/grpc
-        version: v1.51.0
-      - module: google.golang.org/protobuf
-        version: v1.28.1
-  opts:
-    - paths=source_relative
-    - standalone=true
 spdx_license_id: BSD-3-Clause
 license_url: https://github.com/grpc-ecosystem/grpc-gateway/blob/v2.15.0/LICENSE.txt
