@@ -8,4 +8,4 @@ deps:
 output_languages:
   - swift
 spdx_license_id: Apache-2.0
-license_url: https://github.com/bufbuild/connect-swift/blob/v0.1.0/LICENSE
+license_url: https://github.com/bufbuild/connect-swift/blob/0.1.0/LICENSE
