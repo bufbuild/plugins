@@ -2,7 +2,7 @@
 FROM swift:5.7.2-focal AS build
 
 WORKDIR /app
-RUN git clone --branch v0.1.0 https://github.com/bufbuild/connect-swift
+RUN git clone --branch 0.1.0 https://github.com/bufbuild/connect-swift
 WORKDIR /app/connect-swift
 RUN swift build -c release --product protoc-gen-connect-swift-mocks --static-swift-stdlib -Xlinker -s
 
