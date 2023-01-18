@@ -1,3 +1,4 @@
 source:
-  goproxy:
-    name: github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-grpc-gateway
+  github:
+    owner: grpc-ecosystem
+    repository: grpc-gateway
