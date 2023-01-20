@@ -42,7 +42,7 @@ plugins:
 `))
 	protocGenPluginTemplate = template.Must(template.New("protoc-gen-plugin").Parse(`#!/bin/bash
 
-exec docker run --log-driver=none --label=buf-plugins-test -i {{.ImageName}} "$@"
+exec docker run --log-driver=none  {{- if .SafeToRemove}} --rm{{- end}} --label=buf-plugins-test -i {{.ImageName}} "$@"
 `))
 	images = []string{
 		"eliza",
@@ -85,6 +85,7 @@ func TestGeneration(t *testing.T) {
 				require.NotNil(t, found)
 				pluginRef, err := newDockerPluginRef(found.NameWithVersion())
 				require.NoError(t, err)
+				pluginRef.SafeToRemove = safeToRemoveImage(allPlugins, found.NameWithVersion())
 				pluginConfigs = append(pluginConfigs, pluginConfig{
 					Name:     pluginRef.fileName(),
 					Out:      "gen",
@@ -92,7 +93,7 @@ func TestGeneration(t *testing.T) {
 					Opts:     found.Registry.Opts,
 					Strategy: "all",
 				})
-				err = buildDockerImage(t, pluginRef, filepath.Dir(found.Path))
+				err = buildDockerImage(t, pluginRef, filepath.Dir(found.Path), true)
 				require.NoError(t, err)
 				err = createProtocGenPlugin(t, pluginDir, pluginRef)
 				require.NoError(t, err)
@@ -100,7 +101,8 @@ func TestGeneration(t *testing.T) {
 
 			pluginRef, err := newDockerPluginRef(pluginMeta.NameWithVersion())
 			require.NoError(t, err)
-			err = buildDockerImage(t, pluginRef, filepath.Dir(pluginMeta.Path))
+			pluginRef.SafeToRemove = safeToRemoveImage(allPlugins, pluginMeta.NameWithVersion())
+			err = buildDockerImage(t, pluginRef, filepath.Dir(pluginMeta.Path), false)
 			require.NoError(t, err)
 			err = createProtocGenPlugin(t, pluginDir, pluginRef)
 			require.NoError(t, err)
@@ -232,6 +234,17 @@ func lookupPlugin(allPlugins []*plugin.Plugin, name string) *plugin.Plugin {
 	return nil
 }
 
+func safeToRemoveImage(allPlugins []*plugin.Plugin, name string) bool {
+	for _, plugin := range allPlugins {
+		for _, dep := range plugin.Deps {
+			if dep.Plugin == name {
+				return false
+			}
+		}
+	}
+	return true
+}
+
 func createProtocGenPlugin(t *testing.T, basedir string, plugin *dockerPluginRef) error {
 	t.Helper()
 	protocGenPlugin, err := os.OpenFile(filepath.Join(basedir, plugin.fileName()), os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0755)
@@ -245,19 +258,11 @@ func createProtocGenPlugin(t *testing.T, basedir string, plugin *dockerPluginRef
 }
 
 type dockerPluginRef struct {
-	dockerOrg string
-	owner     string
-	name      string
-	version   string
-}
-
-// ImageName returns a unique name that is used to name a docker image.
-func (d *dockerPluginRef) ImageName() string {
-	return fmt.Sprintf("%s/plugins-%s-%s:%s", d.dockerOrg, d.owner, d.name, d.version)
-}
-
-func (d *dockerPluginRef) fileName() string {
-	return fmt.Sprintf("%s_%s_%s.plugin", d.owner, d.name, d.version)
+	DockerOrg    string
+	Owner        string
+	Name         string
+	Version      string
+	SafeToRemove bool
 }
 
 // newDockerPluginRef parses a plugin name of the format: remote/owner/name:version.
@@ -277,18 +282,31 @@ func newDockerPluginRef(input string) (*dockerPluginRef, error) {
 		return nil, fmt.Errorf("failed to get version from %q", fields[2])
 	}
 	return &dockerPluginRef{
-		dockerOrg: dockerOrg,
-		owner:     fields[1],
-		name:      name,
-		version:   version,
+		DockerOrg: dockerOrg,
+		Owner:     fields[1],
+		Name:      name,
+		Version:   version,
 	}, nil
 }
 
-func buildDockerImage(t *testing.T, ref *dockerPluginRef, path string) error {
+// ImageName returns a unique name that is used to name a docker image.
+func (d *dockerPluginRef) ImageName() string {
+	return fmt.Sprintf("%s/plugins-%s-%s:%s", d.DockerOrg, d.Owner, d.Name, d.Version)
+}
+
+func (d *dockerPluginRef) fileName() string {
+	return fmt.Sprintf("%s_%s_%s.plugin", d.Owner, d.Name, d.Version)
+}
+
+func buildDockerImage(t *testing.T, ref *dockerPluginRef, path string, pull bool) error {
 	t.Helper()
 	docker, err := exec.LookPath("docker")
 	if err != nil {
 		return err
+	}
+	if isEnvironmentCI() && pull {
+		// This should already exist, no need to build the image in CI.
+		return nil
 	}
 	args := fmt.Sprintf("buildx build --label=buf-plugins-test -t %s .", ref.ImageName())
 	cmd := exec.Cmd{
@@ -302,4 +320,9 @@ func buildDockerImage(t *testing.T, ref *dockerPluginRef, path string) error {
 		return err
 	}
 	return nil
+}
+
+func isEnvironmentCI() bool {
+	ok, _ := strconv.ParseBool(os.Getenv("CI"))
+	return ok
 }

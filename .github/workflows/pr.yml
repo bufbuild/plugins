@@ -68,12 +68,6 @@ jobs:
         registry: ghcr.io
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
-    # - name: Build
-    #   env:
-    #     ALL_MODIFIED_FILES: ${{ steps.changed-files.outputs.all_modified_files }}
-    #     ANY_MODIFIED: ${{ steps.changed-files.outputs.any_modified }}
-    #   shell: bash
-    #   run: make
     - name: Test
       env:
         ALL_MODIFIED_FILES: ${{ steps.changed-files.outputs.all_modified_files }}
