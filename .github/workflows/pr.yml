@@ -80,4 +80,4 @@ jobs:
         ANY_MODIFIED: ${{ steps.changed-files.outputs.any_modified }}
       shell: bash
       # run: make test DOCKER_ORG="ghcr.io/bufbuild"
-      run: make test PLUGINS="bufbuild/connect-swift" DOCKER_ORG="ghcr.io/bufbuild"
+      run: make test PLUGINS="bufbuild/connect-swift" DOCKER_ORG="ghcr.io/bufbuild" DOCKER_BUILDKIT=1
