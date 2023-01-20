@@ -3,7 +3,6 @@ package tests
 import (
 	"context"
 	"fmt"
-	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -300,8 +299,8 @@ func buildDockerImage(t *testing.T, ref *dockerPluginRef, path string, attemptPu
 		Path:   docker,
 		Args:   strings.Split(args, " "),
 		Dir:    path,
-		Stdout: io.Discard,
-		Stderr: io.Discard,
+		Stdout: os.Stdout,
+		Stderr: os.Stderr,
 	}
 	if err := cmd.Run(); err != nil {
 		return err
