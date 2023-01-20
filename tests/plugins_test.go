@@ -92,7 +92,7 @@ func TestGeneration(t *testing.T) {
 					Opts:     found.Registry.Opts,
 					Strategy: "all",
 				})
-				err = buildDockerImage(t, pluginRef, filepath.Dir(found.Path), true)
+				err = buildDockerImage(t, pluginRef, filepath.Dir(found.Path))
 				require.NoError(t, err)
 				err = createProtocGenPlugin(t, pluginDir, pluginRef)
 				require.NoError(t, err)
@@ -100,7 +100,7 @@ func TestGeneration(t *testing.T) {
 
 			pluginRef, err := newDockerPluginRef(pluginMeta.NameWithVersion())
 			require.NoError(t, err)
-			err = buildDockerImage(t, pluginRef, filepath.Dir(pluginMeta.Path), false)
+			err = buildDockerImage(t, pluginRef, filepath.Dir(pluginMeta.Path))
 			require.NoError(t, err)
 			err = createProtocGenPlugin(t, pluginDir, pluginRef)
 			require.NoError(t, err)
@@ -284,16 +284,12 @@ func newDockerPluginRef(input string) (*dockerPluginRef, error) {
 	}, nil
 }
 
-func buildDockerImage(t *testing.T, ref *dockerPluginRef, path string, attemptPull bool) error {
+func buildDockerImage(t *testing.T, ref *dockerPluginRef, path string) error {
 	t.Helper()
 	docker, err := exec.LookPath("docker")
 	if err != nil {
 		return err
 	}
-	// if isEnvironmentCI() && attemptPull {
-	// 	// This should already exist, no need to build the image in CI.
-	// 	return nil
-	// }
 	args := fmt.Sprintf("buildx build --label=buf-plugins-test -t %s .", ref.ImageName())
 	cmd := exec.Cmd{
 		Path:   docker,
@@ -306,9 +302,4 @@ func buildDockerImage(t *testing.T, ref *dockerPluginRef, path string, attemptPu
 		return err
 	}
 	return nil
-}
-
-func isEnvironmentCI() bool {
-	ok, _ := strconv.ParseBool(os.Getenv("CI"))
-	return ok
 }
