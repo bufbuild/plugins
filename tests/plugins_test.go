@@ -291,10 +291,10 @@ func buildDockerImage(t *testing.T, ref *dockerPluginRef, path string, attemptPu
 	if err != nil {
 		return err
 	}
-	if isEnvironmentCI() && attemptPull {
-		// This should already exist, no need to build the image in CI.
-		return nil
-	}
+	// if isEnvironmentCI() && attemptPull {
+	// 	// This should already exist, no need to build the image in CI.
+	// 	return nil
+	// }
 	args := fmt.Sprintf("buildx build --label=buf-plugins-test -t %s .", ref.ImageName())
 	cmd := exec.Cmd{
 		Path:   docker,
