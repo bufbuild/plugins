@@ -59,8 +59,6 @@ type pluginConfig struct {
 }
 
 func TestGeneration(t *testing.T) {
-	t.Setenv("DOCKER_BUILDKIT", "1")
-
 	t.Parallel()
 	if testing.Short() {
 		t.Skip("skipping code generation test")

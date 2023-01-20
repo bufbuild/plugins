@@ -5,6 +5,7 @@ DOCKER ?= docker
 DOCKER_ORG ?= bufbuild
 DOCKER_BUILD_ARGS ?= buildx build
 DOCKER_BUILD_EXTRA_ARGS ?=
+DOCKER_BUILDKIT ?= 1
 
 GO_TEST_FLAGS ?= -race -count=1 -timeout=180m
 
