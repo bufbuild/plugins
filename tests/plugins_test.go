@@ -65,6 +65,7 @@ func TestGeneration(t *testing.T) {
 	}
 	plugins := loadFilteredPlugins(t)
 	allPlugins := loadAllPlugins(t)
+	imagesToCleanup := make(map[string]struct{})
 	allowEmpty, _ := strconv.ParseBool(os.Getenv("ALLOW_EMPTY_PLUGIN_SUM"))
 	testPluginWithImage := func(t *testing.T, pluginMeta *plugin.Plugin, image string) {
 		t.Helper()
@@ -96,6 +97,7 @@ func TestGeneration(t *testing.T) {
 				require.NoError(t, err)
 				err = createProtocGenPlugin(t, pluginDir, pluginRef)
 				require.NoError(t, err)
+				imagesToCleanup[pluginRef.ImageName()] = struct{}{}
 			}
 
 			pluginRef, err := newDockerPluginRef(pluginMeta.NameWithVersion())
@@ -104,6 +106,7 @@ func TestGeneration(t *testing.T) {
 			require.NoError(t, err)
 			err = createProtocGenPlugin(t, pluginDir, pluginRef)
 			require.NoError(t, err)
+			imagesToCleanup[pluginRef.ImageName()] = struct{}{}
 			pluginConfigs = append(pluginConfigs, pluginConfig{
 				Name:     pluginRef.fileName(),
 				Out:      "gen",
@@ -150,6 +153,20 @@ func TestGeneration(t *testing.T) {
 				testPluginWithImage(t, toTest, image)
 			}
 		})
+	}
+	docker, err := exec.LookPath("docker")
+	require.NoError(t, err)
+	for imageName := range imagesToCleanup {
+		cmd := exec.Cmd{
+			Path:   docker,
+			Args:   []string{docker, "rmi", "--force", imageName},
+			Dir:    "",
+			Stdout: io.Discard,
+			Stderr: io.Discard,
+		}
+		if err := cmd.Run(); err != nil {
+			t.Logf("failed to remove temporary docker image %s: error: %v", imageName, err)
+		}
 	}
 }
 
@@ -316,20 +333,6 @@ func buildDockerImage(t *testing.T, ref *dockerPluginRef, path string, attemptPu
 	if err := cmd.Run(); err != nil {
 		return err
 	}
-	t.Cleanup(func() {
-		cmd := exec.Cmd{
-			Path:   docker,
-			Args:   []string{docker, "rmi", "--force", ref.ImageName()},
-			Dir:    path,
-			Stdout: io.Discard,
-			Stderr: io.Discard,
-		}
-		if err := cmd.Run(); err != nil {
-			t.Logf("failed to remove temporary docker image %s: error: %v", ref.ImageName(), err)
-		} else {
-			t.Logf("successfully removed image: %s", ref.ImageName())
-		}
-	})
 	return nil
 }
 
