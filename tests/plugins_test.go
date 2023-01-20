@@ -42,7 +42,7 @@ plugins:
 `))
 	protocGenPluginTemplate = template.Must(template.New("protoc-gen-plugin").Parse(`#!/bin/bash
 
-exec docker run --log-driver=none --rm -i {{.ImageName}} "$@"
+exec docker run --log-driver=none --label=buf-plugins-test -i {{.ImageName}} "$@"
 `))
 	images = []string{
 		"eliza",
@@ -111,9 +111,10 @@ func TestGeneration(t *testing.T) {
 				Opts:     pluginMeta.Registry.Opts,
 				Strategy: "all",
 			})
-			// Now that we have prepared the main plugin and its dependencies, we can build
-			// a buf.gen.yaml file the combines the plugins in the correct order.
-			require.NoError(t, createBufGenYaml(t, pluginDir, pluginConfigs))
+			// Now that we have prepared the main plugin and its dependencies, we can create
+			// a buf.gen.yaml file the combines the plugin configs in the correct order.
+			err = createBufGenYaml(t, pluginDir, pluginConfigs)
+			require.NoError(t, err)
 
 			bufCmd := exec.Command("buf", "generate", filepath.Join(imageDir, image+".bin.gz"))
 			bufCmd.Dir = pluginDir
@@ -289,7 +290,6 @@ func buildDockerImage(t *testing.T, ref *dockerPluginRef, path string, attemptPu
 	if err != nil {
 		return err
 	}
-	// TODO(mf): in CI, should we attempt to pull the image locally to avoid building it?
 	if isEnvironmentCI() && attemptPull {
 		args := fmt.Sprintf("pull %s", ref.ImageName())
 		cmd := exec.Cmd{
@@ -300,7 +300,9 @@ func buildDockerImage(t *testing.T, ref *dockerPluginRef, path string, attemptPu
 			Stderr: io.Discard,
 		}
 		if err := cmd.Run(); err != nil {
-			return err
+			t.Logf("failed to pull image %s: error: %v", ref.ImageName(), err)
+		} else {
+			t.Logf("successfully pulled image: %s", ref.ImageName())
 		}
 	}
 	args := fmt.Sprintf("buildx build -t %s .", ref.ImageName())
@@ -323,7 +325,9 @@ func buildDockerImage(t *testing.T, ref *dockerPluginRef, path string, attemptPu
 			Stderr: io.Discard,
 		}
 		if err := cmd.Run(); err != nil {
-			t.Logf("failed to remove temporary docker image: %v", err)
+			t.Logf("failed to remove temporary docker image %s: error: %v", ref.ImageName(), err)
+		} else {
+			t.Logf("successfully removed image: %s", ref.ImageName())
 		}
 	})
 	return nil

@@ -6,7 +6,7 @@ DOCKER_ORG ?= bufbuild
 DOCKER_BUILD_ARGS ?= buildx build
 DOCKER_BUILD_EXTRA_ARGS ?=
 
-GO_TEST_FLAGS ?= -race -count=1
+GO_TEST_FLAGS ?= -race -count=1 -timeout=180m
 
 BUF ?= buf
 BUF_PLUGIN_PUSH_ARGS ?=
@@ -34,6 +34,8 @@ clean:
 .PHONY: test
 test:
 	go test $(GO_TEST_FLAGS) ./...
+	docker stop -t=0 $$(docker ps --filter="label=buf-plugins-test" -aq)
+	docker rm $$(docker ps --filter="label=buf-plugins-test" -aq)
 
 .build/plugin/%/image: %/Dockerfile %/buf.plugin.yaml
 	PLUGIN_FULL_NAME=$(shell yq '.name' $*/buf.plugin.yaml); \
