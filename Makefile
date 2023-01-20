@@ -32,7 +32,7 @@ clean:
 	@rm -rf .build
 
 .PHONY: test
-test: build
+test:
 	go test $(GO_TEST_FLAGS) ./...
 
 .build/plugin/%/image: %/Dockerfile %/buf.plugin.yaml

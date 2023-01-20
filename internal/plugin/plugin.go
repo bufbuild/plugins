@@ -29,6 +29,10 @@ func (p *Plugin) String() string {
 	return fmt.Sprintf("%+v", *p)
 }
 
+func (p *Plugin) NameWithVersion() string {
+	return fmt.Sprintf("%s:%s", p.Name, p.PluginVersion)
+}
+
 // Dependency represents a dependency one plugin has on another.
 type Dependency struct {
 	Plugin string `yaml:"plugin"`

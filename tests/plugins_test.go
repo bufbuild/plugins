@@ -3,6 +3,7 @@ package tests
 import (
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -12,12 +13,11 @@ import (
 	"text/template"
 
 	"github.com/bufbuild/buf/private/bufpkg/bufplugin/bufpluginconfig"
+	"github.com/bufbuild/plugins/internal/plugin"
 	"github.com/sethvargo/go-envconfig"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/mod/sumdb/dirhash"
-
-	"github.com/bufbuild/plugins/internal/plugin"
 )
 
 var (
@@ -27,20 +27,22 @@ managed:
   go_package_prefix:
     default: github.com/bufbuild/plugins/internal/gen
 plugins:
-  - name: {{.Name}}
-    out: gen
-    path: ./protoc-gen-plugin
-    strategy: all
+{{- range . }}
+    - plugin: {{.Name}}
+      out: {{.Out}}
+      path: {{.Path}}
+      strategy: {{.Strategy}}
 {{- if .Opts }}
-    opt:
-{{- range .Opts }}
-      - {{ . }}
+      opt:
+	{{- range .Opts }}
+        - {{ . }}
+	{{- end }}
 {{- end }}
-{{- end -}}
+{{- end }}
 `))
 	protocGenPluginTemplate = template.Must(template.New("protoc-gen-plugin").Parse(`#!/bin/bash
 
-exec docker run --log-driver=none --rm -i {{.ImageName}}:{{.Version}} "$@"
+exec docker run --log-driver=none --rm -i {{.ImageName}} "$@"
 `))
 	images = []string{
 		"eliza",
@@ -48,24 +50,71 @@ exec docker run --log-driver=none --rm -i {{.ImageName}}:{{.Version}} "$@"
 	}
 )
 
+type pluginConfig struct {
+	Name     string
+	Out      string
+	Path     string
+	Opts     []string
+	Strategy string
+}
+
 func TestGeneration(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
 		t.Skip("skipping code generation test")
 	}
+	plugins := loadFilteredPlugins(t)
+	allPlugins := loadAllPlugins(t)
 	allowEmpty, _ := strconv.ParseBool(os.Getenv("ALLOW_EMPTY_PLUGIN_SUM"))
 	testPluginWithImage := func(t *testing.T, pluginMeta *plugin.Plugin, image string) {
 		t.Helper()
 		imageDir, err := filepath.Abs(filepath.Join("testdata", "images"))
 		require.NoError(t, err)
 		t.Run(image, func(t *testing.T) {
-			t.Parallel()
 			pluginDir := filepath.Join("testdata", pluginMeta.Name, pluginMeta.PluginVersion, image)
 			pluginGenDir := filepath.Join(pluginDir, "gen")
 			require.NoError(t, os.RemoveAll(pluginGenDir))
 			require.NoError(t, os.MkdirAll(pluginDir, 0755))
-			require.NoError(t, createBufGenYaml(t, pluginDir, pluginMeta))
-			require.NoError(t, createProtocGenPlugin(t, pluginDir, pluginMeta))
+			// We prepare the dependencies first to ensure they are run in the correct order
+			// when passing pluginConfigs to the buf.gen.yaml. This ensures plugins that
+			// depened on insertion points are captured in the correct order.
+			var pluginConfigs []pluginConfig
+			for _, dep := range pluginMeta.Deps {
+				// Lookup the plugin dependency.
+				found := lookupPlugin(allPlugins, dep.Plugin)
+				require.NotNil(t, found)
+				pluginRef, err := newDockerPluginRef(found.NameWithVersion())
+				require.NoError(t, err)
+				pluginConfigs = append(pluginConfigs, pluginConfig{
+					Name:     pluginRef.fileName(),
+					Out:      "gen",
+					Path:     "./" + pluginRef.fileName(),
+					Opts:     found.Registry.Opts,
+					Strategy: "all",
+				})
+				err = buildDockerImage(t, pluginRef, filepath.Dir(found.Path), true)
+				require.NoError(t, err)
+				err = createProtocGenPlugin(t, pluginDir, pluginRef)
+				require.NoError(t, err)
+			}
+
+			pluginRef, err := newDockerPluginRef(pluginMeta.NameWithVersion())
+			require.NoError(t, err)
+			err = buildDockerImage(t, pluginRef, filepath.Dir(pluginMeta.Path), false)
+			require.NoError(t, err)
+			err = createProtocGenPlugin(t, pluginDir, pluginRef)
+			require.NoError(t, err)
+			pluginConfigs = append(pluginConfigs, pluginConfig{
+				Name:     pluginRef.fileName(),
+				Out:      "gen",
+				Path:     "./" + pluginRef.fileName(),
+				Opts:     pluginMeta.Registry.Opts,
+				Strategy: "all",
+			})
+			// Now that we have prepared the main plugin and its dependencies, we can build
+			// a buf.gen.yaml file the combines the plugins in the correct order.
+			require.NoError(t, createBufGenYaml(t, pluginDir, pluginConfigs))
+
 			bufCmd := exec.Command("buf", "generate", filepath.Join(imageDir, image+".bin.gz"))
 			bufCmd.Dir = pluginDir
 			output, err := bufCmd.CombinedOutput()
@@ -91,7 +140,6 @@ func TestGeneration(t *testing.T) {
 		})
 	}
 
-	plugins := loadFilteredPlugins(t)
 	for _, toTest := range plugins {
 		toTest := toTest
 		t.Run(strings.TrimSuffix(toTest.Relpath, "/buf.plugin.yaml"), func(t *testing.T) {
@@ -136,7 +184,7 @@ func TestBufPluginConfig(t *testing.T) {
 	}
 }
 
-func createBufGenYaml(t *testing.T, basedir string, plugin *plugin.Plugin) error {
+func createBufGenYaml(t *testing.T, basedir string, pluginConfigs []pluginConfig) error {
 	t.Helper()
 	bufGenYaml, err := os.Create(filepath.Join(basedir, "buf.gen.yaml"))
 	if err != nil {
@@ -145,10 +193,7 @@ func createBufGenYaml(t *testing.T, basedir string, plugin *plugin.Plugin) error
 	defer func() {
 		require.NoError(t, bufGenYaml.Close())
 	}()
-	return bufGenYamlTemplate.Execute(bufGenYaml, map[string]any{
-		"Name": filepath.Base(plugin.Name),
-		"Opts": plugin.ExternalConfig.Registry.Opts,
-	})
+	return bufGenYamlTemplate.Execute(bufGenYaml, pluginConfigs)
 }
 
 func loadAllPlugins(t *testing.T) []*plugin.Plugin {
@@ -177,25 +222,114 @@ func loadFilteredPlugins(t *testing.T) []*plugin.Plugin {
 	return filtered
 }
 
-func createProtocGenPlugin(t *testing.T, basedir string, plugin *plugin.Plugin) error {
+func lookupPlugin(allPlugins []*plugin.Plugin, name string) *plugin.Plugin {
+	for _, plugin := range allPlugins {
+		if plugin.NameWithVersion() == name {
+			return plugin
+		}
+	}
+	return nil
+}
+
+func createProtocGenPlugin(t *testing.T, basedir string, plugin *dockerPluginRef) error {
 	t.Helper()
-	protocGenPlugin, err := os.OpenFile(filepath.Join(basedir, "protoc-gen-plugin"), os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0755)
+	protocGenPlugin, err := os.OpenFile(filepath.Join(basedir, plugin.fileName()), os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0755)
 	if err != nil {
 		return err
 	}
 	defer func() {
 		require.NoError(t, protocGenPlugin.Close())
 	}()
-	fields := strings.SplitN(plugin.Name, "/", 3)
-	if len(fields) != 3 {
-		return fmt.Errorf("invalid plugin name: %v", plugin.Name)
-	}
+	return protocGenPluginTemplate.Execute(protocGenPlugin, plugin)
+}
+
+type dockerPluginRef struct {
+	dockerOrg string
+	owner     string
+	name      string
+	version   string
+}
+
+// ImageName returns a unique name that is used to name a docker image.
+func (d *dockerPluginRef) ImageName() string {
+	return fmt.Sprintf("%s/plugins-%s-%s:%s", d.dockerOrg, d.owner, d.name, d.version)
+}
+
+func (d *dockerPluginRef) fileName() string {
+	return fmt.Sprintf("%s_%s_%s.plugin", d.owner, d.name, d.version)
+}
+
+// newDockerPluginRef parses a plugin name of the format: remote/owner/name:version.
+//
+// If the DOCKER_ORG env variable is not set, then the default is bufbuild.
+func newDockerPluginRef(input string) (*dockerPluginRef, error) {
 	dockerOrg := os.Getenv("DOCKER_ORG")
 	if len(dockerOrg) == 0 {
 		dockerOrg = "bufbuild"
 	}
-	return protocGenPluginTemplate.Execute(protocGenPlugin, map[string]any{
-		"ImageName": fmt.Sprintf("%s/plugins-%s-%s", dockerOrg, fields[1], fields[2]),
-		"Version":   plugin.PluginVersion,
+	fields := strings.SplitN(input, "/", 3)
+	if len(fields) != 3 {
+		return nil, fmt.Errorf("invalid plugin name: %v", input)
+	}
+	name, version, ok := strings.Cut(fields[2], ":")
+	if !ok {
+		return nil, fmt.Errorf("failed to get version from %q", fields[2])
+	}
+	return &dockerPluginRef{
+		dockerOrg: dockerOrg,
+		owner:     fields[1],
+		name:      name,
+		version:   version,
+	}, nil
+}
+
+func buildDockerImage(t *testing.T, ref *dockerPluginRef, path string, attemptPull bool) error {
+	t.Helper()
+	docker, err := exec.LookPath("docker")
+	if err != nil {
+		return err
+	}
+	// TODO(mf): in CI, should we attempt to pull the image locally to avoid building it?
+	if isEnvironmentCI() && attemptPull {
+		args := fmt.Sprintf("pull %s", ref.ImageName())
+		cmd := exec.Cmd{
+			Path:   docker,
+			Args:   strings.Split(args, " "),
+			Dir:    path,
+			Stdout: io.Discard,
+			Stderr: io.Discard,
+		}
+		if err := cmd.Run(); err != nil {
+			return err
+		}
+	}
+	args := fmt.Sprintf("buildx build -t %s .", ref.ImageName())
+	cmd := exec.Cmd{
+		Path:   docker,
+		Args:   strings.Split(args, " "),
+		Dir:    path,
+		Stdout: io.Discard,
+		Stderr: io.Discard,
+	}
+	if err := cmd.Run(); err != nil {
+		return err
+	}
+	t.Cleanup(func() {
+		cmd := exec.Cmd{
+			Path:   docker,
+			Args:   []string{docker, "rmi", "--force", ref.ImageName()},
+			Dir:    path,
+			Stdout: io.Discard,
+			Stderr: io.Discard,
+		}
+		if err := cmd.Run(); err != nil {
+			t.Logf("failed to remove temporary docker image: %v", err)
+		}
 	})
+	return nil
+}
+
+func isEnvironmentCI() bool {
+	ok, _ := strconv.ParseBool(os.Getenv("CI"))
+	return ok
 }
