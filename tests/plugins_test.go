@@ -63,6 +63,8 @@ func TestGeneration(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping code generation test")
 	}
+	err := os.Setenv("DOCKER_BUILDKIT", "1")
+	require.NoError(t, err)
 	plugins := loadFilteredPlugins(t)
 	allPlugins := loadAllPlugins(t)
 	allowEmpty, _ := strconv.ParseBool(os.Getenv("ALLOW_EMPTY_PLUGIN_SUM"))
