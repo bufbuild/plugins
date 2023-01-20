@@ -59,11 +59,12 @@ type pluginConfig struct {
 }
 
 func TestGeneration(t *testing.T) {
+	t.Setenv("DOCKER_BUILDKIT", "1")
+
 	t.Parallel()
 	if testing.Short() {
 		t.Skip("skipping code generation test")
 	}
-	t.Setenv("DOCKER_BUILDKIT", "1")
 	plugins := loadFilteredPlugins(t)
 	allPlugins := loadAllPlugins(t)
 	allowEmpty, _ := strconv.ParseBool(os.Getenv("ALLOW_EMPTY_PLUGIN_SUM"))
