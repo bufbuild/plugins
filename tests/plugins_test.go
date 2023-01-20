@@ -66,7 +66,6 @@ func TestGeneration(t *testing.T) {
 	}
 	plugins := loadFilteredPlugins(t)
 	allPlugins := loadAllPlugins(t)
-	imagesToCleanup := make(map[string]struct{})
 	allowEmpty, _ := strconv.ParseBool(os.Getenv("ALLOW_EMPTY_PLUGIN_SUM"))
 	testPluginWithImage := func(t *testing.T, pluginMeta *plugin.Plugin, image string) {
 		t.Helper()
@@ -98,7 +97,6 @@ func TestGeneration(t *testing.T) {
 				require.NoError(t, err)
 				err = createProtocGenPlugin(t, pluginDir, pluginRef)
 				require.NoError(t, err)
-				imagesToCleanup[pluginRef.ImageName()] = struct{}{}
 			}
 
 			pluginRef, err := newDockerPluginRef(pluginMeta.NameWithVersion())
@@ -107,7 +105,6 @@ func TestGeneration(t *testing.T) {
 			require.NoError(t, err)
 			err = createProtocGenPlugin(t, pluginDir, pluginRef)
 			require.NoError(t, err)
-			imagesToCleanup[pluginRef.ImageName()] = struct{}{}
 			pluginConfigs = append(pluginConfigs, pluginConfig{
 				Name:     pluginRef.fileName(),
 				Out:      "gen",
@@ -154,20 +151,6 @@ func TestGeneration(t *testing.T) {
 				testPluginWithImage(t, toTest, image)
 			}
 		})
-	}
-	docker, err := exec.LookPath("docker")
-	require.NoError(t, err)
-	for imageName := range imagesToCleanup {
-		cmd := exec.Cmd{
-			Path:   docker,
-			Args:   []string{docker, "rmi", "--force", imageName},
-			Dir:    "",
-			Stdout: io.Discard,
-			Stderr: io.Discard,
-		}
-		if err := cmd.Run(); err != nil {
-			t.Logf("failed to remove temporary docker image %s: error: %v", imageName, err)
-		}
 	}
 }
 
@@ -323,7 +306,7 @@ func buildDockerImage(t *testing.T, ref *dockerPluginRef, path string, attemptPu
 			t.Logf("successfully pulled image: %s", ref.ImageName())
 		}
 	}
-	args := fmt.Sprintf("buildx build -t %s .", ref.ImageName())
+	args := fmt.Sprintf("buildx build --label=buf-plugins-test -t %s .", ref.ImageName())
 	cmd := exec.Cmd{
 		Path:   docker,
 		Args:   strings.Split(args, " "),

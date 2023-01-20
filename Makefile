@@ -34,8 +34,9 @@ clean:
 .PHONY: test
 test:
 	go test $(GO_TEST_FLAGS) ./...
-	docker stop -t=0 $$(docker ps --filter="label=buf-plugins-test" -aq)
-	docker rm $$(docker ps --filter="label=buf-plugins-test" -aq)
+	docker stop -t=0 $$(docker ps --filter="label=buf-plugins-test" -aq) || true
+	docker rm $$(docker ps --filter="label=buf-plugins-test" -aq) || true
+	docker rmi -f $$(docker images --filter="label=buf-plugins-test" -q) || true
 
 .build/plugin/%/image: %/Dockerfile %/buf.plugin.yaml
 	PLUGIN_FULL_NAME=$(shell yq '.name' $*/buf.plugin.yaml); \
