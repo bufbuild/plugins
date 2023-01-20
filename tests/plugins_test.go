@@ -292,19 +292,8 @@ func buildDockerImage(t *testing.T, ref *dockerPluginRef, path string, attemptPu
 		return err
 	}
 	if isEnvironmentCI() && attemptPull {
-		args := fmt.Sprintf("pull %s", ref.ImageName())
-		cmd := exec.Cmd{
-			Path:   docker,
-			Args:   strings.Split(args, " "),
-			Dir:    path,
-			Stdout: io.Discard,
-			Stderr: io.Discard,
-		}
-		if err := cmd.Run(); err != nil {
-			t.Logf("failed to pull image %s: error: %v", ref.ImageName(), err)
-		} else {
-			t.Logf("successfully pulled image: %s", ref.ImageName())
-		}
+		// This should already exist, no need to build the image in CI.
+		return nil
 	}
 	args := fmt.Sprintf("buildx build --label=buf-plugins-test -t %s .", ref.ImageName())
 	cmd := exec.Cmd{
