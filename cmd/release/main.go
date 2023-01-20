@@ -21,10 +21,10 @@ import (
 	"time"
 
 	"aead.dev/minisign"
-	"github.com/bufbuild/buf/private/bufpkg/bufplugin/bufpluginref"
 	"github.com/google/go-github/v48/github"
 	"golang.org/x/mod/semver"
 
+	"github.com/bufbuild/buf/private/bufpkg/bufplugin/bufpluginref"
 	"github.com/bufbuild/plugins/internal/plugin"
 	"github.com/bufbuild/plugins/internal/release"
 )

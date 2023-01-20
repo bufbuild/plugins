@@ -11,10 +11,11 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/bufbuild/buf/private/bufpkg/bufplugin/bufpluginconfig"
-	"github.com/bufbuild/buf/private/pkg/encoding"
 	"github.com/sethvargo/go-envconfig"
 	"golang.org/x/mod/semver"
+
+	"github.com/bufbuild/buf/private/bufpkg/bufplugin/bufpluginconfig"
+	"github.com/bufbuild/buf/private/pkg/encoding"
 )
 
 // Plugin represents metadata (and filesystem path) information about a plugin.
