@@ -41,3 +41,6 @@ jobs:
         if: always()
         run: |
           rm -fv minisign.key
+  upload:
+    needs: release
+    uses: ./.github/workflows/upload.yml
