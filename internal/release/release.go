@@ -13,7 +13,7 @@ import (
 
 const (
 	// DefaultReleaseDir is the directory to build the release into, it follows
-	// the standard location from github.com/bufbuild/buf
+	// the standard location from github.com/bufbuild/buf.
 	DefaultReleaseDir           = ".build/release"
 	PluginReleasesFile          = "plugin-releases.json"
 	PluginReleasesSignatureFile = PluginReleasesFile + ".minisig"
