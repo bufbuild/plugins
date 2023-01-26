@@ -46,6 +46,11 @@ func main() {
 		"",
 		"path to public key used to verify the latest release's plugin-releases.json file (if different than private key)",
 	)
+	outDir := flag.String(
+		"output",
+		release.DefaultReleaseDir,
+		"path to the directory where the release will be output, it will be cleared and created fresh for each release",
+	)
 	flag.Parse()
 
 	if len(flag.Args()) != 1 {
@@ -59,6 +64,7 @@ func main() {
 		minisignPublicKey:  *minisignPublicKey,
 		githubReleaseOwner: release.GithubOwner(*githubReleaseOwner),
 		dryRun:             *dryRun,
+		outDir:             *outDir,
 		rootDir:            root,
 	}
 	if err := cmd.run(); err != nil {
@@ -71,24 +77,15 @@ type command struct {
 	minisignPublicKey  string
 	githubReleaseOwner release.GithubOwner
 	dryRun             bool
+	outDir             string
 	rootDir            string
 }
 
 func (c *command) run() error {
-	// Create temporary directory
-	tmpDir, err := os.MkdirTemp("", "plugins-release")
-	if err != nil {
-		return fmt.Errorf("failed to create temporary directory: %w", err)
+	// Create output directory
+	if err := os.MkdirAll(c.outDir, os.ModePerm); err != nil {
+		return fmt.Errorf("failed to create output directory: %w", err)
 	}
-	log.Printf("created tmp dir: %s", tmpDir)
-	defer func() {
-		if c.dryRun {
-			return
-		}
-		if err := os.RemoveAll(tmpDir); err != nil {
-			log.Printf("failed to remove %q: %v", tmpDir, err)
-		}
-	}()
 
 	ctx := context.Background()
 	client := release.NewClient(ctx)
@@ -123,7 +120,7 @@ func (c *command) run() error {
 		return fmt.Errorf("failed to determine next release name: %w", err)
 	}
 
-	plugins, err := c.calculateNewReleasePlugins(releases, releaseName, now, tmpDir)
+	plugins, err := c.calculateNewReleasePlugins(releases, releaseName, now, c.outDir)
 	if err != nil {
 		return fmt.Errorf("failed to calculate new release contents: %w", err)
 	}
@@ -135,12 +132,12 @@ func (c *command) run() error {
 		}
 		return nil
 	}
-	if err := createPluginReleases(tmpDir, plugins); err != nil {
+	if err := createPluginReleases(c.outDir, plugins); err != nil {
 		return fmt.Errorf("failed to create %s: %w", release.PluginReleasesFile, err)
 	}
 
-	if err := signPluginReleases(tmpDir, privateKey); err != nil {
-		return fmt.Errorf("failed to sign %q: %w", filepath.Join(tmpDir, release.PluginReleasesFile), err)
+	if err := signPluginReleases(c.outDir, privateKey); err != nil {
+		return fmt.Errorf("failed to sign %q: %w", filepath.Join(c.outDir, release.PluginReleasesFile), err)
 	}
 
 	if c.dryRun {
@@ -148,14 +145,14 @@ func (c *command) run() error {
 		if err != nil {
 			return err
 		}
-		if err := os.WriteFile(filepath.Join(tmpDir, "RELEASE.md"), []byte(releaseBody), 0644); err != nil { //nolint:gosec
+		if err := os.WriteFile(filepath.Join(c.outDir, "RELEASE.md"), []byte(releaseBody), 0644); err != nil { //nolint:gosec
 			return err
 		}
 		log.Printf("skipping GitHub release creation in dry-run mode")
-		log.Printf("release assets created in %q", tmpDir)
+		log.Printf("release assets created in %q", c.outDir)
 		return nil
 	}
-	if err := c.createRelease(ctx, client, releaseName, plugins, tmpDir, privateKey); err != nil {
+	if err := c.createRelease(ctx, client, releaseName, plugins, c.outDir, privateKey); err != nil {
 		return fmt.Errorf("failed to create GitHub release: %w", err)
 	}
 	return nil

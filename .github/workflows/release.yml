@@ -29,6 +29,16 @@ jobs:
           go-version: 1.19.x
           check-latest: true
           cache: true
+        # uses https://cloud.google.com/iam/docs/workload-identity-federation to
+        # swap a Github OIDC token for GCP service account credentials, allowing
+        # this workflow to manage the deploy bucket
+      - name: Auth To GCP
+        uses: google-github-actions/auth@v0
+        with:
+          workload_identity_proider: projects/491113660045/locations/global/workloadIdentityPools/plugins-workload-pool/providers/plugins-workload-provider
+          service_account: buf-plugins-1-publisher@buf-plugins-1.iam.gserviceaccount.com
+      - name: Setup GCLOUD
+        uses: 'google-github-actions/setup-gcloud@v0'
       - name: Create Release
         env:
           GITHUB_TOKEN: ${{ github.token }}
@@ -37,6 +47,8 @@ jobs:
         run: |
           echo "${MINISIGN_PRIVATE_KEY}" > minisign.key
           go run ./cmd/release -minisign-private-key minisign.key .
+      - name: Upload To Release Bucket
+        run: gcloud storage rsync -r .build/release gs://buf-plugins
       - name: Clean Up
         if: always()
         run: |
