@@ -44,5 +44,6 @@ jobs:
         run: |
           rm -fv minisign.key
   upload:
+    environment: production
     needs: release
     uses: ./.github/workflows/upload.yml
