@@ -39,6 +39,7 @@ type PluginRelease struct {
 	URL              string    `json:"url"`            // URL to GitHub release zip file for the plugin - i.e. https://github.com/bufbuild/plugins/releases/download/20221121.1/bufbuild-connect-go-v1.1.0.zip
 	LastUpdated      time.Time `json:"last_updated"`
 	Status           Status    `json:"-"`
+	Dependencies     []string  `json:"dependencies,omitempty"` // direct dependencies on other plugins
 }
 
 // CalculateDigest will calculate the sha256 digest of the given file.

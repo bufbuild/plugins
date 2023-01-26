@@ -220,10 +220,12 @@ func (c *command) calculateNewReleasePlugins(currentRelease *release.PluginRelea
 				URL:              downloadURL,
 				LastUpdated:      now,
 				Status:           status,
+				Dependencies:     pluginDependencies(plugin),
 			})
 		} else {
 			log.Printf("plugin %s:%s unchanged", pluginRelease.PluginName, pluginRelease.PluginVersion)
 			pluginRelease.Status = release.StatusExisting
+			pluginRelease.Dependencies = pluginDependencies(plugin)
 			existingPlugins = append(existingPlugins, pluginRelease)
 		}
 		return nil
@@ -240,6 +242,21 @@ func (c *command) calculateNewReleasePlugins(currentRelease *release.PluginRelea
 	plugins = append(plugins, existingPlugins...)
 	sortPluginsByNameVersion(plugins)
 	return plugins, nil
+}
+
+func pluginDependencies(plugin *plugin.Plugin) []string {
+	if len(plugin.Deps) == 0 {
+		return nil
+	}
+	deps := make([]string, len(plugin.Deps))
+	for i, dep := range plugin.Deps {
+		if dep.Revision != 0 {
+			log.Fatalf("unsupported plugin dependency revision: %v", dep.Revision)
+		}
+		deps[i] = dep.Plugin
+	}
+	sort.Strings(deps)
+	return deps
 }
 
 func (c *command) loadMinisignPublicKeyFromFileOrPrivateKey(privateKey minisign.PrivateKey) (minisign.PublicKey, error) {
