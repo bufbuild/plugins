@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1.4
-FROM swift:5.7.2-focal AS build
+FROM swift:5.7.3-focal AS build
 
 WORKDIR /app
 RUN git clone --branch 0.3.0 https://github.com/bufbuild/connect-swift
