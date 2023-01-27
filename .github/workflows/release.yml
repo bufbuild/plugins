@@ -45,5 +45,7 @@ jobs:
           rm -fv minisign.key
   upload:
     environment: production
+    if: github.repository == 'bufbuild/plugins'
+    runs-on: ubuntu-22.04
     needs: release
     uses: ./.github/workflows/upload.yml
