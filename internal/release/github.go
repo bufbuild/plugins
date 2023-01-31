@@ -151,7 +151,7 @@ func (c *Client) DownloadPluginReleasesToDir(
 		return nil, fmt.Errorf("release %s file %q doesn't match signature %q", release.GetName(), PluginReleasesFile, PluginReleasesSignatureFile)
 	}
 	pluginReleasesDownload := filepath.Join(dir, PluginReleasesFile)
-	if err := os.WriteFile(pluginReleasesDownload, releasesJSONBytes, 0644); err != nil {
+	if err := os.WriteFile(pluginReleasesDownload, releasesJSONBytes, 0644); err != nil { //nolint:gosec
 		return nil, err
 	}
 	if err := os.Chtimes(pluginReleasesDownload, releasesJSONLastModified, releasesJSONLastModified); err != nil {
@@ -159,7 +159,7 @@ func (c *Client) DownloadPluginReleasesToDir(
 	}
 	if releasesJSONMinisigBytes != nil {
 		pluginReleasesSignatureDownload := filepath.Join(dir, PluginReleasesSignatureFile)
-		if err := os.WriteFile(pluginReleasesSignatureDownload, releasesJSONMinisigBytes, 0644); err != nil {
+		if err := os.WriteFile(pluginReleasesSignatureDownload, releasesJSONMinisigBytes, 0644); err != nil { //nolint:gosec
 			return nil, err
 		}
 		if err := os.Chtimes(pluginReleasesSignatureDownload, releasesJSONMinisigLastModified, releasesJSONMinisigLastModified); err != nil {

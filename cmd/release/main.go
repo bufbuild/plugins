@@ -108,7 +108,7 @@ func (c *command) run() error {
 	if err != nil {
 		return err
 	}
-	releases, err := client.LoadPluginReleases(ctx, latestRelease, publicKey)
+	releases, err := client.DownloadPluginReleasesToDir(ctx, latestRelease, publicKey, tmpDir)
 	if err != nil && !errors.Is(err, release.ErrNotFound) {
 		return fmt.Errorf("failed to determine latest plugin releases: %w", err)
 	}
