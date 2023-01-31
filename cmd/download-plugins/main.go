@@ -67,7 +67,7 @@ func run() error {
 		}
 	}
 
-	pluginReleases, err := client.LoadPluginReleases(ctx, githubRelease, publicKey)
+	pluginReleases, err := client.DownloadPluginReleasesToDir(ctx, githubRelease, publicKey, downloadDir)
 	if err != nil {
 		return err
 	}

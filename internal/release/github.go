@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"aead.dev/minisign"
 	"github.com/google/go-github/v48/github"
@@ -112,7 +113,7 @@ func (c *Client) GetReleaseByTag(ctx context.Context, owner GithubOwner, repo Gi
 //
 //	https://api.github.com/repos/{owner}/{repo}/releases/{release_id}
 //
-// into '{owner}' and '{repo}'. If not in the expected format, it will return an non-nil error.
+// into '{owner}' and '{repo}'. If not in the expected format, it will return a non-nil error.
 func getOwnerRepoFromReleaseURL(url string) (string, string, error) {
 	_, ownerRepo, found := strings.Cut(url, "/repos/")
 	if !found {
@@ -129,19 +130,41 @@ func getOwnerRepoFromReleaseURL(url string) (string, string, error) {
 	return owner, repo, nil
 }
 
-// LoadPluginReleases loads the plugin-releases.json file from the specified GitHub release.
+// DownloadPluginReleasesToDir loads the plugin-releases.json file from the specified GitHub release.
 // It will additionally verify the minisign signature of the release if passed a valid minisign.PublicKey.
-func (c *Client) LoadPluginReleases(ctx context.Context, release *github.RepositoryRelease, publicKey minisign.PublicKey) (*PluginReleases, error) {
-	releasesJSONBytes, err := c.downloadAsset(ctx, release, PluginReleasesFile)
+// It will download both the plugin-releases.json and plugin-releases.json.minisig to the specified dir.
+func (c *Client) DownloadPluginReleasesToDir(
+	ctx context.Context,
+	release *github.RepositoryRelease,
+	publicKey minisign.PublicKey,
+	dir string,
+) (*PluginReleases, error) {
+	releasesJSONBytes, releasesJSONLastModified, err := c.downloadAsset(ctx, release, PluginReleasesFile)
 	if err != nil {
 		return nil, err
 	}
-	releasesJSONMinisigBytes, err := c.downloadAsset(ctx, release, PluginReleasesSignatureFile)
+	releasesJSONMinisigBytes, releasesJSONMinisigLastModified, err := c.downloadAsset(ctx, release, PluginReleasesSignatureFile)
 	if err != nil && !errors.Is(err, ErrNotFound) {
 		return nil, err
 	}
 	if !publicKey.Equal(minisign.PublicKey{}) && !minisign.Verify(publicKey, releasesJSONBytes, releasesJSONMinisigBytes) {
 		return nil, fmt.Errorf("release %s file %q doesn't match signature %q", release.GetName(), PluginReleasesFile, PluginReleasesSignatureFile)
+	}
+	pluginReleasesDownload := filepath.Join(dir, PluginReleasesFile)
+	if err := os.WriteFile(pluginReleasesDownload, releasesJSONBytes, 0644); err != nil { //nolint:gosec
+		return nil, err
+	}
+	if err := os.Chtimes(pluginReleasesDownload, releasesJSONLastModified, releasesJSONLastModified); err != nil {
+		return nil, err
+	}
+	if releasesJSONMinisigBytes != nil {
+		pluginReleasesSignatureDownload := filepath.Join(dir, PluginReleasesSignatureFile)
+		if err := os.WriteFile(pluginReleasesSignatureDownload, releasesJSONMinisigBytes, 0644); err != nil { //nolint:gosec
+			return nil, err
+		}
+		if err := os.Chtimes(pluginReleasesSignatureDownload, releasesJSONMinisigLastModified, releasesJSONMinisigLastModified); err != nil {
+			return nil, err
+		}
 	}
 	var releases PluginReleases
 	if err := json.Unmarshal(releasesJSONBytes, &releases); err != nil {
@@ -152,29 +175,35 @@ func (c *Client) LoadPluginReleases(ctx context.Context, release *github.Reposit
 
 // downloadAsset uses the GitHub API to download the asset with the given name from the release.
 // If the asset isn't found, returns ErrNotFound.
-func (c *Client) downloadAsset(ctx context.Context, release *github.RepositoryRelease, assetName string) ([]byte, error) {
+func (c *Client) downloadAsset(ctx context.Context, release *github.RepositoryRelease, assetName string) ([]byte, time.Time, error) {
 	var assetID int64
+	var assetLastModified time.Time
 	for _, asset := range release.Assets {
 		if asset.GetName() == assetName {
 			assetID = asset.GetID()
+			assetLastModified = asset.GetUpdatedAt().Time
 			break
 		}
 	}
 	if assetID == 0 {
-		return nil, ErrNotFound
+		return nil, time.Time{}, ErrNotFound
 	}
 	owner, repo, err := getOwnerRepoFromReleaseURL(release.GetURL())
 	if err != nil {
-		return nil, err
+		return nil, time.Time{}, err
 	}
 	rc, _, err := c.GitHub.Repositories.DownloadReleaseAsset(ctx, owner, repo, assetID, http.DefaultClient)
 	if err != nil {
-		return nil, err
+		return nil, time.Time{}, err
 	}
 	defer func() {
 		if err := rc.Close(); err != nil {
 			log.Printf("failed to close: %v", err)
 		}
 	}()
-	return io.ReadAll(rc)
+	contents, err := io.ReadAll(rc)
+	if err != nil {
+		return nil, time.Time{}, err
+	}
+	return contents, assetLastModified, nil
 }
