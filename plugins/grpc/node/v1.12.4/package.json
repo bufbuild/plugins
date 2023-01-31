@@ -1,0 +1,7 @@
+{
+  "name": "plugins-grpc-node",
+  "version": "1.0.0",
+  "dependencies": {
+    "grpc-tools": "1.12.4"
+  }
+}
