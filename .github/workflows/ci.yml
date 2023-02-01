@@ -79,15 +79,3 @@ jobs:
         ANY_MODIFIED: ${{ steps.changed-files.outputs.any_modified }}
       shell: bash
       run: make test DOCKER_ORG="ghcr.io/bufbuild"
-    - name: Push
-      if: github.repository == 'bufbuild/plugins'
-      shell: bash
-      env:
-        ALL_MODIFIED_FILES: ${{ steps.changed-files.outputs.all_modified_files }}
-        ANY_MODIFIED: ${{ steps.changed-files.outputs.any_modified }}
-        BUF_ALPHA_SUPPRESS_WARNINGS: 1
-        BSR_USER: ${{ secrets.BSR_USER }}
-        BSR_TOKEN: ${{ secrets.BSR_TOKEN }}
-      run: |
-        echo ${BSR_TOKEN} | buf registry login --username ${BSR_USER} --token-stdin
-        make push DOCKER_ORG="ghcr.io/bufbuild"
