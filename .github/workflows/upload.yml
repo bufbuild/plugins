@@ -27,7 +27,9 @@ jobs:
         uses: actions/cache@v3
         with:
           path: downloads
-          key: plugin-downloads
+          key: ${{ runner.os }}-plugin-downloads-${{ hashFiles('**/plugin-releases.json') }}
+          restore-keys: |
+            ${{ runner.os }}-plugin-downloads
         # uses https://cloud.google.com/iam/docs/workload-identity-federation to
         # swap a GitHub OIDC token for GCP service account credentials, allowing
         # this workflow to manage the buf-plugins bucket
