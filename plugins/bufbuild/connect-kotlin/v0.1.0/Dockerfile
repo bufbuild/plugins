@@ -6,7 +6,7 @@ USER root
 RUN chown -R gradle /home/gradle/src
 
 WORKDIR /tmp
-RUN git clone https://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@github.com/bufbuild/connect-kotlin.git
+RUN git clone https://github.com/bufbuild/connect-kotlin.git
 
 WORKDIR /tmp/connect-kotlin
 RUN gradle protoc-gen-connect-kotlin:jar --no-daemon
