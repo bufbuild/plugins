@@ -1,0 +1,11 @@
+version: v1
+name: buf.build/bufbuild/connect-kotlin
+plugin_version: v0.1.0
+source_url: https://github.com/bufbuild/connect-kotlin
+description: Idiomatic gRPC & Connect RPCs for Kotlin.
+deps:
+  - plugin: buf.build/apple/kotlin:v0.1.0
+output_languages:
+  - kotlin
+spdx_license_id: Apache-2.0
+license_url: https://github.com/bufbuild/connect-kotlin/blob/0.1.0/LICENSE
