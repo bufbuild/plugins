@@ -1,12 +1,12 @@
 # syntax=docker/dockerfile:1.4
-FROM gradle:jdk17-focal AS build
+FROM gradle:jdk17-jammy AS build
 WORKDIR /app
-RUN git clone --branch v0.1.0 https://github.com/bufbuild/connect-kotlin.git
+RUN git clone --depth 1 --branch v0.1.0 https://github.com/bufbuild/connect-kotlin.git
 WORKDIR /app/connect-kotlin
-RUN gradle --version -g $(pwd)
-RUN gradle protoc-gen-connect-kotlin:jar --no-daemon -g $(pwd)
+RUN gradle --version -g $(pwd) && \
+    gradle --no-daemon -g $(pwd) protoc-gen-connect-kotlin:jar
 
-FROM openjdk:8-jre-slim
-COPY --from=build /app /app
-WORKDIR /app/connect-kotlin
-ENTRYPOINT ["exec", "java", "-jar", "protoc-gen-connect-kotlin/build/libs/protoc-gen-connect-kotlin.jar"]
+FROM gcr.io/distroless/java17-debian11
+WORKDIR /app
+COPY --from=build /app/connect-kotlin/protoc-gen-connect-kotlin/build/libs/protoc-gen-connect-kotlin.jar /app
+CMD ["/app/protoc-gen-connect-kotlin.jar"]
