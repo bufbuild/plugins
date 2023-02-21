@@ -71,15 +71,15 @@ func (c *command) run() error {
 		}
 		// Detect if the current registry image doesn't match the release's plugin-releases.json.
 		if pluginRelease.RegistryImage != image {
-			log.Printf("replacing tagged image %q with %q", image, pluginRelease.RegistryImage)
 			taggedImage, _, found := strings.Cut(image, "@")
 			if !found {
 				return fmt.Errorf("invalid image format: %s", image)
 			}
+			taggedImage += ":" + pluginRelease.PluginVersion
+			log.Printf("updating image tag %q to point from %q to %q", taggedImage, image, pluginRelease.RegistryImage)
 			if err := pullImage(pluginRelease.RegistryImage); err != nil {
 				return fmt.Errorf("failed to pull %q: %w", pluginRelease.RegistryImage, err)
 			}
-			taggedImage += ":" + pluginRelease.PluginVersion
 			if err := tagImage(pluginRelease.RegistryImage, taggedImage); err != nil {
 				return fmt.Errorf("failed to tag %q: %w", taggedImage, err)
 			}
