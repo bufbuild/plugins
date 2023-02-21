@@ -139,11 +139,11 @@ func (c *Client) DownloadPluginReleasesToDir(
 	publicKey minisign.PublicKey,
 	dir string,
 ) (*PluginReleases, error) {
-	releasesJSONBytes, releasesJSONLastModified, err := c.downloadAsset(ctx, release, PluginReleasesFile)
+	releasesJSONBytes, releasesJSONLastModified, err := c.DownloadAsset(ctx, release, PluginReleasesFile)
 	if err != nil {
 		return nil, err
 	}
-	releasesJSONMinisigBytes, releasesJSONMinisigLastModified, err := c.downloadAsset(ctx, release, PluginReleasesSignatureFile)
+	releasesJSONMinisigBytes, releasesJSONMinisigLastModified, err := c.DownloadAsset(ctx, release, PluginReleasesSignatureFile)
 	if err != nil && !errors.Is(err, ErrNotFound) {
 		return nil, err
 	}
@@ -173,9 +173,9 @@ func (c *Client) DownloadPluginReleasesToDir(
 	return &releases, nil
 }
 
-// downloadAsset uses the GitHub API to download the asset with the given name from the release.
+// DownloadAsset uses the GitHub API to download the asset with the given name from the release.
 // If the asset isn't found, returns ErrNotFound.
-func (c *Client) downloadAsset(ctx context.Context, release *github.RepositoryRelease, assetName string) ([]byte, time.Time, error) {
+func (c *Client) DownloadAsset(ctx context.Context, release *github.RepositoryRelease, assetName string) ([]byte, time.Time, error) {
 	var assetID int64
 	var assetLastModified time.Time
 	for _, asset := range release.Assets {
