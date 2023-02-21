@@ -76,10 +76,10 @@ func (c *command) run() error {
 			if !found {
 				return fmt.Errorf("invalid image format: %s", image)
 			}
-			taggedImage += ":" + pluginRelease.PluginVersion
 			if err := pullImage(pluginRelease.RegistryImage); err != nil {
 				return fmt.Errorf("failed to pull %q: %w", pluginRelease.RegistryImage, err)
 			}
+			taggedImage += ":" + pluginRelease.PluginVersion
 			if err := tagImage(pluginRelease.RegistryImage, taggedImage); err != nil {
 				return fmt.Errorf("failed to tag %q: %w", taggedImage, err)
 			}
