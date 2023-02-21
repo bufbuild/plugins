@@ -9,7 +9,6 @@ on:
       arguments:
         description: "Arguments to the restore release command"
         required: false
-        default: '-dry-run'
 
 permissions:
   contents: read
