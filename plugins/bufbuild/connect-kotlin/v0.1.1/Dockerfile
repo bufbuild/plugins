@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1.4
 FROM gradle:jdk17-jammy AS build
 WORKDIR /app
-RUN git clone --depth 1 --branch v0.1.0 https://github.com/bufbuild/connect-kotlin.git
+RUN git clone --depth 1 --branch v0.1.1 https://github.com/bufbuild/connect-kotlin.git
 WORKDIR /app/connect-kotlin
 RUN gradle --no-daemon -g $(pwd) protoc-gen-connect-kotlin:jar
 
