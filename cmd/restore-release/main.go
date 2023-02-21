@@ -68,24 +68,25 @@ func (c *command) run() error {
 		if err != nil {
 			return err
 		}
-		// Detect if the current registry image doesn't match the release's plugin-releases.json.
-		if pluginRelease.RegistryImage != image {
-			taggedImage, _, found := strings.Cut(image, "@")
-			if !found {
-				return fmt.Errorf("invalid image format: %s", image)
-			}
-			taggedImage += ":" + pluginRelease.PluginVersion
-			log.Printf("updating image tag %q to point from %q to %q", taggedImage, image, pluginRelease.RegistryImage)
-			if err := pullImage(pluginRelease.RegistryImage); err != nil {
-				return fmt.Errorf("failed to pull %q: %w", pluginRelease.RegistryImage, err)
-			}
-			if err := tagImage(pluginRelease.RegistryImage, taggedImage); err != nil {
-				return fmt.Errorf("failed to tag %q: %w", taggedImage, err)
-			}
-			if !c.dryRun {
-				if err := pushImage(taggedImage); err != nil {
-					return fmt.Errorf("failed to push %q: %w", taggedImage, err)
-				}
+		if image == pluginRelease.RegistryImage {
+			continue
+		}
+		// The current registry image doesn't match the release's plugin-releases.json.
+		taggedImage, _, found := strings.Cut(image, "@")
+		if !found {
+			return fmt.Errorf("invalid image format: %s", image)
+		}
+		taggedImage += ":" + pluginRelease.PluginVersion
+		log.Printf("updating image tag %q to point from %q to %q", taggedImage, image, pluginRelease.RegistryImage)
+		if err := pullImage(pluginRelease.RegistryImage); err != nil {
+			return fmt.Errorf("failed to pull %q: %w", pluginRelease.RegistryImage, err)
+		}
+		if err := tagImage(pluginRelease.RegistryImage, taggedImage); err != nil {
+			return fmt.Errorf("failed to tag %q: %w", taggedImage, err)
+		}
+		if !c.dryRun {
+			if err := pushImage(taggedImage); err != nil {
+				return fmt.Errorf("failed to push %q: %w", taggedImage, err)
 			}
 		}
 	}
