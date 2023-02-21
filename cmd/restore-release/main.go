@@ -169,9 +169,5 @@ func fetchRegistryImage(pluginRelease release.PluginRelease) (string, error) {
 	if descriptorDigest == "" {
 		return "", errors.New("unable to parse descriptor digest from docker manifest inspect output")
 	}
-	imageDigest := result.SchemaV2Manifest.Config.Digest
-	if imageDigest == "" {
-		return "", errors.New("unable to parse image config digest from docker manifest inspect output")
-	}
 	return fmt.Sprintf("%s@%s", imageName, descriptorDigest), nil
 }
