@@ -1,0 +1,43 @@
+name: Restore Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "The release tag that should be restored in the container registry"
+        required: true
+      arguments:
+        description: "Arguments to the restore release command"
+        required: false
+        default: '-dry-run'
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  release:
+    environment: production
+    if: github.repository == 'bufbuild/plugins'
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout repository code
+        uses: actions/checkout@v3
+      - name: Login to GitHub Container Registry
+        if: github.repository == 'bufbuild/plugins'
+        uses: docker/login-action@f4ef78c080cd8ba55a85445d5b36e214a81df20a
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+      - name: Install Go
+        uses: actions/setup-go@v3
+        with:
+          go-version: 1.20.x
+          check-latest: true
+          cache: true
+      - name: Restore Release
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          go run ./cmd/restore-release ${{ inputs.arguments }} ${{ inputs.release_tag }}
