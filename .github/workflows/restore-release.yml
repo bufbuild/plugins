@@ -6,6 +6,10 @@ on:
       release_tag:
         description: "The release tag that should be restored in the container registry"
         required: true
+      arguments:
+        description: "Arguments to the restore release command"
+        required: false
+        default: '-dry-run'
 
 permissions:
   contents: read
@@ -36,4 +40,4 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: |
-          go run ./cmd/restore-release -dry-run ${{ inputs.release_tag }}
+          go run ./cmd/restore-release ${{ inputs.arguments }} ${{ inputs.release_tag }}
