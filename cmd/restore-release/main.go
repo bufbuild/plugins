@@ -45,9 +45,8 @@ func main() {
 }
 
 type command struct {
-	minisignPublicKey string
-	dryRun            bool
-	release           string
+	dryRun  bool
+	release string
 }
 
 func (c *command) run() error {
@@ -66,7 +65,7 @@ func (c *command) run() error {
 		return fmt.Errorf("invalid plugin-releases.json format: %w", err)
 	}
 	for _, pluginRelease := range pluginReleases.Releases {
-		image, _, err := fetchRegistryImageAndImageID(pluginRelease)
+		image, err := fetchRegistryImage(pluginRelease)
 		if err != nil {
 			return err
 		}
@@ -138,21 +137,20 @@ func dockerCmd(command string, args ...string) (*exec.Cmd, error) {
 	return cmd, nil
 }
 
-func fetchRegistryImageAndImageID(pluginRelease release.PluginRelease) (string, string, error) {
+func fetchRegistryImage(pluginRelease release.PluginRelease) (string, error) {
 	identity, err := bufpluginref.PluginIdentityForString("buf.build/" + pluginRelease.PluginName)
 	if err != nil {
-		return "", "", err
+		return "", err
 	}
 	imageName := fmt.Sprintf("ghcr.io/%s/plugins-%s-%s", release.GithubOwnerBufbuild, identity.Owner(), identity.Plugin())
 	cmd, err := dockerCmd("manifest", "inspect", "--verbose", imageName+":"+pluginRelease.PluginVersion)
 	if err != nil {
-		return "", "", err
+		return "", err
 	}
 	var bb bytes.Buffer
 	cmd.Stdout = &bb
 	if err := cmd.Run(); err != nil {
-		// this may occur if this runs prior to publishing a newly added plugin
-		return "", "", nil //nolint:nilerr
+		return "", err
 	}
 	type manifestJSON struct {
 		Descriptor struct {
@@ -166,15 +164,15 @@ func fetchRegistryImageAndImageID(pluginRelease release.PluginRelease) (string, 
 	}
 	var result manifestJSON
 	if err := json.Unmarshal(bb.Bytes(), &result); err != nil {
-		return "", "", fmt.Errorf("unable to parse docker manifest inspect output: %w", err)
+		return "", fmt.Errorf("unable to parse docker manifest inspect output: %w", err)
 	}
 	descriptorDigest := result.Descriptor.Digest
 	if descriptorDigest == "" {
-		return "", "", errors.New("unable to parse descriptor digest from docker manifest inspect output")
+		return "", errors.New("unable to parse descriptor digest from docker manifest inspect output")
 	}
 	imageDigest := result.SchemaV2Manifest.Config.Digest
 	if imageDigest == "" {
-		return "", "", errors.New("unable to parse image config digest from docker manifest inspect output")
+		return "", errors.New("unable to parse image config digest from docker manifest inspect output")
 	}
-	return fmt.Sprintf("%s@%s", imageName, descriptorDigest), imageDigest, nil
+	return fmt.Sprintf("%s@%s", imageName, descriptorDigest), nil
 }
