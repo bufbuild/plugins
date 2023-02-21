@@ -21,7 +21,6 @@ import (
 	"os/exec"
 	"strings"
 
-	"github.com/bufbuild/buf/private/bufpkg/bufplugin/bufpluginref"
 	"github.com/bufbuild/plugins/internal/release"
 )
 
@@ -138,11 +137,11 @@ func dockerCmd(command string, args ...string) (*exec.Cmd, error) {
 }
 
 func fetchRegistryImage(pluginRelease release.PluginRelease) (string, error) {
-	identity, err := bufpluginref.PluginIdentityForString("buf.build/" + pluginRelease.PluginName)
-	if err != nil {
-		return "", err
+	owner, pluginName, found := strings.Cut(pluginRelease.PluginName, "/")
+	if !found {
+		return "", fmt.Errorf("invalid plugin name: %q", pluginRelease.PluginName)
 	}
-	imageName := fmt.Sprintf("ghcr.io/%s/plugins-%s-%s", release.GithubOwnerBufbuild, identity.Owner(), identity.Plugin())
+	imageName := fmt.Sprintf("ghcr.io/%s/plugins-%s-%s", release.GithubOwnerBufbuild, owner, pluginName)
 	cmd, err := dockerCmd("manifest", "inspect", "--verbose", imageName+":"+pluginRelease.PluginVersion)
 	if err != nil {
 		return "", err
