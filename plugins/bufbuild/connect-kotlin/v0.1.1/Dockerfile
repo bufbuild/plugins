@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1.4
-FROM gradle:jdk17-jammy AS build
+FROM gradle:7.4.0-jdk17-alpine AS build
 WORKDIR /app
 RUN git clone --depth 1 --branch v0.1.1 https://github.com/bufbuild/connect-kotlin.git
 WORKDIR /app/connect-kotlin
