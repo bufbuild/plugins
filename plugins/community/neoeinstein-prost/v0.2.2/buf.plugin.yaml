@@ -1,0 +1,9 @@
+version: v1
+name: buf.build/community/neoeinstein-prost
+plugin_version: v0.2.2
+source_url: https://github.com/neoeinstein/protoc-gen-prost
+description: Generates code using the Prost! code generation engine.
+output_languages:
+  - rust
+spdx_license_id: Apache-2.0
+license_url: https://github.com/neoeinstein/protoc-gen-prost/blob/1daacefaef6a5627d8a33d7258f58f972a845bba/LICENSE
