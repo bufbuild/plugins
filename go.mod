@@ -8,7 +8,7 @@ require (
 	github.com/google/go-github/v48 v48.2.0
 	github.com/hashicorp/go-retryablehttp v0.7.2
 	github.com/sethvargo/go-envconfig v0.9.0
-	github.com/stretchr/testify v1.8.1
+	github.com/stretchr/testify v1.8.2
 	go.uber.org/multierr v1.9.0
 	golang.org/x/mod v0.8.0
 	golang.org/x/oauth2 v0.5.0
