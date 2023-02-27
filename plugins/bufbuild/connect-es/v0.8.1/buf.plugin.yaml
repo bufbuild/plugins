@@ -13,7 +13,7 @@ registry:
     import_style: module
     rewrite_import_path_suffix: connect.js
     deps:
-      - package: '@bufbuild/connect-web'
+      - package: '@bufbuild/connect'
         version: ^0.8.1
 spdx_license_id: Apache-2.0
 license_url: https://github.com/bufbuild/connect-es/blob/v0.8.1/LICENSE
