@@ -1,0 +1,20 @@
+version: v1
+name: buf.build/grpc/go
+plugin_version: v1.3.0
+source_url: https://github.com/grpc/grpc-go
+description: Generates Go client and server stubs for the gRPC framework.
+output_languages:
+  - go
+deps:
+  - plugin: buf.build/protocolbuffers/go:v1.28.1
+registry:
+  go:
+    deps:
+      - module: google.golang.org/grpc
+        version: v1.53.0
+  opts:
+    - paths=source_relative
+    - require_unimplemented_servers=false
+    - separate_package=true
+spdx_license_id: Apache-2.0
+license_url: https://github.com/grpc/grpc-go/blob/v1.3.0/LICENSE
