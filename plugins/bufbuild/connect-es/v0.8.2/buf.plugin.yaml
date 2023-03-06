@@ -1,0 +1,19 @@
+version: v1
+name: buf.build/bufbuild/connect-es
+plugin_version: v0.8.2
+source_url: https://github.com/bufbuild/connect-es
+description: Generates code that is compatible with browsers and Node.js for working with Connect, gRPC, and gRPC-Web.
+deps:
+  - plugin: buf.build/bufbuild/es:v1.1.0
+output_languages:
+  - javascript
+  - typescript
+registry:
+  npm:
+    import_style: module
+    rewrite_import_path_suffix: connect.js
+    deps:
+      - package: '@bufbuild/connect'
+        version: ^0.8.2
+spdx_license_id: Apache-2.0
+license_url: https://github.com/bufbuild/connect-es/blob/v0.8.2/LICENSE
