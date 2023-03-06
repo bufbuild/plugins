@@ -16,7 +16,7 @@ import (
 	"strings"
 
 	"aead.dev/minisign"
-	"github.com/google/go-github/v48/github"
+	"github.com/google/go-github/v50/github"
 
 	"github.com/bufbuild/plugins/internal/release"
 )
