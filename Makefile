@@ -25,7 +25,7 @@ PLUGIN_IMAGES := $(patsubst %/buf.plugin.yaml,.build/plugin/%/image,$(PLUGIN_YAM
 all: build
 
 .PHONY: build
-build: $(BASE_IMAGES) $(PLUGIN_IMAGES)
+build: $(PLUGIN_IMAGES)
 
 .PHONY: clean
 clean:

@@ -46,6 +46,13 @@ exec docker run --log-driver=none --rm -i {{.ImageName}}:{{.Version}} "$@"
 		"eliza",
 		"petapis",
 	}
+	// Options to pass to the plugin during tests. The prost plugins depend on insertion points by default, which
+	// breaks our current test strategy which is to run each plugin in isolation. Override the test options for
+	// these plugins until the tests are updated to support running all plugin dependencies in sequence.
+	testOverrideOptions = map[string][]string{
+		"buf.build/community/neoeinstein-prost-serde": {"no_include"},
+		"buf.build/community/neoeinstein-tonic":       {"no_include"},
+	}
 )
 
 func TestGeneration(t *testing.T) {
@@ -145,9 +152,11 @@ func createBufGenYaml(t *testing.T, basedir string, plugin *plugin.Plugin) error
 	defer func() {
 		require.NoError(t, bufGenYaml.Close())
 	}()
+	opts := plugin.ExternalConfig.Registry.Opts
+	opts = append(opts, testOverrideOptions[plugin.Name]...)
 	return bufGenYamlTemplate.Execute(bufGenYaml, map[string]any{
 		"Name": filepath.Base(plugin.Name),
-		"Opts": plugin.ExternalConfig.Registry.Opts,
+		"Opts": opts,
 	})
 }
 

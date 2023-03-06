@@ -28,10 +28,7 @@ jobs:
       with:
         files: |
           plugins/**
-          tests/*.go
           tests/testdata/buf.build/**
-          tests/testdata/images/*.gz
-          Makefile
         files_ignore: |
           **/source.yaml
         separator: ","

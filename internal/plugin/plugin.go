@@ -190,29 +190,8 @@ func FilterByChangedFiles(plugins []*Plugin, lookuper envconfig.Lookuper) ([]*Pl
 	if !anyModified {
 		return nil, nil
 	}
-	// Makefile: build all
 	// plugins/community/chrusty-jsonschema/v1.3.9/*: build plugins/community/chrusty-jsonschema/v1.3.9/buf.plugin.yaml
 	// plugins/bufbuild/connect-go/v0.1.1/*: build plugins/bufbuild/connect-go/v0.1.1/buf.plugin.yaml
-	// ...
-	// tests/*.go: build all
-	// tests/testdata/buf.build/community/chrusty-jsonschema/v1.3.9/**: build plugins/community/chrusty-jsonschema/v1.3.9/buf.plugin.yaml
-	// tests/testdata/images/*: build all
-	includeAll := false
-	for _, modifiedFile := range changedFiles.AllModifiedFiles {
-		if modifiedFile == "Makefile" {
-			includeAll = true
-			break
-		}
-		if strings.HasPrefix(modifiedFile, "tests/") {
-			if strings.HasSuffix(modifiedFile, ".go") || strings.HasSuffix(modifiedFile, ".bin.gz") {
-				includeAll = true
-				break
-			}
-		}
-	}
-	if includeAll {
-		return plugins, nil
-	}
 	var filtered []*Plugin
 	for _, plugin := range plugins {
 		include := false

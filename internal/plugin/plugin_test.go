@@ -52,9 +52,6 @@ func TestFilterByChangedFiles(t *testing.T) {
 	})
 	require.NoError(t, err)
 	assert.Empty(t, runFilterByChangedFiles(t, plugins, nil, false))
-	assert.Len(t, runFilterByChangedFiles(t, plugins, []string{"Makefile"}, true), len(plugins))
-	assert.Len(t, runFilterByChangedFiles(t, plugins, []string{"tests/plugins_test.go"}, true), len(plugins))
-	assert.Len(t, runFilterByChangedFiles(t, plugins, []string{"tests/testdata/images/eliza.bin.gz"}, true), len(plugins))
 	assert.Equal(t, filterPluginsByPathPrefixes(t, plugins, "plugins/protocolbuffers/cpp/v21.7/"), runFilterByChangedFiles(t, plugins, []string{"tests/testdata/buf.build/protocolbuffers/cpp/v21.7/eliza/plugin.sum"}, true))
 	assert.Equal(t,
 		filterPluginsByPathPrefixes(t, plugins,
