@@ -30,9 +30,7 @@ jobs:
           check-latest: true
           cache: true
       - name: Install buf cli
-        uses: bufbuild/buf-setup-action@v1
-        with:
-          version: 1.15.0
+        uses: bufbuild/buf-setup-action@v1.15.0
       - name: Fetch all versions
         env:
           GITHUB_TOKEN: ${{ steps.generate_token.outputs.token }}
