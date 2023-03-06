@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1.4
-FROM dart:2.18.3-sdk AS build
+FROM dart:2.19.3-sdk AS build
 
 WORKDIR /build
 RUN curl -fsSL https://pub.dartlang.org/packages/protoc_plugin/versions/20.0.1.tar.gz --compressed -o protoc_plugin.tar.gz \
