@@ -31,6 +31,8 @@ jobs:
           cache: true
       - name: Install buf cli
         uses: bufbuild/buf-setup-action@v1.15.0
+        with:
+          github_token: ${{ github.token }}
       - name: Fetch all versions
         env:
           GITHUB_TOKEN: ${{ steps.generate_token.outputs.token }}
