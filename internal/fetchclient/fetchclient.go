@@ -295,6 +295,10 @@ func (c *Client) fetchGithub(ctx context.Context, owner string, repository strin
 			if tag.Name == nil {
 				continue
 			}
+			// Skip versions with pre-releases (e.g. v1.2.3-alpha.1).
+			if semver.Prerelease(*tag.Name) != "" {
+				continue
+			}
 			if version, ok := ensureSemverPrefix(*tag.Name); ok {
 				versions = append(versions, version)
 			}
