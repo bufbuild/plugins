@@ -206,9 +206,6 @@ func run(ctx context.Context, root string) ([]createdPlugin, error) {
 			}
 			latestVersions[config.CacheKey()] = newVersion
 		}
-		if semver.Prerelease(newVersion) != "" {
-			continue
-		}
 		// example: library/grpc
 		pluginDir := filepath.Dir(config.Filename)
 		ok, err := checkDirExists(filepath.Join(pluginDir, newVersion))
