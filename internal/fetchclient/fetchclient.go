@@ -153,8 +153,8 @@ func (c *Client) fetchCrate(ctx context.Context, name string) (string, error) {
 			// from the server's index.
 			continue
 		}
-		if versionWithPrefix, ok := ensureSemverPrefix(version.Num); ok {
-			versions = append(versions, versionWithPrefix)
+		if v, ok := ensureSemverPrefix(version.Num); ok {
+			versions = append(versions, v)
 		}
 	}
 	if len(versions) == 0 {
@@ -255,15 +255,13 @@ func (c *Client) fetchMaven(ctx context.Context, group string, name string) (str
 	}
 	latestVersion := ""
 	for _, version := range metadata.Versioning.Versions {
-		if !strings.HasPrefix(version, "v") {
-			version = "v" + version
-		}
-		if !semver.IsValid(version) || semver.Prerelease(version) != "" {
+		v, ok := ensureSemverPrefix(version)
+		if !ok {
 			continue
 		}
-		version = semver.Canonical(version)
-		if latestVersion == "" || semver.Compare(latestVersion, version) < 0 {
-			latestVersion = version
+		v = semver.Canonical(v)
+		if latestVersion == "" || semver.Compare(latestVersion, v) < 0 {
+			latestVersion = v
 		}
 	}
 	if latestVersion == "" {
@@ -295,8 +293,7 @@ func (c *Client) fetchGithub(ctx context.Context, owner string, repository strin
 			if tag.Name == nil {
 				continue
 			}
-			// Only include non-prerelease versions.
-			if v, ok := ensureSemverPrefix(*tag.Name); ok && semver.Prerelease(v) == "" {
+			if v, ok := ensureSemverPrefix(*tag.Name); ok {
 				versions = append(versions, v)
 			}
 		}
@@ -312,14 +309,18 @@ func (c *Client) fetchGithub(ctx context.Context, owner string, repository strin
 	return versions[len(versions)-1], nil
 }
 
-// ensureSemverPrefix ensures the given version is valid semver, optionally
+// ensureSemverPrefix checks if the given version is valid semver, optionally
 // prefixing with "v". The output version is not guaranteed to be the same
-// as input.
+// as input. This function returns false if the version is not valid semver or
+// is a prerelease.
 func ensureSemverPrefix(version string) (string, bool) {
 	if !strings.HasPrefix(version, "v") {
 		version = "v" + version
 	}
 	if !semver.IsValid(version) {
+		return "", false
+	}
+	if semver.Prerelease(version) != "" {
 		return "", false
 	}
 	return version, true

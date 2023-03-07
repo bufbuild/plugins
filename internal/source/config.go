@@ -2,7 +2,6 @@ package source
 
 import (
 	"io"
-	"strconv"
 
 	"gopkg.in/yaml.v3"
 )
@@ -28,13 +27,10 @@ type Cacheable interface {
 type Config struct {
 	Filename string `yaml:"-"`
 	Source   Source `yaml:"source"`
-	// IncludePrerelease includes semver prereleases when fetching versions
-	// from upstream.
-	IncludePrerelease bool `yaml:"include_prerelease"`
 }
 
 func (c Config) CacheKey() string {
-	return c.Source.CacheKey() + "-" + strconv.FormatBool(c.IncludePrerelease)
+	return c.Source.CacheKey()
 }
 
 var _ Cacheable = (*Config)(nil)
