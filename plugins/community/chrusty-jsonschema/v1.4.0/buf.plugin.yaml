@@ -1,0 +1,7 @@
+version: v1
+name: buf.build/community/chrusty-jsonschema
+plugin_version: v1.4.0
+source_url: https://github.com/chrusty/protoc-gen-jsonschema
+description: Converts protobuf definitions into JSON Schemas, which can be used to dynamically validate JSON messages.
+spdx_license_id: Apache-2.0
+license_url: https://github.com/chrusty/protoc-gen-jsonschema/blob/1.4.0/LICENSE
