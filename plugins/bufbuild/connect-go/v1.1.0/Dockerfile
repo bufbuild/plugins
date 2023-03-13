@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1.4
-FROM golang:1.19.3-bullseye AS build
+FROM golang:1.20.2-bullseye AS build
 RUN --mount=type=cache,target=/go/pkg/mod \
     CGO_ENABLED=0 \
     go install -ldflags="-s -w" -trimpath github.com/bufbuild/connect-go/cmd/protoc-gen-connect-go@v1.1.0
