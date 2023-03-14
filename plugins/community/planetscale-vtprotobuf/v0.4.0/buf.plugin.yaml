@@ -1,0 +1,9 @@
+version: v1
+name: buf.build/community/planetscale-vtprotobuf
+plugin_version: v0.4.0
+source_url: https://github.com/planetscale/vtprotobuf
+description: Generates optimized marshalling & unmarshalling code for ProtoBuf APIv2.
+output_languages:
+  - go
+spdx_license_id: BSD-3-Clause
+license_url: https://github.com/planetscale/vtprotobuf/blob/v0.4.0/LICENSE
