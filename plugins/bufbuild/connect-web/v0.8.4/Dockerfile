@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1.4
-FROM node:18.14.2-alpine3.17 AS build
+FROM node:18.15.0-alpine3.17 AS build
 WORKDIR /app
 COPY --link package*.json .
 RUN npm ci
