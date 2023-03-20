@@ -9,3 +9,16 @@ output_languages:
   - kotlin
 spdx_license_id: Apache-2.0
 license_url: https://github.com/bufbuild/connect-kotlin/blob/v0.1.2/LICENSE
+registry:
+  maven:
+    compiler:
+      kotlin:
+        version: 1.8.10
+    deps:
+      - build.buf:connect-kotlin:0.1.2
+      - build.buf:connect-kotlin-google-java-ext:0.1.2
+    additional_runtimes:
+      - name: lite
+        deps:
+          - build.buf:connect-kotlin:0.1.2
+          - build.buf:connect-kotlin-google-javalite-ext:0.1.2
