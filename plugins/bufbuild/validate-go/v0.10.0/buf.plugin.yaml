@@ -4,7 +4,7 @@ plugin_version: v0.10.0
 source_url: https://github.com/bufbuild/protoc-gen-validate
 description: Generates Go code to validate Protobuf messages using protoc-gen-validate constraints.
 deps:
-  - plugin: buf.build/protocolbuffers/go:v1.28.1
+  - plugin: buf.build/protocolbuffers/go:v1.30.0
 output_languages:
   - go
 spdx_license_id: Apache-2.0
