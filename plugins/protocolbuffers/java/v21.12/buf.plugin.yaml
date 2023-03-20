@@ -7,3 +7,12 @@ output_languages:
   - java
 spdx_license_id: BSD-3-Clause
 license_url: https://github.com/protocolbuffers/protobuf/blob/v21.12/LICENSE
+registry:
+  maven:
+    deps:
+      - com.google.protobuf:protobuf-java:3.21.12
+    additional_runtimes:
+      - name: lite
+        deps:
+          - com.google.protobuf:protobuf-javalite:3.21.12
+        opts: [lite]
