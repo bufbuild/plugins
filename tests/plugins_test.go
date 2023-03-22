@@ -76,9 +76,9 @@ func TestGeneration(t *testing.T) {
 			bufCmd := exec.Command("buf", "generate", filepath.Join(imageDir, image+".bin.gz"))
 			bufCmd.Dir = pluginDir
 			output, err := bufCmd.CombinedOutput()
-			assert.NoErrorf(t, err, "buf generate output: %s", string(output))
+			require.NoErrorf(t, err, "buf generate failed - output: %s", string(output))
 			genDirHash, err := dirhash.HashDir(pluginGenDir, "", dirhash.Hash1)
-			require.NoError(t, err)
+			require.NoError(t, err, "failed to calculate directory hash of generated code")
 			pluginImageSumFile := filepath.Join(pluginDir, "plugin.sum")
 			existingPluginSumBytes, err := os.ReadFile(pluginImageSumFile)
 			if err != nil {
