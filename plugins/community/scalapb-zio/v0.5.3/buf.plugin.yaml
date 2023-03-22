@@ -1,6 +1,6 @@
 version: v1
 name: buf.build/community/scalapb-zio
-plugin_version: v0.11.12
+plugin_version: v0.5.3
 source_url: https://github.com/scalapb/zio-grpc
 description: Enables writing purely functional gRPC services using ZIO.
 output_languages:
