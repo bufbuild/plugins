@@ -7,17 +7,3 @@ output_languages:
   - kotlin
 spdx_license_id: BSD-3-Clause
 license_url: https://github.com/protocolbuffers/protobuf/blob/v21.12/LICENSE
-registry:
-  maven:
-    compiler:
-      kotlin:
-        version: 1.8.10
-    deps:
-      - com.google.protobuf:protobuf-kotlin:3.21.12
-      - org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.8.10
-    additional_runtimes:
-      - name: lite
-        deps:
-          - com.google.protobuf:protobuf-kotlin-lite:3.21.12
-          - org.jetbrains.kotlin:kotlin-stdlib:1.8.10
-        opts: [lite]

@@ -9,16 +9,3 @@ output_languages:
   - java
 spdx_license_id: Apache-2.0
 license_url: https://github.com/grpc/grpc-java/blob/v1.51.1/LICENSE
-registry:
-  maven:
-    deps:
-      - io.grpc:grpc-core:1.51.1
-      - io.grpc:grpc-protobuf:1.51.1
-      - io.grpc:grpc-stub:1.51.1
-    additional_runtimes:
-      - name: lite
-        deps:
-          - io.grpc:grpc-core:1.51.1
-          - io.grpc:grpc-protobuf-lite:1.51.1
-          - io.grpc:grpc-stub:1.51.1
-        opts: [lite]
