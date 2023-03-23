@@ -1,9 +1,11 @@
 package main
 
 import (
+	"bufio"
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"io/fs"
 	"log"
 	"os"
@@ -186,6 +188,10 @@ func run(ctx context.Context, root string) ([]createdPlugin, error) {
 	defer func() {
 		log.Printf("finished running in: %.2fs\n", time.Since(now).Seconds())
 	}()
+	latestBaseImageVersions, err := getLatestBaseImageVersions(root)
+	if err != nil {
+		return nil, err
+	}
 	configs, err := source.GatherConfigs(root)
 	if err != nil {
 		return nil, err
@@ -219,7 +225,7 @@ func run(ctx context.Context, root string) ([]createdPlugin, error) {
 		if err != nil {
 			return nil, fmt.Errorf("failed to get latest known version from dir %s with error: %w", pluginDir, err)
 		}
-		if err := createPluginDir(pluginDir, previousVersion, newVersion); err != nil {
+		if err := createPluginDir(pluginDir, previousVersion, newVersion, latestBaseImageVersions); err != nil {
 			return nil, err
 		}
 		log.Printf("created %v/%v\n", pluginDir, newVersion)
@@ -234,10 +240,99 @@ func run(ctx context.Context, root string) ([]createdPlugin, error) {
 	return created, nil
 }
 
+func getLatestBaseImageVersions(basedir string) (_ map[string]string, retErr error) {
+	// Walk up from plugins dir to find .github dir
+	rootDir := basedir
+	var githubDir string
+	for {
+		githubDir = filepath.Join(rootDir, ".github")
+		if st, err := os.Stat(githubDir); err == nil && st.IsDir() {
+			break
+		}
+		newRootDir := filepath.Dir(filepath.Dir(githubDir))
+		if newRootDir == rootDir {
+			return nil, fmt.Errorf("failed to find .github directory from %s", basedir)
+		}
+		rootDir = newRootDir
+	}
+	dockerDir := filepath.Join(githubDir, "docker")
+	d, err := os.Open(dockerDir)
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		retErr = errors.Join(retErr, d.Close())
+	}()
+	entries, err := d.ReadDir(-1)
+	if err != nil {
+		return nil, err
+	}
+	latestVersions := make(map[string]string, len(entries))
+	for _, entry := range entries {
+		if !strings.HasPrefix(entry.Name(), "Dockerfile.") {
+			continue
+		}
+		imageName, version, err := parseDockerfileBaseImageNameVersion(filepath.Join(dockerDir, entry.Name()))
+		if err != nil {
+			return nil, err
+		}
+		latestVersions[imageName] = version
+	}
+	return latestVersions, nil
+}
+
+func parseDockerfileBaseImageNameVersion(dockerfile string) (_ string, _ string, retErr error) {
+	f, err := os.Open(dockerfile)
+	if err != nil {
+		return "", "", nil
+	}
+	defer func() {
+		retErr = errors.Join(retErr, f.Close())
+	}()
+	s := bufio.NewScanner(f)
+	for s.Scan() {
+		line := strings.TrimSpace(s.Text())
+		fields := strings.Fields(line)
+		if len(fields) < 2 {
+			continue
+		}
+		if !strings.EqualFold(fields[0], "from") {
+			continue
+		}
+		var image string
+		for i := 1; i < len(fields); i++ {
+			if strings.HasPrefix(fields[i], "--") {
+				// Ignore --platform and other args
+				continue
+			}
+			image = fields[i]
+			break
+		}
+		if image == "" {
+			return "", "", fmt.Errorf("missing image in FROM: %q", line)
+		}
+		imageName, version, found := strings.Cut(image, ":")
+		if !found {
+			return "", "", fmt.Errorf("invalid FROM line: %q", line)
+		}
+		return imageName, version, nil
+	}
+	if err := s.Err(); err != nil {
+		return "", "", err
+	}
+	return "", "", fmt.Errorf("failed to detect base image in %s", dockerfile)
+}
+
 // copyDirectory copies all files from the source directory to the target,
 // creating the target directory if it does not exist.
 // If the source directory contains subdirectories this function returns an error.
-func copyDirectory(source, target, prevVersion, newVersion string) (retErr error) {
+func copyDirectory(
+	source string,
+	target string,
+	prevVersion string,
+	newVersion string,
+	latestBaseImageVersions map[string]string,
+) (retErr error) {
 	entries, err := os.ReadDir(source)
 	if err != nil {
 		return err
@@ -259,6 +354,7 @@ func copyDirectory(source, target, prevVersion, newVersion string) (retErr error
 			filepath.Join(target, file.Name()),
 			prevVersion,
 			newVersion,
+			latestBaseImageVersions,
 		); err != nil {
 			return err
 		}
@@ -266,7 +362,12 @@ func copyDirectory(source, target, prevVersion, newVersion string) (retErr error
 	return nil
 }
 
-func createPluginDir(dir string, previousVersion string, newVersion string) (retErr error) {
+func createPluginDir(
+	dir string,
+	previousVersion string,
+	newVersion string,
+	latestBaseImageVersions map[string]string,
+) (retErr error) {
 	if err := os.Mkdir(filepath.Join(dir, newVersion), 0755); err != nil {
 		return err
 	}
@@ -280,16 +381,72 @@ func createPluginDir(dir string, previousVersion string, newVersion string) (ret
 		filepath.Join(dir, newVersion),
 		previousVersion,
 		newVersion,
+		latestBaseImageVersions,
 	)
 }
 
-func copyFile(src, dest string, prevVersion, newVersion string) error {
-	data, err := os.ReadFile(src)
+func copyFile(
+	src string,
+	dest string,
+	prevVersion string,
+	newVersion string,
+	latestBaseImageVersions map[string]string,
+) (retErr error) {
+	srcFile, err := os.Open(src)
 	if err != nil {
 		return err
 	}
-	replaced := strings.ReplaceAll(string(data), strings.TrimPrefix(prevVersion, "v"), strings.TrimPrefix(newVersion, "v"))
-	return os.WriteFile(dest, []byte(replaced), 0644) //nolint:gosec
+	defer func() {
+		retErr = errors.Join(retErr, srcFile.Close())
+	}()
+	destFile, err := os.OpenFile(dest, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		retErr = errors.Join(retErr, destFile.Close())
+	}()
+	filename := filepath.Base(dest)
+	switch filename {
+	case "Dockerfile", "Dockerfile.wasm", "buf.plugin.yaml", "package.json":
+		// We want to update these with the new version
+	default:
+		// Everything else just copy as-is
+		if _, err := io.Copy(destFile, srcFile); err != nil {
+			return err
+		}
+		return nil
+	}
+	isDockerfile := strings.HasPrefix(filename, "Dockerfile")
+	prevVersion = strings.TrimPrefix(prevVersion, "v")
+	newVersion = strings.TrimPrefix(newVersion, "v")
+	s := bufio.NewScanner(srcFile)
+	for s.Scan() {
+		line := strings.ReplaceAll(s.Text(), prevVersion, newVersion)
+		if isDockerfile && len(line) > 5 && strings.EqualFold(line[0:5], "from ") {
+			// Replace FROM line with the latest base image (if found)
+			fields := strings.Fields(line)
+			var imageIndex int
+			var image string
+			for i := 1; i <= len(fields); i++ {
+				field := fields[i]
+				if !strings.HasPrefix(field, "--") {
+					image, imageIndex = field, i
+					break
+				}
+			}
+			if name, _, found := strings.Cut(image, ":"); found {
+				if newVersion := latestBaseImageVersions[name]; newVersion != "" {
+					fields[imageIndex] = name + ":" + newVersion
+					line = strings.Join(fields, " ")
+				}
+			}
+		}
+		if _, err := fmt.Fprintln(destFile, line); err != nil {
+			return err
+		}
+	}
+	return s.Err()
 }
 
 func getLatestVersionFromDir(dir string) (string, error) {
