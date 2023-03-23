@@ -8,18 +8,8 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
-  # go plugin
+  # plugin base images
   - package-ecosystem: "docker"
-    directory: "/plugins/bufbuild/connect-go/v1.1.0"
+    directory: "/.github/docker"
     schedule:
-      interval: "weekly"
-  # dart plugin
-  - package-ecosystem: "docker"
-    directory: "/plugins/protocolbuffers/dart/v20.0.1"
-    schedule:
-      interval: "weekly"
-  # swift plugin
-  - package-ecosystem: "docker"
-    directory: "/plugins/apple/swift/v1.20.3"
-    schedule:
-      interval: "weekly"
+      interval: "daily"
