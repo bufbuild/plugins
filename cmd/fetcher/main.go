@@ -303,6 +303,7 @@ func parseDockerfileBaseImageNameVersion(dockerfile string) (_ string, _ string,
 		for i := 1; i < len(fields); i++ {
 			if strings.HasPrefix(fields[i], "--") {
 				// Ignore --platform and other args
+				continue
 			}
 			image = fields[i]
 			break
