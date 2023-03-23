@@ -414,6 +414,7 @@ func copyFile(
 		if _, err := io.Copy(destFile, srcFile); err != nil {
 			return err
 		}
+		return nil
 	}
 	isDockerfile := strings.HasPrefix(filename, "Dockerfile")
 	prevVersion = strings.TrimPrefix(prevVersion, "v")
