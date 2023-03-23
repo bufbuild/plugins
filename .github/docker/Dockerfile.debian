@@ -1,3 +1,3 @@
-FROM debian:bullseye-20221114
+FROM debian:bullseye-20230320
 
 CMD echo this is a dummy file used to automate dependency upgrades for plugins
