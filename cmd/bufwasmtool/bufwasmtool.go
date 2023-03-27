@@ -114,7 +114,7 @@ func newExecuteCmd(builder appflag.Builder) *appcmd.Command {
 		Short: "Execute a wasm file with buf extensions",
 		Args:  cobra.ExactArgs(1),
 		Run: builder.NewRunFunc(func(ctx context.Context, c appflag.Container) error {
-			pluginExecutor, err := bufwasm.NewPluginExecutor(ctx, ".build")
+			pluginExecutor, err := bufwasm.NewPluginExecutor(".build")
 			if err != nil {
 				return err
 			}

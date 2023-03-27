@@ -12,6 +12,7 @@ The build requires the following:
 * [Go](https://go.dev/dl/) (1.19+)
 * [Buf](https://github.com/bufbuild/buf) (1.11.0+)
 * [yq](https://github.com/mikefarah/yq)
+* [golangci-lint](https://golangci-lint.run/usage/install/) (v1.52.0)
 
 ### Makefile targets
 

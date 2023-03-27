@@ -21,6 +21,8 @@ PLUGINS ?=
 PLUGIN_YAML_FILES := $(shell PLUGINS="$(PLUGINS)" go run ./cmd/dependency-order .)
 PLUGIN_IMAGES := $(patsubst %/buf.plugin.yaml,.build/plugin/%/image,$(PLUGIN_YAML_FILES))
 
+GOLANGCILINTTIMEOUT ?= 30s
+
 .PHONY: all
 all: build
 
@@ -73,3 +75,7 @@ push: build
 		fi; \
 		$(BUF) alpha plugin push $${plugin_dir} $(BUF_PLUGIN_PUSH_ARGS) --image $(DOCKER_ORG)/plugins-$${PLUGIN_OWNER}-$${PLUGIN_NAME}:$${PLUGIN_VERSION} || exit 1; \
 	done
+
+.PHONY: golangcilint
+golangcilint:
+	golangci-lint run --timeout $(GOLANGCILINTTIMEOUT)
