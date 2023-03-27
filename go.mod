@@ -4,7 +4,7 @@ go 1.19
 
 require (
 	aead.dev/minisign v0.2.0
-	github.com/bufbuild/buf v1.15.2-0.20230320185246-24a323424c36
+	github.com/bufbuild/buf v1.15.2-0.20230327174441-759d0e862f8a
 	github.com/google/go-github/v50 v50.2.0
 	github.com/hashicorp/go-retryablehttp v0.7.2
 	github.com/sethvargo/go-envconfig v0.9.0
