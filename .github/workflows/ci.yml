@@ -22,7 +22,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: set PLUGINS from workflow inputs
-      run: echo "PLUGINS=${inputs.plugins}" >> $GITHUB_ENV
+      if: ${{ inputs.plugins }}
+      run: echo "PLUGINS=${{ inputs.plugins }}" >> $GITHUB_ENV
     - uses: actions/checkout@v3
       with:
         fetch-depth: 0
