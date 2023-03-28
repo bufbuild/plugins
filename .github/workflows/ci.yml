@@ -2,7 +2,12 @@ name: ci
 on:
   push:
     branches: [ "main" ]
-  workflow_dispatch: {} # support manual runs
+  workflow_dispatch:
+    inputs:
+      plugins:
+        description: "Plugins to build and publish (i.e. connect-go:latest, connect-go, grpc/java:v1.53.0)"
+        default: ''
+        type: string
 
 # Ref: https://docs.github.com/en/actions/reference/workflow-syntax-for-github-actions#permissions
 permissions:
@@ -16,6 +21,8 @@ jobs:
   ci:
     runs-on: ubuntu-latest
     steps:
+    - name: set PLUGINS from workflow inputs
+      run: echo "PLUGINS=${inputs.plugins}" >> $GITHUB_ENV
     - uses: actions/checkout@v3
       with:
         fetch-depth: 0
@@ -44,6 +51,15 @@ jobs:
         go-version: 1.20.x
         check-latest: true
         cache: true
+    - name: Set PLUGINS env var from changed files
+      env:
+        ALL_MODIFIED_FILES: ${{ steps.changed-files.outputs.all_modified_files }}
+        ANY_MODIFIED: ${{ steps.changed-files.outputs.any_modified }}
+      run: |
+        val=`go run ./internal/cmd/changed-plugins .`
+        if [[ -n "${val}" && -z "${PLUGINS}" ]]; then
+          echo "PLUGINS=${val}" >> $GITHUB_ENV
+        fi
     - name: Install buf cli
       uses: bufbuild/buf-setup-action@v1.15.1
       with:
@@ -69,14 +85,8 @@ jobs:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
     - name: Build
-      env:
-        ALL_MODIFIED_FILES: ${{ steps.changed-files.outputs.all_modified_files }}
-        ANY_MODIFIED: ${{ steps.changed-files.outputs.any_modified }}
       shell: bash
       run: make DOCKER_ORG="ghcr.io/bufbuild" DOCKER_BUILD_EXTRA_ARGS="--push"
     - name: Test
-      env:
-        ALL_MODIFIED_FILES: ${{ steps.changed-files.outputs.all_modified_files }}
-        ANY_MODIFIED: ${{ steps.changed-files.outputs.any_modified }}
       shell: bash
       run: make test DOCKER_ORG="ghcr.io/bufbuild"

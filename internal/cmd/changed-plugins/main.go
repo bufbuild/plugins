@@ -5,6 +5,9 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
+
+	"github.com/sethvargo/go-envconfig"
 
 	"github.com/bufbuild/plugins/internal/plugin"
 )
@@ -24,15 +27,17 @@ func main() {
 	}); err != nil {
 		log.Fatalf("failed to walk directory: %v", err)
 	}
-
-	includedPlugins, err := plugin.FilterByPluginsEnv(plugins, os.Getenv("PLUGINS"))
+	// Filter by changed plugins (for PR builds)
+	includedPlugins, err := plugin.FilterByChangedFiles(plugins, envconfig.OsLookuper())
 	if err != nil {
-		log.Fatalf("failed to filter plugins by PLUGINS env var: %v", err)
+		log.Fatalf("failed to filter plugins by changed files: %v", err)
 	}
-
+	var sb strings.Builder
 	for _, includedPlugin := range includedPlugins {
-		if _, err := fmt.Fprintln(os.Stdout, includedPlugin.Path); err != nil {
-			log.Fatalf("failed to print plugin: %v", err)
-		}
+		sb.WriteString(strings.TrimPrefix(includedPlugin.Name, "buf.build/"))
+		sb.WriteByte(':')
+		sb.WriteString(includedPlugin.PluginVersion)
+		sb.WriteByte(' ')
 	}
+	fmt.Println(strings.TrimSpace(sb.String())) //nolint:forbidigo
 }
