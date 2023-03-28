@@ -77,9 +77,8 @@ Note, although some fields are optional, it is suggested to include as many as p
 
 ## CI/CD
 
-PR builds use [tj-actions/changed-files](https://github.com/tj-actions/changed-files) to determine which plugin(s) need to be rebuilt.
-See [.github/workflows/pr.yaml](.github/workflows/pr.yml) and [cmd/dependency-order/main.go](cmd/dependency-order/main.go) for more details.
-Note that some files (`Makefile`,`tests/*.go`,`tests/testdata/images/*.gz`) require all plugins to be rebuilt.
+Builds use [tj-actions/changed-files](https://github.com/tj-actions/changed-files) to determine which plugin(s) need to be rebuilt.
+See [.github/workflows/pr.yaml](.github/workflows/pr.yml) and [internal/cmd/changed-plugins/main.go](internal/cmd/changed-plugins/main.go) for more details.
 
 We use a combination of a custom command ([cmd/fetcher/main.go](cmd/fetcher/main.go)) and Dependabot to keep dependencies up to date in the project.
 The `fetcher` command will use `source.yaml` files in each plugin to determine if new plugin versions are available.

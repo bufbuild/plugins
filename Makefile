@@ -23,6 +23,11 @@ PLUGIN_IMAGES := $(patsubst %/buf.plugin.yaml,.build/plugin/%/image,$(PLUGIN_YAM
 
 .PHONY: all
 all: build
+	@if [[ -z "${PLUGINS}" ]]; then \
+		echo "No plugins specified to build with PLUGINS env var."; \
+		echo "See Makefile for example PLUGINS env var usage."; \
+		echo "To build all plugins (will take a long time), build with 'make PLUGINS=all'."; \
+	fi
 
 .PHONY: build
 build: $(PLUGIN_IMAGES)
