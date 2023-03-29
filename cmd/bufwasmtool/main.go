@@ -8,7 +8,7 @@ import (
 	"os"
 	"path"
 
-	"github.com/bufbuild/plugins/bufwasmtool"
+	"github.com/bufbuild/plugins/cmd/bufwasmtool/bufwasmtool"
 )
 
 func main() {
