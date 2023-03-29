@@ -30,11 +30,7 @@ func TestWalk(t *testing.T) {
 
 func TestFilterByPluginsEnv(t *testing.T) {
 	t.Parallel()
-	var plugins []*Plugin
-	err := Walk("../..", func(plugin *Plugin) error {
-		plugins = append(plugins, plugin)
-		return nil
-	})
+	plugins, err := FindAll("../..")
 	require.NoError(t, err)
 	assert.Empty(t, runFilterByPluginsEnv(t, plugins, "no-match"))
 	assert.Equal(t, filterPluginsByPathPrefixes(t, plugins, "plugins/bufbuild/connect-go/", "plugins/bufbuild/connect-web/v0.2.1/"),
@@ -52,11 +48,7 @@ func TestFilterByPluginsEnv(t *testing.T) {
 
 func TestFilterByChangedFiles(t *testing.T) {
 	t.Parallel()
-	var plugins []*Plugin
-	err := Walk("../..", func(plugin *Plugin) error {
-		plugins = append(plugins, plugin)
-		return nil
-	})
+	plugins, err := FindAll("../..")
 	require.NoError(t, err)
 	assert.Empty(t, runFilterByChangedFiles(t, plugins, nil, false))
 	assert.Equal(t, filterPluginsByPathPrefixes(t, plugins, "plugins/protocolbuffers/cpp/v21.7/"), runFilterByChangedFiles(t, plugins, []string{"tests/testdata/buf.build/protocolbuffers/cpp/v21.7/eliza/plugin.sum"}, true))
