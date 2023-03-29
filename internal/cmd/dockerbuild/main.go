@@ -16,8 +16,9 @@ import (
 
 	"github.com/bufbuild/buf/private/bufpkg/bufplugin/bufpluginref"
 	"github.com/bufbuild/buf/private/pkg/interrupt"
-	"github.com/bufbuild/plugins/internal/plugin"
 	"golang.org/x/sync/errgroup"
+
+	"github.com/bufbuild/plugins/internal/plugin"
 )
 
 // dockerbuild is a helper program used to build plugins from Dockerfiles in an optimized fashion.
@@ -26,7 +27,7 @@ import (
 // which enables optimized builds which build common code first before binaries.
 // It also makes it easier to add new labels to images using existing code to parse buf.plugin.yaml.
 
-// larger amount of parallelism lead to OOM errors in testing - clamp for now
+// larger amount of parallelism lead to OOM errors in testing - clamp for now.
 const maxLimit = 8
 
 func main() {
@@ -113,10 +114,7 @@ func run(basedir string, dockerOrg string, args []string) error {
 			return nil
 		})
 	}
-	if err := eg.Wait(); err != nil {
-		return err
-	}
-	return nil
+	return eg.Wait()
 }
 
 func dockerBuild(ctx context.Context, plugin *plugin.Plugin, dockerOrg string, args []string) ([]byte, error) {
