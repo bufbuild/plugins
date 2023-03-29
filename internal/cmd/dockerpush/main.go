@@ -12,7 +12,7 @@ import (
 	"github.com/bufbuild/plugins/internal/plugin"
 )
 
-// dockerpush automates pushing images build by dockerbuild to a remote registry.
+// dockerpush automates pushing images built by dockerbuild to a remote registry.
 
 func main() {
 	var (
@@ -37,7 +37,7 @@ func run(basedir string, dockerOrg string) error {
 		return err
 	}
 	if len(includedPlugins) == 0 {
-		return nil // nothing to build
+		return nil // nothing to push
 	}
 	for _, includedPlugin := range includedPlugins {
 		output, err := docker.Push(ctx, includedPlugin, dockerOrg)
