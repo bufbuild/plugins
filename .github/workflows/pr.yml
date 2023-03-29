@@ -36,7 +36,7 @@ jobs:
         fetch-depth: 0
     - name: Get changed files
       id: changed-files
-      if: ${{ inputs.plugins != '' }}
+      if: ${{ inputs.plugins == '' }}
       uses: tj-actions/changed-files@07f86bcdc42639264ec561c7f175fea5f532b6ce
       with:
         files: |
@@ -46,7 +46,7 @@ jobs:
           **/source.yaml
         separator: ","
     - name: Show changed files
-      if: ${{ inputs.plugins != '' }}
+      if: ${{ inputs.plugins == '' }}
       run: |
         echo '${{ toJSON(steps.changed-files.outputs) }}'
     - name: Install Go
@@ -56,7 +56,7 @@ jobs:
         check-latest: true
         cache: true
     - name: Set PLUGINS env var from changed files
-      if: ${{ inputs.plugins != '' }}
+      if: ${{ inputs.plugins == '' }}
       env:
         ALL_MODIFIED_FILES: ${{ steps.changed-files.outputs.all_modified_files }}
         ANY_MODIFIED: ${{ steps.changed-files.outputs.any_modified }}

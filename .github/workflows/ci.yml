@@ -33,13 +33,13 @@ jobs:
         fetch-depth: 0
     - uses: nrwl/nx-set-shas@177b48373c6dc583ce0d9257ffb484bdd232fedf
       id: last_successful_commit_push
-      if: ${{ inputs.plugins != '' }}
+      if: ${{ inputs.plugins == '' }}
       with:
         main-branch-name: ${{ github.ref_name }}
         workflow-id: 'ci.yml'
     - name: Get changed files
       id: changed-files
-      if: ${{ inputs.plugins != '' }}
+      if: ${{ inputs.plugins == '' }}
       uses: tj-actions/changed-files@07f86bcdc42639264ec561c7f175fea5f532b6ce
       with:
         base_sha: ${{ steps.last_successful_commit_push.outputs.base }}
@@ -49,7 +49,7 @@ jobs:
           **/source.yaml
         separator: ","
     - name: Show changed files
-      if: ${{ inputs.plugins != '' }}
+      if: ${{ inputs.plugins == '' }}
       run: |
         echo '${{ toJSON(steps.changed-files.outputs) }}'
     - name: Install Go
@@ -59,7 +59,7 @@ jobs:
         check-latest: true
         cache: true
     - name: Set PLUGINS env var from changed files
-      if: ${{ inputs.plugins != '' }}
+      if: ${{ inputs.plugins == '' }}
       env:
         ALL_MODIFIED_FILES: ${{ steps.changed-files.outputs.all_modified_files }}
         ANY_MODIFIED: ${{ steps.changed-files.outputs.any_modified }}
