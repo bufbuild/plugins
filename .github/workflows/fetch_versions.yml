@@ -37,7 +37,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ steps.generate_token.outputs.token }}
         run: |
-          go run ./cmd/fetcher .
+          go run ./internal/cmd/fetcher .
       - name: Create PR
         uses: peter-evans/create-pull-request@38e0b6e68b4c852a5500a94740f0e535e0d7ba54
         with:
