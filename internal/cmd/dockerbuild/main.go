@@ -1,15 +1,12 @@
 package main
 
 import (
-	"bufio"
 	"context"
 	"errors"
 	"flag"
 	"fmt"
 	"log"
 	"os"
-	"os/exec"
-	"path/filepath"
 	"runtime"
 	"strings"
 	"time"
@@ -18,6 +15,7 @@ import (
 	"github.com/bufbuild/buf/private/pkg/interrupt"
 	"golang.org/x/sync/errgroup"
 
+	"github.com/bufbuild/plugins/internal/docker"
 	"github.com/bufbuild/plugins/internal/plugin"
 )
 
@@ -95,7 +93,7 @@ func run(basedir string, dockerOrg string, args []string) error {
 			for _, pluginToBuild := range plugins {
 				log.Println("building:", pluginToBuild.Name, pluginToBuild.PluginVersion)
 				start := time.Now()
-				output, err := dockerBuild(ctx, pluginToBuild, dockerOrg, args)
+				output, err := docker.Build(ctx, pluginToBuild, dockerOrg, args)
 				if err != nil {
 					if errors.Is(err, context.Canceled) || strings.Contains(err.Error(), "signal: killed") {
 						return err
@@ -115,103 +113,4 @@ func run(basedir string, dockerOrg string, args []string) error {
 		})
 	}
 	return eg.Wait()
-}
-
-func dockerBuild(ctx context.Context, plugin *plugin.Plugin, dockerOrg string, args []string) ([]byte, error) {
-	dockerCmd, err := exec.LookPath("docker")
-	if err != nil {
-		return nil, err
-	}
-	identity, err := bufpluginref.PluginIdentityForString(plugin.Name)
-	if err != nil {
-		return nil, err
-	}
-	commonArgs := []string{
-		"buildx",
-		"build",
-		"--label",
-		fmt.Sprintf("build.buf.plugins.config.owner=%s", identity.Owner()),
-		"--label",
-		fmt.Sprintf("build.buf.plugins.config.name=%s", identity.Plugin()),
-		"--label",
-		fmt.Sprintf("build.buf.plugins.config.version=%s", plugin.PluginVersion),
-		"--label",
-		"org.opencontainers.image.source=https://github.com/bufbuild/plugins",
-		"--label",
-		fmt.Sprintf("org.opencontainers.image.description=%s", plugin.Description),
-		"--label",
-		fmt.Sprintf("org.opencontainers.image.licenses=%s", plugin.SPDXLicenseID),
-		"--progress",
-		"plain",
-	}
-	commonArgs = append(commonArgs, args...)
-	buildStages, err := getDockerBuildStages(filepath.Join(filepath.Dir(plugin.Path), "Dockerfile"))
-	if err != nil {
-		return nil, err
-	}
-	for _, stage := range buildStages {
-		// Build each stage of multi-stage build (to improve caching)
-		cmd := exec.CommandContext(
-			ctx,
-			dockerCmd,
-			commonArgs...,
-		)
-		cmd.Args = append(
-			cmd.Args,
-			"--target",
-			stage,
-			"-t",
-			fmt.Sprintf("%s/plugins-%s-%s:%s-%s", dockerOrg, identity.Owner(), identity.Plugin(), plugin.PluginVersion, stage),
-		)
-		cmd.Args = append(cmd.Args, filepath.Dir(plugin.Path))
-		output, err := cmd.CombinedOutput()
-		if err != nil {
-			return output, err
-		}
-	}
-	// Build the final stage of multi-stage build
-	cmd := exec.CommandContext(
-		ctx,
-		dockerCmd,
-		commonArgs...,
-	)
-	cmd.Args = append(
-		cmd.Args,
-		"-t",
-		fmt.Sprintf("%s/plugins-%s-%s:%s", dockerOrg, identity.Owner(), identity.Plugin(), plugin.PluginVersion),
-	)
-	cmd.Args = append(cmd.Args, filepath.Dir(plugin.Path))
-	return cmd.CombinedOutput()
-}
-
-func getDockerBuildStages(dockerfile string) (_ []string, retErr error) {
-	f, err := os.Open(dockerfile)
-	if err != nil {
-		return nil, err
-	}
-	defer func() {
-		retErr = errors.Join(retErr, f.Close())
-	}()
-	s := bufio.NewScanner(f)
-	var stages []string
-	for s.Scan() {
-		line := strings.TrimSpace(s.Text())
-		fields := strings.Fields(line)
-		if len(fields) < 4 {
-			continue
-		}
-		if !strings.EqualFold(fields[0], "from") {
-			continue
-		}
-		for i := 1; i < len(fields); i++ {
-			if strings.EqualFold(fields[i], "as") && i < len(fields)-1 {
-				stages = append(stages, fields[i+1])
-				break
-			}
-		}
-	}
-	if err := s.Err(); err != nil {
-		return nil, err
-	}
-	return stages, nil
 }

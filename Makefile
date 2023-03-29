@@ -31,6 +31,10 @@ all: build
 build:
 	@go run ./internal/cmd/dockerbuild -org "$(DOCKER_ORG)" -- $(DOCKER_BUILD_EXTRA_ARGS)
 
+.PHONY: dockerpush
+dockerpush:
+	@go run ./internal/cmd/dockerpush -org "$(DOCKER_ORG)"
+
 .PHONY: test
 test: build
 	go test $(GO_TEST_FLAGS) ./...

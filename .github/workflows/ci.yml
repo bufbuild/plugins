@@ -9,6 +9,9 @@ on:
         default: ''
         type: string
 
+env:
+  DOCKER_ORG: "ghcr:io/bufbuild"
+
 # Ref: https://docs.github.com/en/actions/reference/workflow-syntax-for-github-actions#permissions
 permissions:
   actions: read
@@ -93,7 +96,7 @@ jobs:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
     - name: Test
-      run: make test DOCKER_ORG="ghcr.io/bufbuild"
+      run: make test
     - name: Push to GHCR
       if: github.repository == 'bufbuild/plugins'
-      run: make DOCKER_ORG="ghcr.io/bufbuild" DOCKER_BUILD_EXTRA_ARGS="--push"
+      run: make dockerpush
