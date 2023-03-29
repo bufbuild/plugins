@@ -10,6 +10,13 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestFindAll(t *testing.T) {
+	t.Parallel()
+	plugins, err := FindAll("../..")
+	require.NoError(t, err)
+	assert.NotEmpty(t, plugins)
+}
+
 func TestWalk(t *testing.T) {
 	t.Parallel()
 	var plugins []*Plugin

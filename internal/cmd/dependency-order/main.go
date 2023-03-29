@@ -10,6 +10,9 @@ import (
 )
 
 func main() {
+	var (
+		relative = flag.Bool("relative", false, "Output relative paths")
+	)
 	flag.Parse()
 	if len(flag.Args()) != 1 {
 		flag.Usage()
@@ -17,21 +20,20 @@ func main() {
 	}
 	basedir := flag.Args()[0]
 
-	plugins := make([]*plugin.Plugin, 0)
-	if err := plugin.Walk(basedir, func(plugin *plugin.Plugin) error {
-		plugins = append(plugins, plugin)
-		return nil
-	}); err != nil {
-		log.Fatalf("failed to walk directory: %v", err)
+	plugins, err := plugin.FindAll(basedir)
+	if err != nil {
+		log.Fatalf("failed to find plugins: %v", err)
 	}
-
 	includedPlugins, err := plugin.FilterByPluginsEnv(plugins, os.Getenv("PLUGINS"))
 	if err != nil {
 		log.Fatalf("failed to filter plugins by PLUGINS env var: %v", err)
 	}
-
 	for _, includedPlugin := range includedPlugins {
-		if _, err := fmt.Fprintln(os.Stdout, includedPlugin.Path); err != nil {
+		toOutput := includedPlugin.Path
+		if *relative {
+			toOutput = includedPlugin.Relpath
+		}
+		if _, err := fmt.Fprintln(os.Stdout, toOutput); err != nil {
 			log.Fatalf("failed to print plugin: %v", err)
 		}
 	}

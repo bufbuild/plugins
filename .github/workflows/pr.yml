@@ -17,6 +17,10 @@ concurrency:
   group: ${{ github.ref }}
   cancel-in-progress: true
 
+defaults:
+  run:
+    shell: bash
+
 jobs:
   pr:
     env:
@@ -43,7 +47,6 @@ jobs:
     - name: Show changed files
       run: |
         echo '${{ toJSON(steps.changed-files.outputs) }}'
-      shell: bash
     - name: Install Go
       uses: actions/setup-go@v4
       with:
@@ -60,7 +63,7 @@ jobs:
           echo "PLUGINS=${val}" >> $GITHUB_ENV
         fi
     - name: Install buf cli
-      uses: bufbuild/buf-setup-action@v1.15.1
+      uses: bufbuild/buf-setup-action@v1.16.0
       with:
         github_token: ${{ github.token }}
     - name: Set up QEMU
@@ -83,9 +86,5 @@ jobs:
         registry: ghcr.io
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
-    - name: Build
-      shell: bash
-      run: make
     - name: Test
-      shell: bash
       run: make test

@@ -34,6 +34,18 @@ type Dependency struct {
 	Plugin string `yaml:"plugin"`
 }
 
+// FindAll returns every plugin found in the specified root directory.
+func FindAll(dir string) ([]*Plugin, error) {
+	var plugins []*Plugin
+	if err := Walk(dir, func(plugin *Plugin) error {
+		plugins = append(plugins, plugin)
+		return nil
+	}); err != nil {
+		return nil, err
+	}
+	return plugins, nil
+}
+
 // Walk loads every buf.plugin.yaml found in the specified root directory and calls the callback function with each plugin.
 // The callback is called in dependency order (all plugin dependencies are printed before the plugin).
 func Walk(dir string, f func(plugin *Plugin) error) error {

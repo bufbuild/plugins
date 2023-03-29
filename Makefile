@@ -3,7 +3,6 @@
 SHELL := /usr/bin/env bash -o pipefail
 DOCKER ?= docker
 DOCKER_ORG ?= bufbuild
-DOCKER_BUILD_ARGS ?= buildx build
 DOCKER_BUILD_EXTRA_ARGS ?=
 
 GO_TEST_FLAGS ?= -race -count=1
@@ -16,10 +15,9 @@ BUF_PLUGIN_PUSH_ARGS ?=
 # $ make PLUGINS="connect-go connect-web" # builds all versions of connect-go and connect-web plugins
 # $ make PLUGINS="connect-go:v0.4.0"      # builds connect-go v0.4.0 plugin
 # $ make PLUGINS="bufbuild/connect-go"    # can use optional prefix of the org
-PLUGINS ?=
+export PLUGINS ?=
 
-PLUGIN_YAML_FILES := $(shell PLUGINS="$(PLUGINS)" go run ./cmd/dependency-order .)
-PLUGIN_IMAGES := $(patsubst %/buf.plugin.yaml,.build/plugin/%/image,$(PLUGIN_YAML_FILES))
+PLUGIN_YAML_FILES := $(shell PLUGINS="$(PLUGINS)" go run ./internal/cmd/dependency-order -relative . 2>/dev/null)
 
 .PHONY: all
 all: build
@@ -30,39 +28,12 @@ all: build
 	fi
 
 .PHONY: build
-build: $(PLUGIN_IMAGES)
-
-.PHONY: clean
-clean:
-	@rm -rf .build
+build:
+	@go run ./internal/cmd/dockerbuild -org "$(DOCKER_ORG)" -- $(DOCKER_BUILD_EXTRA_ARGS)
 
 .PHONY: test
 test: build
 	go test $(GO_TEST_FLAGS) ./...
-
-.build/plugin/%/image: %/Dockerfile %/buf.plugin.yaml
-	PLUGIN_FULL_NAME=$(shell yq '.name' $*/buf.plugin.yaml); \
-	PLUGIN_OWNER=`echo "$${PLUGIN_FULL_NAME}" | cut -d '/' -f 2`; \
-	PLUGIN_NAME=`echo "$${PLUGIN_FULL_NAME}" | cut -d '/' -f 3-`; \
-	PLUGIN_VERSION=$(shell yq '.plugin_version' $*/buf.plugin.yaml); \
-	PLUGIN_DESCRIPTION="$(shell yq '.description' $*/buf.plugin.yaml)"; \
-	PLUGIN_LICENSE="$(shell yq '.spdx_license_id' $*/buf.plugin.yaml)"; \
-	test -n "$${PLUGIN_NAME}" -a -n "$${PLUGIN_VERSION}" && \
-	if [[ "$(DOCKER_ORG)" = "ghcr.io/bufbuild" ]]; then \
-		$(DOCKER) pull $(DOCKER_ORG)/plugins-$${PLUGIN_OWNER}-$${PLUGIN_NAME}:$${PLUGIN_VERSION} || :; \
-	fi; \
-	touch $<; \
-	$(DOCKER) $(DOCKER_BUILD_ARGS) \
-		$(DOCKER_BUILD_EXTRA_ARGS) \
-		--label build.buf.plugins.config.owner=$${PLUGIN_OWNER} \
-		--label build.buf.plugins.config.name=$${PLUGIN_NAME} \
-		--label build.buf.plugins.config.version=$${PLUGIN_VERSION} \
-		--label org.opencontainers.image.source=https://github.com/bufbuild/plugins \
-		--label "org.opencontainers.image.description=$${PLUGIN_DESCRIPTION}" \
-		--label "org.opencontainers.image.licenses=$${PLUGIN_LICENSE}" \
-		-t $(DOCKER_ORG)/plugins-$${PLUGIN_OWNER}-$${PLUGIN_NAME}:$${PLUGIN_VERSION} \
-		$(<D)
-	@mkdir -p $(dir $@) && touch $@
 
 .PHONY: push
 push: build
