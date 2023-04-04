@@ -39,4 +39,4 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: |
-          go run ./cmd/restore-release ${{ inputs.arguments }} ${{ inputs.release_tag }}
+          go run ./internal/cmd/restore-release ${{ inputs.arguments }} ${{ inputs.release_tag }}

@@ -34,6 +34,18 @@ type Dependency struct {
 	Plugin string `yaml:"plugin"`
 }
 
+// FindAll returns every plugin found in the specified root directory.
+func FindAll(dir string) ([]*Plugin, error) {
+	var plugins []*Plugin
+	if err := Walk(dir, func(plugin *Plugin) error {
+		plugins = append(plugins, plugin)
+		return nil
+	}); err != nil {
+		return nil, err
+	}
+	return plugins, nil
+}
+
 // Walk loads every buf.plugin.yaml found in the specified root directory and calls the callback function with each plugin.
 // The callback is called in dependency order (all plugin dependencies are printed before the plugin).
 func Walk(dir string, f func(plugin *Plugin) error) error {
@@ -147,6 +159,9 @@ func Load(path string, basedir string) (*Plugin, error) {
 // FilterByPluginsEnv returns matching plugins based on a space separated list of plugins (and optional versions) to include.
 func FilterByPluginsEnv(plugins []*Plugin, pluginsEnv string) ([]*Plugin, error) {
 	if pluginsEnv == "" {
+		return nil, nil
+	}
+	if strings.EqualFold(pluginsEnv, "all") {
 		return plugins, nil
 	}
 	includes, err := parsePluginsEnvVar(pluginsEnv)
@@ -163,9 +178,8 @@ func FilterByPluginsEnv(plugins []*Plugin, pluginsEnv string) ([]*Plugin, error)
 			}
 		}
 		if matched {
+			log.Printf("including plugin: %s", plugin.Relpath)
 			filtered = append(filtered, plugin)
-		} else {
-			log.Printf("excluding plugin: %s", plugin.Relpath)
 		}
 	}
 	return filtered, nil
@@ -178,9 +192,9 @@ func FilterByChangedFiles(plugins []*Plugin, lookuper envconfig.Lookuper) ([]*Pl
 	if err := envconfig.ProcessWith(context.Background(), &changedFiles, lookuper); err != nil {
 		return nil, err
 	}
-	// ANY_MODIFIED env var not set - don't filter anything
+	// ANY_MODIFIED env var not set - filter everything
 	if len(changedFiles.AnyModified) == 0 {
-		return plugins, nil
+		return nil, nil
 	}
 	anyModified, err := strconv.ParseBool(changedFiles.AnyModified)
 	if err != nil {
@@ -207,9 +221,8 @@ func FilterByChangedFiles(plugins []*Plugin, lookuper envconfig.Lookuper) ([]*Pl
 			}
 		}
 		if include {
+			log.Printf("including plugin: %s", plugin.Relpath)
 			filtered = append(filtered, plugin)
-		} else {
-			log.Printf("excluding plugin: %s", plugin.Relpath)
 		}
 	}
 	return filtered, nil

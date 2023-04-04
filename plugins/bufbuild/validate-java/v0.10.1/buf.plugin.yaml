@@ -9,3 +9,7 @@ output_languages:
   - java
 spdx_license_id: Apache-2.0
 license_url: https://github.com/bufbuild/protoc-gen-validate/blob/v0.10.1/LICENSE
+registry:
+  maven:
+    deps:
+      - build.buf.protoc-gen-validate:pgv-java-stub:0.10.1

@@ -10,6 +10,13 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestFindAll(t *testing.T) {
+	t.Parallel()
+	plugins, err := FindAll("../..")
+	require.NoError(t, err)
+	assert.NotEmpty(t, plugins)
+}
+
 func TestWalk(t *testing.T) {
 	t.Parallel()
 	var plugins []*Plugin
@@ -23,11 +30,7 @@ func TestWalk(t *testing.T) {
 
 func TestFilterByPluginsEnv(t *testing.T) {
 	t.Parallel()
-	var plugins []*Plugin
-	err := Walk("../..", func(plugin *Plugin) error {
-		plugins = append(plugins, plugin)
-		return nil
-	})
+	plugins, err := FindAll("../..")
 	require.NoError(t, err)
 	assert.Empty(t, runFilterByPluginsEnv(t, plugins, "no-match"))
 	assert.Equal(t, filterPluginsByPathPrefixes(t, plugins, "plugins/bufbuild/connect-go/", "plugins/bufbuild/connect-web/v0.2.1/"),
@@ -36,7 +39,7 @@ func TestFilterByPluginsEnv(t *testing.T) {
 		runFilterByPluginsEnv(t, plugins, "bufbuild/connect-go bufbuild/connect-web:v0.2.1"))
 	assert.Equal(t, filterPluginsByPathPrefixes(t, plugins, "plugins/community/chrusty-jsonschema/"),
 		runFilterByPluginsEnv(t, plugins, "chrusty-jsonschema"))
-	assert.Equal(t, filterPluginsByPathPrefixes(t, plugins, "plugins/"), runFilterByPluginsEnv(t, plugins, ""))
+	assert.Equal(t, filterPluginsByPathPrefixes(t, plugins, "plugins/"), runFilterByPluginsEnv(t, plugins, "all"))
 	latestConnectWeb := getLatestPluginVersionsByName(plugins)["buf.build/bufbuild/connect-web"]
 	require.NotEmpty(t, latestConnectWeb)
 	assert.Equal(t, filterPluginsByPathPrefixes(t, plugins, "plugins/bufbuild/connect-web/"+latestConnectWeb+"/"),
@@ -45,11 +48,7 @@ func TestFilterByPluginsEnv(t *testing.T) {
 
 func TestFilterByChangedFiles(t *testing.T) {
 	t.Parallel()
-	var plugins []*Plugin
-	err := Walk("../..", func(plugin *Plugin) error {
-		plugins = append(plugins, plugin)
-		return nil
-	})
+	plugins, err := FindAll("../..")
 	require.NoError(t, err)
 	assert.Empty(t, runFilterByChangedFiles(t, plugins, nil, false))
 	assert.Equal(t, filterPluginsByPathPrefixes(t, plugins, "plugins/protocolbuffers/cpp/v21.7/"), runFilterByChangedFiles(t, plugins, []string{"tests/testdata/buf.build/protocolbuffers/cpp/v21.7/eliza/plugin.sum"}, true))

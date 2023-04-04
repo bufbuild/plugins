@@ -2,7 +2,8 @@ name: Fetch latest versions
 
 on:
   schedule:
-    - cron: "0 0 * * *" # Run once a day
+    # Run once a day at 10 AM EST
+    - cron: "0 14 * * *"
   workflow_dispatch:
 
 jobs:
@@ -30,14 +31,14 @@ jobs:
           check-latest: true
           cache: true
       - name: Install buf cli
-        uses: bufbuild/buf-setup-action@v1.15.1
+        uses: bufbuild/buf-setup-action@v1.16.0
         with:
           github_token: ${{ github.token }}
       - name: Fetch all versions
         env:
           GITHUB_TOKEN: ${{ steps.generate_token.outputs.token }}
         run: |
-          go run ./cmd/fetcher .
+          go run ./internal/cmd/fetcher .
       - name: Create PR
         uses: peter-evans/create-pull-request@38e0b6e68b4c852a5500a94740f0e535e0d7ba54
         with:

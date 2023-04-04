@@ -12,7 +12,6 @@ import (
 	"text/template"
 
 	"github.com/bufbuild/buf/private/bufpkg/bufplugin/bufpluginconfig"
-	"github.com/sethvargo/go-envconfig"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/mod/sumdb/dirhash"
@@ -162,26 +161,15 @@ func createBufGenYaml(t *testing.T, basedir string, plugin *plugin.Plugin) error
 
 func loadAllPlugins(t *testing.T) []*plugin.Plugin {
 	t.Helper()
-	var plugins []*plugin.Plugin
-	if err := plugin.Walk("..", func(plugin *plugin.Plugin) error {
-		plugins = append(plugins, plugin)
-		return nil
-	}); err != nil {
-		t.Fatalf("failed to find plugins: %v", err)
-	}
+	plugins, err := plugin.FindAll("..")
+	require.NoError(t, err)
 	return plugins
 }
 
 func loadFilteredPlugins(t *testing.T) []*plugin.Plugin {
 	t.Helper()
 	plugins := loadAllPlugins(t)
-	var filtered []*plugin.Plugin
-	var err error
-	if pluginsEnv := os.Getenv("PLUGINS"); pluginsEnv != "" {
-		filtered, err = plugin.FilterByPluginsEnv(plugins, pluginsEnv)
-	} else {
-		filtered, err = plugin.FilterByChangedFiles(plugins, envconfig.OsLookuper())
-	}
+	filtered, err := plugin.FilterByPluginsEnv(plugins, os.Getenv("PLUGINS"))
 	require.NoError(t, err)
 	return filtered
 }

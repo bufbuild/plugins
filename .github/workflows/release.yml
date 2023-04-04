@@ -2,7 +2,8 @@ name: Create Release
 
 on:
   schedule:
-    - cron: "0 0 * * *" # Run once a day
+    # At minute 30 past every 6th hour.
+    - cron: "30 */6 * * *"
   workflow_dispatch:
 
 permissions:
@@ -38,7 +39,7 @@ jobs:
           MINISIGN_PRIVATE_KEY_PASSWORD: ${{ secrets.MINISIGN_PRIVATE_KEY_PASSWORD }}
         run: |
           echo "${MINISIGN_PRIVATE_KEY}" > minisign.key
-          go run ./cmd/release -minisign-private-key minisign.key .
+          go run ./internal/cmd/release -minisign-private-key minisign.key .
       - name: Clean Up
         if: always()
         run: |
