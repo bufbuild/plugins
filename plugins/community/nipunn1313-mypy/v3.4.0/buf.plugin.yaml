@@ -1,8 +1,8 @@
 version: v1
-name: buf.build/community/nipunn1313-mypy-protobuf-grpc
+name: buf.build/community/nipunn1313-mypy
 plugin_version: v3.4.0
 source_url: https://github.com/nipunn1313/mypy-protobuf
-description: Generate mypy stub files for grpcio generated code.
+description: Generate mypy stub files from Protobuf definitions.
 spdx_license_id: Apache-2.0
 license_url: https://github.com/nipunn1313/mypy-protobuf/blob/v3.4.0/LICENSE
 output_languages:
