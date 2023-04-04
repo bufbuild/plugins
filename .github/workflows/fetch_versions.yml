@@ -2,7 +2,8 @@ name: Fetch latest versions
 
 on:
   schedule:
-    - cron: "0 0 * * *" # Run once a day
+    # Run once a day at 10 AM EST
+    - cron: "0 14 * * *"
   workflow_dispatch:
 
 jobs:
