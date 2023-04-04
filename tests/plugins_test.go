@@ -12,11 +12,12 @@ import (
 	"text/template"
 
 	"github.com/bufbuild/buf/private/bufpkg/bufplugin/bufpluginconfig"
-	"github.com/bufbuild/plugins/internal/plugin"
 	"github.com/sethvargo/go-envconfig"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/mod/sumdb/dirhash"
+
+	"github.com/bufbuild/plugins/internal/plugin"
 )
 
 var (
@@ -72,7 +73,7 @@ func TestGeneration(t *testing.T) {
 			require.NoError(t, os.MkdirAll(pluginDir, 0755))
 			require.NoError(t, createBufGenYaml(t, pluginDir, pluginMeta))
 			require.NoError(t, createProtocGenPlugin(t, pluginDir, pluginMeta))
-			bufCmd := exec.Command("buf", "generate", filepath.Join(imageDir, image+".bin.gz")) //nolint:gosec
+			bufCmd := exec.Command("buf", "generate", filepath.Join(imageDir, image+".bin.gz"))
 			bufCmd.Dir = pluginDir
 			output, err := bufCmd.CombinedOutput()
 			require.NoErrorf(t, err, "buf generate failed - output: %s", string(output))

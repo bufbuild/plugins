@@ -22,10 +22,11 @@ import (
 
 	"aead.dev/minisign"
 	"github.com/bufbuild/buf/private/bufpkg/bufplugin/bufpluginref"
-	"github.com/bufbuild/plugins/internal/plugin"
-	"github.com/bufbuild/plugins/internal/release"
 	"github.com/google/go-github/v50/github"
 	"golang.org/x/mod/semver"
+
+	"github.com/bufbuild/plugins/internal/plugin"
+	"github.com/bufbuild/plugins/internal/release"
 )
 
 type pluginNameVersion struct {

@@ -17,7 +17,7 @@ type ProtoEnum interface {
 }
 
 // NewProtoEnumFlag turns a proto enum into a cobra flag.
-func NewProtoEnumFlag[T ProtoEnum]() *protoEnumFlag[T] {
+func NewProtoEnumFlag[T ProtoEnum]() *protoEnumFlag[T] { //nolint:revive
 	var newT T
 	enumDescriptor := newT.Descriptor()
 	names := make(map[int32]string, enumDescriptor.Values().Len())
