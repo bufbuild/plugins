@@ -2,8 +2,8 @@ name: Create Release
 
 on:
   schedule:
-    # Run every hour.
-    - cron: "30 * * * *"
+    # At minute 30 past every 6th hour.
+    - cron: "30 */6 * * *"
   workflow_dispatch:
 
 permissions:
