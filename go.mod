@@ -4,7 +4,7 @@ go 1.19
 
 require (
 	aead.dev/minisign v0.2.0
-	github.com/bufbuild/buf v1.16.0
+	github.com/bufbuild/buf v1.17.0
 	github.com/google/go-github/v50 v50.2.0
 	github.com/hashicorp/go-retryablehttp v0.7.2
 	github.com/sethvargo/go-envconfig v0.9.0
@@ -20,7 +20,7 @@ require (
 	github.com/ProtonMail/go-crypto v0.0.0-20230217124315-7d5c6f04bbb8 // indirect
 	github.com/cloudflare/circl v1.1.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
-	github.com/go-logr/logr v1.2.3 // indirect
+	github.com/go-logr/logr v1.2.4 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/google/go-querystring v1.1.0 // indirect
