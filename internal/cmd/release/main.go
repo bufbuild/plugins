@@ -35,6 +35,7 @@ type pluginNameVersion struct {
 
 func main() {
 	dryRun := flag.Bool("dry-run", false, "perform a dry-run (no GitHub modifications)")
+	githubCommit := flag.String("commit", "", "GitHub commit for the release")
 	githubReleaseOwner := flag.String(
 		"github-release-owner",
 		string(release.GithubOwnerBufbuild),
@@ -57,6 +58,7 @@ func main() {
 	cmd := &command{
 		minisignPrivateKey: *minisignPrivateKey,
 		minisignPublicKey:  *minisignPublicKey,
+		githubCommit:       *githubCommit,
 		githubReleaseOwner: release.GithubOwner(*githubReleaseOwner),
 		dryRun:             *dryRun,
 		rootDir:            root,
@@ -69,6 +71,7 @@ func main() {
 type command struct {
 	minisignPrivateKey string
 	minisignPublicKey  string
+	githubCommit       string
 	githubReleaseOwner release.GithubOwner
 	dryRun             bool
 	rootDir            string
@@ -293,13 +296,17 @@ func (c *command) createRelease(ctx context.Context, client *release.Client, rel
 		return err
 	}
 	// Create GitHub release
-	repositoryRelease, err := client.CreateRelease(ctx, c.githubReleaseOwner, release.GithubRepoPlugins, &github.RepositoryRelease{
+	repositoryReleaseParams := &github.RepositoryRelease{
 		TagName: github.String(releaseName),
 		Name:    github.String(releaseName),
 		Body:    github.String(releaseBody),
 		// Start release as a draft until all assets are uploaded
 		Draft: github.Bool(true),
-	})
+	}
+	if c.githubCommit != "" {
+		repositoryReleaseParams.TargetCommitish = github.String(c.githubCommit)
+	}
+	repositoryRelease, err := client.CreateRelease(ctx, c.githubReleaseOwner, release.GithubRepoPlugins, repositoryReleaseParams)
 	if err != nil {
 		return err
 	}
