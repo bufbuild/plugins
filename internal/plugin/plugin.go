@@ -164,7 +164,7 @@ func FilterByPluginsEnv(plugins []*Plugin, pluginsEnv string) ([]*Plugin, error)
 	if strings.EqualFold(pluginsEnv, "all") {
 		return plugins, nil
 	}
-	includes, err := parsePluginsEnvVar(pluginsEnv)
+	includes, err := ParsePluginsEnvVar(pluginsEnv)
 	if err != nil {
 		return nil, err
 	}
@@ -173,7 +173,7 @@ func FilterByPluginsEnv(plugins []*Plugin, pluginsEnv string) ([]*Plugin, error)
 	for _, plugin := range plugins {
 		var matched bool
 		for _, include := range includes {
-			if matched = include.Matches(plugin, latestVersionByName[plugin.Name]); matched {
+			if matched = include.Matches(plugin.Name, plugin.PluginVersion, latestVersionByName[plugin.Name]); matched {
 				break
 			}
 		}
@@ -228,8 +228,8 @@ func FilterByChangedFiles(plugins []*Plugin, lookuper envconfig.Lookuper) ([]*Pl
 	return filtered, nil
 }
 
-func parsePluginsEnvVar(pluginsEnv string) ([]includePlugin, error) {
-	var includes []includePlugin
+func ParsePluginsEnvVar(pluginsEnv string) ([]IncludePlugin, error) {
+	var includes []IncludePlugin
 	fields := strings.Fields(pluginsEnv)
 	for _, field := range fields {
 		field = strings.TrimSpace(field)
@@ -241,9 +241,9 @@ func parsePluginsEnvVar(pluginsEnv string) ([]includePlugin, error) {
 			if !semver.IsValid(version) && version != "latest" {
 				return nil, fmt.Errorf("invalid version: %s", version)
 			}
-			includes = append(includes, includePlugin{name: name, version: version})
+			includes = append(includes, IncludePlugin{name: name, version: version})
 		} else {
-			includes = append(includes, includePlugin{name: name})
+			includes = append(includes, IncludePlugin{name: name})
 		}
 	}
 	return includes, nil
@@ -263,22 +263,22 @@ func getLatestPluginVersionsByName(plugins []*Plugin) map[string]string {
 	return latestVersions
 }
 
-type includePlugin struct {
+type IncludePlugin struct {
 	name    string
 	version string
 }
 
-func (p includePlugin) Matches(plugin *Plugin, latestVersion string) bool {
-	if !strings.HasSuffix(plugin.Name, "/"+p.name) {
+func (p IncludePlugin) Matches(pluginName, pluginVersion, latestVersion string) bool {
+	if !strings.HasSuffix(pluginName, "/"+p.name) {
 		return false
 	}
 	if p.version == "" {
 		return true
 	}
 	if p.version == "latest" {
-		return plugin.PluginVersion == latestVersion
+		return pluginVersion == latestVersion
 	}
-	return p.version == plugin.PluginVersion
+	return p.version == pluginVersion
 }
 
 // changedFiles contains data from the tj-actions/changed-files action.

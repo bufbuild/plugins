@@ -16,7 +16,9 @@ import (
 	"strings"
 
 	"aead.dev/minisign"
+	"github.com/bufbuild/plugins/internal/plugin"
 	"github.com/google/go-github/v50/github"
+	"golang.org/x/mod/semver"
 
 	"github.com/bufbuild/plugins/internal/release"
 )
@@ -67,11 +69,40 @@ func run() error {
 		}
 	}
 
+	var includePlugins []plugin.IncludePlugin
+	if pluginsEnv := os.Getenv("PLUGINS"); pluginsEnv != "" && pluginsEnv != "all" {
+		includePlugins, err = plugin.ParsePluginsEnvVar(pluginsEnv)
+		if err != nil {
+			return err
+		}
+	}
 	pluginReleases, err := client.DownloadPluginReleasesToDir(ctx, githubRelease, publicKey, downloadDir)
 	if err != nil {
 		return err
 	}
+
+	latestVersions := make(map[string]string)
 	for _, pluginRelease := range pluginReleases.Releases {
+		latestVersion := latestVersions[pluginRelease.PluginName]
+		if latestVersion == "" || semver.Compare(latestVersion, pluginRelease.PluginVersion) < 0 {
+			latestVersions[pluginRelease.PluginName] = pluginRelease.PluginVersion
+		}
+	}
+
+	for _, pluginRelease := range pluginReleases.Releases {
+		// Filter out plugins which aren't specified in PLUGINS env var
+		if includePlugins != nil {
+			var matched bool
+			latestVersion := latestVersions[pluginRelease.PluginName]
+			for _, includePlugin := range includePlugins {
+				if matched = includePlugin.Matches(pluginRelease.PluginName, pluginRelease.PluginVersion, latestVersion); matched {
+					break
+				}
+			}
+			if !matched {
+				continue
+			}
+		}
 		exists, err := pluginExistsMatchingDigest(pluginRelease, downloadDir)
 		if err != nil {
 			return err
