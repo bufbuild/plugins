@@ -93,9 +93,14 @@ func run() error {
 		// Filter out plugins which aren't specified in PLUGINS env var
 		if includePlugins != nil {
 			var matched bool
+			// For the purposes of matching, we should include the full name as defined in buf.plugin.yaml
+			pluginName := pluginRelease.PluginName
+			if !strings.HasPrefix(pluginName, "buf.build/") {
+				pluginName = "buf.build/" + pluginName
+			}
 			latestVersion := latestVersions[pluginRelease.PluginName]
 			for _, includePlugin := range includePlugins {
-				if matched = includePlugin.Matches(pluginRelease.PluginName, pluginRelease.PluginVersion, latestVersion); matched {
+				if matched = includePlugin.Matches(pluginName, pluginRelease.PluginVersion, latestVersion); matched {
 					break
 				}
 			}
