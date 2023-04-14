@@ -34,43 +34,43 @@ jobs:
     - uses: actions/checkout@v3
       with:
         fetch-depth: 0
-#    - uses: nrwl/nx-set-shas@177b48373c6dc583ce0d9257ffb484bdd232fedf
-#      id: last_successful_commit_push
-#      if: ${{ inputs.plugins == '' }}
-#      with:
-#        main-branch-name: ${{ github.ref_name }}
-#        workflow-id: 'ci.yml'
-#    - name: Get changed files
-#      id: changed-files
-#      if: ${{ inputs.plugins == '' }}
-#      uses: tj-actions/changed-files@b109d83a62e94cf7c522bf6c15cb25c175850b16
-#      with:
-#        base_sha: ${{ steps.last_successful_commit_push.outputs.base }}
-#        files: |
-#          plugins/**
-#        files_ignore: |
-#          **/source.yaml
-#        separator: ","
-#    - name: Show changed files
-#      if: ${{ inputs.plugins == '' }}
-#      run: |
-#        echo '${{ toJSON(steps.changed-files.outputs) }}'
-#    - name: Install Go
-#      uses: actions/setup-go@v4
-#      with:
-#        go-version: 1.20.x
-#        check-latest: true
-#        cache: true
-#    - name: Set PLUGINS env var from changed files
-#      if: ${{ inputs.plugins == '' }}
-#      env:
-#        ALL_MODIFIED_FILES: ${{ steps.changed-files.outputs.all_modified_files }}
-#        ANY_MODIFIED: ${{ steps.changed-files.outputs.any_modified }}
-#      run: |
-#        val=`go run ./internal/cmd/changed-plugins .`
-#        if [[ -n "${val}" && -z "${PLUGINS}" ]]; then
-#          echo "PLUGINS=${val}" >> $GITHUB_ENV
-#        fi
+    - uses: nrwl/nx-set-shas@177b48373c6dc583ce0d9257ffb484bdd232fedf
+      id: last_successful_commit_push
+      if: ${{ inputs.plugins == '' }}
+      with:
+        main-branch-name: ${{ github.ref_name }}
+        workflow-id: 'ci.yml'
+    - name: Get changed files
+      id: changed-files
+      if: ${{ inputs.plugins == '' }}
+      uses: tj-actions/changed-files@b109d83a62e94cf7c522bf6c15cb25c175850b16
+      with:
+        base_sha: ${{ steps.last_successful_commit_push.outputs.base }}
+        files: |
+          plugins/**
+        files_ignore: |
+          **/source.yaml
+        separator: ","
+    - name: Show changed files
+      if: ${{ inputs.plugins == '' }}
+      run: |
+        echo '${{ toJSON(steps.changed-files.outputs) }}'
+    - name: Install Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: 1.20.x
+        check-latest: true
+        cache: true
+    - name: Set PLUGINS env var from changed files
+      if: ${{ inputs.plugins == '' }}
+      env:
+        ALL_MODIFIED_FILES: ${{ steps.changed-files.outputs.all_modified_files }}
+        ANY_MODIFIED: ${{ steps.changed-files.outputs.any_modified }}
+      run: |
+        val=`go run ./internal/cmd/changed-plugins .`
+        if [[ -n "${val}" && -z "${PLUGINS}" ]]; then
+          echo "PLUGINS=${val}" >> $GITHUB_ENV
+        fi
     - name: Install buf cli
       uses: bufbuild/buf-setup-action@v1.17.0
       with:
