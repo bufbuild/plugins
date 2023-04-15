@@ -1,0 +1,4 @@
+source:
+  github:
+    owner: mitchellh
+    repository: protoc-gen-go-json
