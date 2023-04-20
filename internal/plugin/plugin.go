@@ -10,6 +10,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"unicode"
 
 	"github.com/bufbuild/buf/private/bufpkg/bufplugin/bufpluginconfig"
 	"github.com/bufbuild/buf/private/pkg/encoding"
@@ -230,7 +231,9 @@ func FilterByChangedFiles(plugins []*Plugin, lookuper envconfig.Lookuper) ([]*Pl
 
 func ParsePluginsEnvVar(pluginsEnv string) ([]IncludePlugin, error) {
 	var includes []IncludePlugin
-	fields := strings.Fields(pluginsEnv)
+	fields := strings.FieldsFunc(pluginsEnv, func(r rune) bool {
+		return unicode.IsSpace(r) || r == ','
+	})
 	for _, field := range fields {
 		field = strings.TrimSpace(field)
 		if field == "" {

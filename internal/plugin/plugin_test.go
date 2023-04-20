@@ -36,6 +36,8 @@ func TestFilterByPluginsEnv(t *testing.T) {
 	assert.Equal(t, filterPluginsByPathPrefixes(t, plugins, "plugins/bufbuild/connect-go/", "plugins/bufbuild/connect-web/v0.2.1/"),
 		runFilterByPluginsEnv(t, plugins, "connect-go connect-web:v0.2.1"))
 	assert.Equal(t, filterPluginsByPathPrefixes(t, plugins, "plugins/bufbuild/connect-go/", "plugins/bufbuild/connect-web/v0.2.1/"),
+		runFilterByPluginsEnv(t, plugins, "connect-go,connect-web:v0.2.1"))
+	assert.Equal(t, filterPluginsByPathPrefixes(t, plugins, "plugins/bufbuild/connect-go/", "plugins/bufbuild/connect-web/v0.2.1/"),
 		runFilterByPluginsEnv(t, plugins, "bufbuild/connect-go bufbuild/connect-web:v0.2.1"))
 	assert.Equal(t, filterPluginsByPathPrefixes(t, plugins, "plugins/community/chrusty-jsonschema/"),
 		runFilterByPluginsEnv(t, plugins, "chrusty-jsonschema"))
