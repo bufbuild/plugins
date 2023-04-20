@@ -139,6 +139,8 @@ func TestBufPluginConfig(t *testing.T) {
 		assert.NotEmpty(t, config.PluginVersion)
 		assert.NotEmpty(t, config.SPDXLicenseID)
 		assert.NotEmpty(t, config.LicenseURL)
+		// Don't allow underscore in plugin names - this would cause issues in remote packages
+		assert.NotContains(t, config.Name.IdentityString(), "_")
 	}
 }
 
