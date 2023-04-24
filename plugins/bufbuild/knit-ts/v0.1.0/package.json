@@ -1,0 +1,7 @@
+{
+  "name": "plugins-bufbuild-knit-ts",
+  "version": "0.1.0",
+  "dependencies": {
+    "@bufbuild/protoc-gen-knit-ts": "v0.1.0"
+  }
+}
