@@ -1,3 +1,8 @@
 source:
+  # Users are encouraged to use the https://buf.build/bufbuild/connect-es plugin which supersedes
+  # connect-web.
+  #
+  # https://www.npmjs.com/package/@bufbuild/protoc-gen-connect-es
+  disabled: true 
   npm_registry:
     name: "@bufbuild/protoc-gen-connect-web"
