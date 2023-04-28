@@ -7,5 +7,12 @@ deps:
   - plugin: buf.build/apple/swift:v1.21.0
 output_languages:
   - swift
+registry:
+  swift:
+    deps:
+      - source: https://github.com/grpc/grpc-swift.git
+        package: grpc-swift
+        products: [ GRPC ]
+        version: 1.15.0
 spdx_license_id: Apache-2.0
 license_url: https://github.com/grpc/grpc-swift/blob/1.15.0/LICENSE
