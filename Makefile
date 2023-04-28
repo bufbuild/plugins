@@ -7,7 +7,7 @@ DOCKER_BUILD_EXTRA_ARGS ?=
 
 GO_TEST_FLAGS ?= -race -count=1
 
-BUF ?= /Users/pmitchell/.cache/buf/Darwin/arm64/gobin/buf
+BUF ?= buf
 BUF_PLUGIN_PUSH_ARGS ?=
 
 # Specify a space separated list of plugin name (and optional version) to just build/test individual plugins.
