@@ -12,7 +12,7 @@ registry:
     deps:
       - source: https://github.com/bufbuild/connect-swift.git
         package: connect-swift
-        products: [ Connect, ConnectMocks ]
+        products: [ ConnectMocks ]
         version: 0.5.0
         platforms:
           macos: v10_15
