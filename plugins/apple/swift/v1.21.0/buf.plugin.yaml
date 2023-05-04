@@ -12,5 +12,7 @@ registry:
         package: swift-protobuf
         products: [ SwiftProtobuf ]
         version: 1.21.0
+  opts:
+    - Visibility=Public
 spdx_license_id: Apache-2.0
 license_url: https://github.com/apple/swift-protobuf/blob/1.21.0/LICENSE.txt

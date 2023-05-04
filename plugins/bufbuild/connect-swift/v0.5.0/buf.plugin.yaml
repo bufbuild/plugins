@@ -18,5 +18,7 @@ registry:
           macos: v10_15
           ios: v12
           tvos: v13
+  opts:
+    - Visibility=Public
 spdx_license_id: Apache-2.0
 license_url: https://github.com/bufbuild/connect-swift/blob/0.5.0/LICENSE
