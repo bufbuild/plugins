@@ -1,0 +1,13 @@
+version: v1
+name: buf.build/bufbuild/knit-ts
+plugin_version: v0.0.1
+source_url: https://github.com/bufbuild/knit-ts
+description: Generates Knit schemas needed to use the Knit client in web browsers and Node.js.
+output_languages:
+  - typescript
+registry:
+  npm:
+    import_style: module
+    rewrite_import_path_suffix: knit.js
+spdx_license_id: Apache-2.0
+license_url: https://github.com/bufbuild/knit-ts/blob/v0.0.1/LICENSE
