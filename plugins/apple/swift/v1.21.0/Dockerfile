@@ -4,6 +4,62 @@ FROM swift:5.7.3-focal AS build
 WORKDIR /app
 RUN git clone --depth 1 --branch 1.21.0 https://github.com/apple/swift-protobuf --recursive
 WORKDIR /app/swift-protobuf
+RUN git apply <<'EOF'
+diff --git a/Sources/protoc-gen-swift/FileGenerator.swift b/Sources/protoc-gen-swift/FileGenerator.swift
+index 87c05aa7..a870a359 100644
+--- a/Sources/protoc-gen-swift/FileGenerator.swift
++++ b/Sources/protoc-gen-swift/FileGenerator.swift
+@@ -101,6 +101,12 @@ class FileGenerator {
+                 p.print("import \(i)\n")
+             }
+         }
++        if let neededCustomImports = generatorOptions.extraModuleImports {
++            p.print()
++            for i in neededCustomImports {
++                p.print("import \(i)\n")
++            }
++        }
+
+         p.print("\n")
+         generateVersionCheck(printer: &p)
+diff --git a/Sources/protoc-gen-swift/GeneratorOptions.swift b/Sources/protoc-gen-swift/GeneratorOptions.swift
+index d505fdf1..13cd8644 100644
+--- a/Sources/protoc-gen-swift/GeneratorOptions.swift
++++ b/Sources/protoc-gen-swift/GeneratorOptions.swift
+@@ -49,6 +49,7 @@ class GeneratorOptions {
+   let outputNaming: OutputNaming
+   let protoToModuleMappings: ProtoFileToModuleMappings
+   let visibility: Visibility
++  let extraModuleImports: [String]?
+
+   /// A string snippet to insert for the visibility
+   let visibilitySourceSnippet: String
+@@ -58,9 +59,16 @@ class GeneratorOptions {
+     var moduleMapPath: String?
+     var visibility: Visibility = .internal
+     var swiftProtobufModuleName: String? = nil
++    var externalModuleImports: [String] = []
+
+     for pair in parseParameter(string:parameter) {
+       switch pair.key {
++      case "ExtraModuleImports":
++      if !pair.value.isEmpty {
++          externalModuleImports.append(pair.value)
++      } else {
++        throw GenerationError.invalidParameterValue(name: pair.key, value: pair.value)
++      }
+       case "FileNaming":
+         if let naming = OutputNaming(flag: pair.value) {
+           outputNaming = naming
+@@ -107,6 +115,7 @@ class GeneratorOptions {
+
+     self.outputNaming = outputNaming
+     self.visibility = visibility
++    self.extraModuleImports = externalModuleImports
+
+     switch visibility {
+     case .internal:
+EOF
 RUN swift build -c release --static-swift-stdlib -Xlinker -s
 
 FROM gcr.io/distroless/cc-debian11
