@@ -14,5 +14,8 @@ registry:
         package: grpc-swift
         products: [ GRPC ]
         version: 1.15.0
+  opts:
+    - Visibility=Public
+    - FileNaming=PathToUnderscores
 spdx_license_id: Apache-2.0
 license_url: https://github.com/grpc/grpc-swift/blob/1.15.0/LICENSE
