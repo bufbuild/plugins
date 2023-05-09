@@ -10,6 +10,8 @@ output_languages:
 spdx_license_id: Apache-2.0
 license_url: https://github.com/bufbuild/connect-kotlin/blob/v0.1.7/LICENSE
 registry:
+  opts:
+    - generateCallbackMethods=true
   maven:
     compiler:
       kotlin:
