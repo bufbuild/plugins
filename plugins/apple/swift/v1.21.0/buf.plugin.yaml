@@ -10,6 +10,7 @@ registry:
     deps:
       - source: https://github.com/apple/swift-protobuf.git
         package: swift-protobuf
+        swift_versions: [ ".v5" ]
         products: [ SwiftProtobuf ]
         version: 1.21.0
   opts:

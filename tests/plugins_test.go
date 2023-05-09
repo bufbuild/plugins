@@ -91,7 +91,7 @@ func TestGeneration(t *testing.T) {
 			if allowEmpty && existingPluginSum == "" {
 				t.Log("allowing empty plugin.sum file (used by fetcher command)")
 			} else {
-				assert.Equal(t, genDirHash, existingPluginSum)
+				assert.Equal(t, existingPluginSum, genDirHash)
 			}
 			require.NoError(t, os.WriteFile(pluginImageSumFile, []byte(genDirHash+"\n"), 0644))
 		})
