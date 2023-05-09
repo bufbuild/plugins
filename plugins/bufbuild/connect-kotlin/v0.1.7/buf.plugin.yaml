@@ -17,6 +17,8 @@ registry:
     deps:
       - build.buf:connect-kotlin:0.1.7
       - build.buf:connect-kotlin-google-java-ext:0.1.7
+    opts:
+      - generateCallbackMethods=true
     additional_runtimes:
       - name: lite
         deps:
