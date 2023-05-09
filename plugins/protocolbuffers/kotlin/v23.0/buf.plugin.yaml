@@ -13,13 +13,13 @@ registry:
   maven:
     compiler:
       kotlin:
-        version: 1.8.10
+        version: 1.8.21
     deps:
       - com.google.protobuf:protobuf-kotlin:3.23.0
-      - org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.8.10
+      - org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.8.21
     additional_runtimes:
       - name: lite
         deps:
           - com.google.protobuf:protobuf-kotlin-lite:3.23.0
-          - org.jetbrains.kotlin:kotlin-stdlib:1.8.10
+          - org.jetbrains.kotlin:kotlin-stdlib:1.8.21
         opts: [lite]
