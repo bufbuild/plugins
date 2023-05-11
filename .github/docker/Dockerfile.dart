@@ -1,3 +1,3 @@
-FROM dart:2.19.6-sdk
+FROM dart:3.0.0-sdk
 
 CMD echo this is a dummy file used to automate dependency upgrades for plugins
