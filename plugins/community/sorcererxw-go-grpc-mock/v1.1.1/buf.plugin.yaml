@@ -1,0 +1,9 @@
+version: v1
+name: buf.build/community/sorcererxw-go-grpc-mock
+plugin_version: v1.1.1
+source_url: https://github.com/sorcererxw/protoc-gen-go-grpc-mock
+description: Generate Go gRPC service mocks compatible with golang/mock.
+output_languages:
+  - go
+spdx_license_id: MIT
+license_url: https://github.com/sorcererxw/protoc-gen-go-grpc-mock/blob/v1.1.1/LICENSE
