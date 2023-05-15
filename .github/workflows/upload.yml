@@ -34,7 +34,7 @@ jobs:
         # swap a GitHub OIDC token for GCP service account credentials, allowing
         # this workflow to manage the buf-plugins bucket
       - name: Auth To GCP
-        uses: google-github-actions/auth@e8df18b60c5dd38ba618c121b779307266153fbf
+        uses: google-github-actions/auth@35b0e87d162680511bf346c299f71c9c5c379033
         with:
           workload_identity_provider: projects/491113660045/locations/global/workloadIdentityPools/plugins-workload-pool/providers/plugins-workload-provider
           service_account: buf-plugins-1-publisher@buf-plugins-1.iam.gserviceaccount.com
