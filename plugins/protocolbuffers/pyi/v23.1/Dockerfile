@@ -15,26 +15,8 @@ RUN curl -fsSL -o protoc.tar.gz https://github.com/protocolbuffers/protobuf/rele
  && tar --strip-components=1 -zxf protoc.tar.gz \
  && rm protoc.tar.gz
 RUN bazel build '//:protoc_lib'
-RUN mkdir -p plugins/pyi/
-COPY <<'EOF' /build/plugins/pyi/pyi.cc
-#include <google/protobuf/compiler/python/pyi_generator.h>
-#include <google/protobuf/compiler/plugin.h>
-
-int main(int argc, char *argv[]) {
-  google::protobuf::compiler::python::PyiGenerator generator;
-  return google::protobuf::compiler::PluginMain(argc, argv, &generator);
-}
-EOF
-COPY <<'EOF' /build/plugins/pyi/BUILD
-cc_binary(
-    name = "protoc-gen-pyi",
-    srcs = ["pyi.cc"],
-    deps = [
-        "//:protoc_lib",
-    ],
-)
-EOF
-RUN bazel build '//plugins/pyi:protoc-gen-pyi.stripped'
+COPY --link BUILD pyi.cc plugins/
+RUN bazel build '//plugins:protoc-gen-pyi.stripped'
 
 FROM gcr.io/distroless/cc-debian11
 COPY --from=build --link --chmod=0755 /build/bazel-bin/plugins/pyi/protoc-gen-pyi .
