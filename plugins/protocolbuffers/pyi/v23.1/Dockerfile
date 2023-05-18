@@ -19,6 +19,6 @@ COPY --link BUILD pyi.cc plugins/
 RUN bazel build '//plugins:protoc-gen-pyi.stripped'
 
 FROM gcr.io/distroless/cc-debian11
-COPY --from=build --link --chmod=0755 /build/bazel-bin/plugins/pyi/protoc-gen-pyi .
+COPY --from=build --link --chmod=0755 /build/bazel-bin/plugins/protoc-gen-pyi .
 USER nobody
 ENTRYPOINT ["/protoc-gen-pyi"]
