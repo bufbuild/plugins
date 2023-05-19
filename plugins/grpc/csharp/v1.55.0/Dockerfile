@@ -7,7 +7,7 @@ RUN apt-get update \
  && apt-get install -y curl git cmake build-essential autoconf clang libc++-dev libtool pkg-config g++ unzip zip
 RUN arch=${TARGETARCH}; \
     if [ "${arch}" = "amd64" ]; then arch="x86_64"; fi; \
-    curl -fsSL -o /usr/local/bin/bazel https://github.com/bazelbuild/bazel/releases/download/6.1.2/bazel-6.1.2-linux-${arch} \
+    curl -fsSL -o /usr/local/bin/bazel https://github.com/bazelbuild/bazel/releases/download/6.2.0/bazel-6.2.0-linux-${arch} \
  && chmod +x /usr/local/bin/bazel
 
 WORKDIR /build
