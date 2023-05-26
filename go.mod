@@ -4,11 +4,11 @@ go 1.19
 
 require (
 	aead.dev/minisign v0.2.0
-	github.com/bufbuild/buf v1.18.1-0.20230509142145-4eb0443a8de1
+	github.com/bufbuild/buf v1.19.0
 	github.com/google/go-github/v50 v50.2.0
 	github.com/hashicorp/go-retryablehttp v0.7.2
 	github.com/sethvargo/go-envconfig v0.9.0
-	github.com/stretchr/testify v1.8.2
+	github.com/stretchr/testify v1.8.3
 	go.uber.org/multierr v1.11.0
 	golang.org/x/mod v0.10.0
 	golang.org/x/oauth2 v0.8.0
@@ -30,7 +30,7 @@ require (
 	go.opentelemetry.io/otel v1.15.1 // indirect
 	go.opentelemetry.io/otel/trace v1.15.1 // indirect
 	go.uber.org/atomic v1.11.0 // indirect
-	golang.org/x/crypto v0.8.0 // indirect
+	golang.org/x/crypto v0.9.0 // indirect
 	golang.org/x/net v0.10.0 // indirect
 	golang.org/x/sys v0.8.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect

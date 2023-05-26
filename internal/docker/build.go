@@ -37,6 +37,7 @@ func Build(
 	commonArgs := []string{
 		"buildx",
 		"build",
+		"--load",
 		"--label",
 		fmt.Sprintf("build.buf.plugins.config.owner=%s", identity.Owner()),
 		"--label",

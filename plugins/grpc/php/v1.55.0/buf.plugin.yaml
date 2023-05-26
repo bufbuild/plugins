@@ -1,0 +1,11 @@
+version: v1
+name: buf.build/grpc/php
+plugin_version: v1.55.0
+source_url: https://github.com/grpc/grpc
+description: Generates PHP client and server stubs for the gRPC framework.
+deps:
+  - plugin: buf.build/protocolbuffers/php:v23.1
+output_languages:
+  - php
+spdx_license_id: Apache-2.0
+license_url: https://github.com/grpc/grpc/blob/v1.55.0/LICENSE
