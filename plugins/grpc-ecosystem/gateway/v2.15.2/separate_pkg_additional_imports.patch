@@ -100,7 +100,7 @@ index 8936a782..0cb0bd3a 100644
  			glog.V(2).Infof("Processing %s.%s", sd.GetName(), md.GetName())
  			opts, err := extractAPIOptions(md)
 diff --git a/internal/descriptor/types.go b/internal/descriptor/types.go
-index 5a43472b..4a9d39e3 100644
+index 5a43472b..6b44d3d5 100644
 --- a/internal/descriptor/types.go
 +++ b/internal/descriptor/types.go
 @@ -164,6 +164,9 @@ type Service struct {
@@ -119,8 +119,8 @@ index 5a43472b..4a9d39e3 100644
  	components := []string{""}
 -	if s.File.Package != nil {
 -		components = append(components, s.File.GetPackage())
-+	if s.GRPCFile != nil && s.GRPCFile.Package != nil {
-+		components = append(components, s.GRPCFile.GetPackage())
++	if s.GRPCFile != nil && s.GRPCFile.GetPackage() != "" {
++		components = append(components)
 +	} else if s.File.Package != nil {
 +		components = append(components, s.GetName())
  	}
