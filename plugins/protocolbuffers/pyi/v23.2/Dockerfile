@@ -1,4 +1,4 @@
-# syntax=docker/dockerfile:1.4
+# syntax=docker/dockerfile:1.5
 FROM debian:bullseye-20230522 AS build
 
 ARG TARGETARCH
@@ -15,7 +15,7 @@ RUN curl -fsSL -o protoc.tar.gz https://github.com/protocolbuffers/protobuf/rele
  && tar --strip-components=1 -zxf protoc.tar.gz \
  && rm protoc.tar.gz
 RUN bazel build '//:protoc_lib'
-COPY --link BUILD pyi.cc plugins/
+COPY BUILD pyi.cc plugins/
 RUN bazel build '//plugins:protoc-gen-pyi.stripped'
 
 FROM gcr.io/distroless/cc-debian11

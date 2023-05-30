@@ -1,4 +1,4 @@
-# syntax=docker/dockerfile:1.4
+# syntax=docker/dockerfile:1.5
 FROM debian:bullseye-20230522 AS build
 
 ARG TARGETARCH
