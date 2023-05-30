@@ -52,7 +52,7 @@ index 9cd14cc7..fe6c7199 100644
 +	return r.additionalImports
 +}
 diff --git a/internal/descriptor/services.go b/internal/descriptor/services.go
-index 8936a782..0cb0bd3a 100644
+index 8936a782..1fd4d8dc 100644
 --- a/internal/descriptor/services.go
 +++ b/internal/descriptor/services.go
 @@ -3,6 +3,7 @@ package descriptor
@@ -63,7 +63,7 @@ index 8936a782..0cb0bd3a 100644
  	"strings"
 
  	"github.com/golang/glog"
-@@ -25,6 +26,35 @@ func (r *Registry) loadServices(file *File) error {
+@@ -25,6 +26,31 @@ func (r *Registry) loadServices(file *File) error {
  			ServiceDescriptorProto: sd,
  			ForcePrefixedName:      r.standalone,
  		}
@@ -90,11 +90,7 @@ index 8936a782..0cb0bd3a 100644
 +					Name: strings.ReplaceAll(packageName, baseTypePackageName, grpcPackageName),
 +				},
 +			}
-+			grpcPkg := svc.GRPCFile.GoPkg.Path
-+			if len(r.additionalImports) > 0 {
-+				grpcPkg = fmt.Sprintf(";%s", strings.TrimSuffix(grpcPkg, ";"))
-+			}
-+			r.additionalImports = append(r.additionalImports, grpcPkg)
++			r.additionalImports = append(r.additionalImports, svc.GRPCFile.GoPkg.Path)
 +		}
  		for _, md := range sd.GetMethod() {
  			glog.V(2).Infof("Processing %s.%s", sd.GetName(), md.GetName())
