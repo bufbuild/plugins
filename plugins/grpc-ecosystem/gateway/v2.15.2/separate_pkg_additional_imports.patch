@@ -235,7 +235,7 @@ index 849d199a..1430db02 100644
  	if g.standalone {
  		imports = append(imports, file.GoPkg)
 diff --git a/protoc-gen-grpc-gateway/internal/gengateway/generator_test.go b/protoc-gen-grpc-gateway/internal/gengateway/generator_test.go
-index 2c5fe023..fa6934b6 100644
+index 2c5fe023..c4d35ef6 100644
 --- a/protoc-gen-grpc-gateway/internal/gengateway/generator_test.go
 +++ b/protoc-gen-grpc-gateway/internal/gengateway/generator_test.go
 @@ -1,6 +1,10 @@
@@ -249,7 +249,7 @@ index 2c5fe023..fa6934b6 100644
  	"testing"
 
  	"github.com/grpc-ecosystem/grpc-gateway/v2/internal/descriptor"
-@@ -96,3 +100,65 @@ func TestGenerator_Generate(t *testing.T) {
+@@ -96,3 +100,74 @@ func TestGenerator_Generate(t *testing.T) {
  		t.Fatalf("invalid name %q, expected %q", gotName, expectedName)
  	}
  }
@@ -313,6 +313,15 @@ index 2c5fe023..fa6934b6 100644
 +	}
 +	if result[0].GoPkg.Name != "examplegateway" {
 +		t.Fatalf("invalid name %q, expected %q", result[0].GoPkg.Name, "examplegateway")
++	}
++	// Require the two dependencies to be declared as imported packages
++	for _, expectedImport := range []string{
++		`extexamplepb "example.com/path/to/example"`,
++		`"example.com/path/to/example/examplepbgrpc"`,
++	} {
++		if !strings.Contains(result[0].GetContent(), expectedImport) {
++			t.Fatalf("expected to find import %q in the generated file", expectedImport)
++		}
 +	}
 +}
 diff --git a/protoc-gen-grpc-gateway/main.go b/protoc-gen-grpc-gateway/main.go
