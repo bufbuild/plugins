@@ -44,6 +44,7 @@ exec docker run --log-driver=none --rm -i {{.ImageName}}:{{.Version}} "$@"
 	images = []string{
 		"eliza",
 		"petapis",
+		"grpc-gateway",
 	}
 	// Options to pass to the plugin during tests. The prost plugins depend on insertion points by default, which
 	// breaks our current test strategy which is to run each plugin in isolation. Override the test options for

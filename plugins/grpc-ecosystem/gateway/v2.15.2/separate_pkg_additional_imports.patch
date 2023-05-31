@@ -52,7 +52,7 @@ index 9cd14cc7..fe6c7199 100644
 +	return r.additionalImports
 +}
 diff --git a/internal/descriptor/services.go b/internal/descriptor/services.go
-index 8936a782..1fd4d8dc 100644
+index 8936a782..42f23e0b 100644
 --- a/internal/descriptor/services.go
 +++ b/internal/descriptor/services.go
 @@ -3,6 +3,7 @@ package descriptor
@@ -63,7 +63,7 @@ index 8936a782..1fd4d8dc 100644
  	"strings"
 
  	"github.com/golang/glog"
-@@ -25,6 +26,31 @@ func (r *Registry) loadServices(file *File) error {
+@@ -25,6 +26,34 @@ func (r *Registry) loadServices(file *File) error {
  			ServiceDescriptorProto: sd,
  			ForcePrefixedName:      r.standalone,
  		}
@@ -73,21 +73,24 @@ index 8936a782..1fd4d8dc 100644
 +			// package to the additionalImports list. In order to prepare a valid import statement, we'll replace
 +			// the source package name, something like: ../pet/v1/v1petgateway with ../pet/v1/v1petgrpc
 +			const (
-+				baseTypePackageName = "protocolbuffers"
-+				grpcPackageName     = "grpc"
++				baseTypePackageName    = "protocolbuffers"
++				baseTypePackageSubPath = baseTypePackageName + "/go"
++				grpcPackageName        = "grpc"
++				grpcPackageSubPath     = grpcPackageName + "/go"
 +			)
-+			packageName := strings.ReplaceAll(svc.File.GoPkg.Name, "gateway", "") + grpcPackageName
++			packageName := strings.TrimSuffix(svc.File.GoPkg.Name, "gateway") + grpcPackageName
 +			svc.GRPCFile = &File{
 +				GoPkg: GoPackage{
 +					// additionally, as the `go_package` option is passed through from the generator, and can only be
 +					// set the one time, without making major changes, we'll use the package name sent through the
 +					// options as a basis, and replace the source package name with the grpc package name.
-+					Path: strings.ReplaceAll(
++					Path: strings.Replace(
 +						filepath.Join(svc.File.GoPkg.Path, packageName),
-+						baseTypePackageName,
-+						grpcPackageName,
++						baseTypePackageSubPath,
++						grpcPackageSubPath,
++						1,
 +					),
-+					Name: strings.ReplaceAll(packageName, baseTypePackageName, grpcPackageName),
++					Name: strings.Replace(packageName, baseTypePackageSubPath, grpcPackageSubPath, 1),
 +				},
 +			}
 +			r.additionalImports = append(r.additionalImports, svc.GRPCFile.GoPkg.Path)
@@ -96,7 +99,7 @@ index 8936a782..1fd4d8dc 100644
  			glog.V(2).Infof("Processing %s.%s", sd.GetName(), md.GetName())
  			opts, err := extractAPIOptions(md)
 diff --git a/internal/descriptor/types.go b/internal/descriptor/types.go
-index 5a43472b..6b44d3d5 100644
+index 5a43472b..8ea1d9fa 100644
 --- a/internal/descriptor/types.go
 +++ b/internal/descriptor/types.go
 @@ -164,6 +164,9 @@ type Service struct {
@@ -114,9 +117,8 @@ index 5a43472b..6b44d3d5 100644
  func (s *Service) FQSN() string {
  	components := []string{""}
 -	if s.File.Package != nil {
--		components = append(components, s.File.GetPackage())
 +	if s.GRPCFile != nil && s.GRPCFile.GetPackage() != "" {
-+		components = append(components)
+ 		components = append(components, s.File.GetPackage())
 +	} else if s.File.Package != nil {
 +		components = append(components, s.GetName())
  	}
