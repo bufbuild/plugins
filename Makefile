@@ -8,7 +8,7 @@ DOCKER_BUILD_EXTRA_ARGS ?=
 GO_TEST_FLAGS ?= -race -count=1
 
 BUF ?= buf
-BUF_PLUGIN_PUSH_ARGS ?=
+BUF_PLUGIN_PUSH_ARGS ?= --visibility=public
 
 # Specify a space separated list of plugin name (and optional version) to just build/test individual plugins.
 # For example:
@@ -51,5 +51,5 @@ push: build
 		if [[ "$(DOCKER_ORG)" = "ghcr.io/bufbuild" ]]; then \
 			$(DOCKER) pull $(DOCKER_ORG)/plugins-$${PLUGIN_OWNER}-$${PLUGIN_NAME}:$${PLUGIN_VERSION} || exit 1; \
 		fi; \
-		$(BUF) alpha plugin push $${plugin_dir} $(BUF_PLUGIN_PUSH_ARGS) --image $(DOCKER_ORG)/plugins-$${PLUGIN_OWNER}-$${PLUGIN_NAME}:$${PLUGIN_VERSION} || exit 1; \
+		$(BUF) beta registry plugin push $${plugin_dir} $(BUF_PLUGIN_PUSH_ARGS) --image $(DOCKER_ORG)/plugins-$${PLUGIN_OWNER}-$${PLUGIN_NAME}:$${PLUGIN_VERSION} || exit 1; \
 	done
