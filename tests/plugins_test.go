@@ -3,6 +3,7 @@ package tests
 import (
 	"context"
 	"fmt"
+	"golang.org/x/mod/semver"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -44,7 +45,6 @@ exec docker run --log-driver=none --rm -i {{.ImageName}}:{{.Version}} "$@"
 	images = []string{
 		"eliza",
 		"petapis",
-		"grpc-gateway",
 	}
 	// Options to pass to the plugin during tests. The prost plugins depend on insertion points by default, which
 	// breaks our current test strategy which is to run each plugin in isolation. Override the test options for
@@ -106,6 +106,9 @@ func TestGeneration(t *testing.T) {
 			for _, image := range images {
 				image := image
 				testPluginWithImage(t, toTest, image)
+			}
+			if toTest.Name == "buf.build/grpc-ecosystem/gateway" && semver.Compare(toTest.PluginVersion, "v2.15.2") >= 0 {
+				testPluginWithImage(t, toTest, "grpc-gateway")
 			}
 		})
 	}
