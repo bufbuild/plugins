@@ -14,6 +14,7 @@ import (
 	"github.com/bufbuild/buf/private/bufpkg/bufplugin/bufpluginconfig"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/mod/semver"
 	"golang.org/x/mod/sumdb/dirhash"
 
 	"github.com/bufbuild/plugins/internal/plugin"
@@ -105,6 +106,9 @@ func TestGeneration(t *testing.T) {
 			for _, image := range images {
 				image := image
 				testPluginWithImage(t, toTest, image)
+			}
+			if toTest.Name == "buf.build/grpc-ecosystem/gateway" && semver.Compare(toTest.PluginVersion, "v2.15.2") >= 0 {
+				testPluginWithImage(t, toTest, "grpc-gateway")
 			}
 		})
 	}
