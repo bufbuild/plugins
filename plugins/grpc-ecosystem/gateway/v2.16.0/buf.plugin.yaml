@@ -15,7 +15,7 @@ registry:
     - standalone=true
     - separate_package=true
 deps:
-  - plugin: buf.build/protocolbuffers/go:v1.28.1
-  - plugin: buf.build/grpc/go:v1.2.0
+  - plugin: buf.build/protocolbuffers/go:v1.30.0
+  - plugin: buf.build/grpc/go:v1.3.0
 spdx_license_id: BSD-3-Clause
 license_url: https://github.com/grpc-ecosystem/grpc-gateway/blob/v2.16.0/LICENSE.txt
