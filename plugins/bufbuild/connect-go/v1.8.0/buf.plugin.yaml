@@ -9,7 +9,7 @@ output_languages:
   - go
 registry:
   go:
-    min_version: "1.18"
+    min_version: "1.19"
     deps:
       - module: github.com/bufbuild/connect-go
         version: v1.8.0
