@@ -7,7 +7,6 @@ import (
 	"os"
 
 	"github.com/bufbuild/buf/private/pkg/interrupt"
-
 	"github.com/bufbuild/plugins/internal/docker"
 	"github.com/bufbuild/plugins/internal/plugin"
 )

@@ -13,10 +13,9 @@ import (
 
 	"github.com/bufbuild/buf/private/bufpkg/bufplugin/bufpluginref"
 	"github.com/bufbuild/buf/private/pkg/interrupt"
-	"golang.org/x/sync/errgroup"
-
 	"github.com/bufbuild/plugins/internal/docker"
 	"github.com/bufbuild/plugins/internal/plugin"
+	"golang.org/x/sync/errgroup"
 )
 
 // dockerbuild is a helper program used to build plugins from Dockerfiles in an optimized fashion.

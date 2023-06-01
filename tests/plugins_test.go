@@ -3,7 +3,6 @@ package tests
 import (
 	"context"
 	"fmt"
-	"golang.org/x/mod/semver"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -13,11 +12,11 @@ import (
 	"text/template"
 
 	"github.com/bufbuild/buf/private/bufpkg/bufplugin/bufpluginconfig"
+	"github.com/bufbuild/plugins/internal/plugin"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/mod/semver"
 	"golang.org/x/mod/sumdb/dirhash"
-
-	"github.com/bufbuild/plugins/internal/plugin"
 )
 
 var (

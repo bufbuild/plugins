@@ -9,7 +9,6 @@ import (
 	"path/filepath"
 
 	"github.com/bufbuild/buf/private/bufpkg/bufplugin/bufpluginref"
-
 	"github.com/bufbuild/plugins/internal/plugin"
 )
 
