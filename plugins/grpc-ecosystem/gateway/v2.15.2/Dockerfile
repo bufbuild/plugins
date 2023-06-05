@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1.4
-FROM golang:1.20.1-bullseye AS build
+FROM golang:1.20.4-bullseye AS build
 RUN --mount=type=cache,target=/go/pkg/mod \
     CGO_ENABLED=0 \
     go install -ldflags="-s -w" -trimpath github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-grpc-gateway@v2.15.2
