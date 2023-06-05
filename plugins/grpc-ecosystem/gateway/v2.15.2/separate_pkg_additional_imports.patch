@@ -3,7 +3,7 @@ index 9cd14cc7..fe6c7199 100644
 --- a/internal/descriptor/registry.go
 +++ b/internal/descriptor/registry.go
 @@ -146,6 +146,13 @@ type Registry struct {
-
+ 
  	// allowPatchFeature determines whether to use PATCH feature involving update masks (using google.protobuf.FieldMask).
  	allowPatchFeature bool
 +
@@ -14,7 +14,7 @@ index 9cd14cc7..fe6c7199 100644
 +	// N.B. additional imports is not a flag option
 +	additionalImports []string
  }
-
+ 
  type repeatedFieldSeparator struct {
 @@ -236,7 +243,9 @@ func (r *Registry) loadFile(filePath string, file *protogen.File) {
  	if r.standalone {
@@ -61,7 +61,7 @@ index 8936a782..42f23e0b 100644
  	"fmt"
 +	"path/filepath"
  	"strings"
-
+ 
  	"github.com/golang/glog"
 @@ -25,6 +26,34 @@ func (r *Registry) loadServices(file *File) error {
  			ServiceDescriptorProto: sd,
@@ -99,7 +99,7 @@ index 8936a782..42f23e0b 100644
  			glog.V(2).Infof("Processing %s.%s", sd.GetName(), md.GetName())
  			opts, err := extractAPIOptions(md)
 diff --git a/internal/descriptor/types.go b/internal/descriptor/types.go
-index 5a43472b..a9c3d458 100644
+index 5a43472b..c0c02966 100644
 --- a/internal/descriptor/types.go
 +++ b/internal/descriptor/types.go
 @@ -164,6 +164,9 @@ type Service struct {
@@ -112,22 +112,18 @@ index 5a43472b..a9c3d458 100644
  	// Methods is the list of methods defined in this service.
  	Methods []*Method
  	// ForcePrefixedName when set to true, prefixes a type with a package prefix.
-@@ -173,10 +176,11 @@ type Service struct {
+@@ -173,7 +176,9 @@ type Service struct {
  // FQSN returns the fully qualified service name of this service.
  func (s *Service) FQSN() string {
  	components := []string{""}
 -	if s.File.Package != nil {
--		components = append(components, s.File.GetPackage())
 +	if s.GRPCFile != nil && s.GRPCFile.GetPackage() != "" {
 +		components = append(components, s.GRPCFile.GetPackage())
 +	} else if s.File.Package != nil {
-+		components = append(components, s.GetName())
+ 		components = append(components, s.File.GetPackage())
  	}
--	components = append(components, s.GetName())
- 	return strings.Join(components, ".")
- }
-
-@@ -185,7 +189,11 @@ func (s *Service) InstanceName() string {
+ 	components = append(components, s.GetName())
+@@ -185,7 +190,11 @@ func (s *Service) InstanceName() string {
  	if !s.ForcePrefixedName {
  		return s.GetName()
  	}
@@ -138,9 +134,9 @@ index 5a43472b..a9c3d458 100644
 +	}
 +	return fmt.Sprintf("%s.%s", pkg, s.GetName())
  }
-
+ 
  // ClientConstructorName returns name of the Client constructor with package prefix if needed
-@@ -194,7 +202,11 @@ func (s *Service) ClientConstructorName() string {
+@@ -194,7 +203,11 @@ func (s *Service) ClientConstructorName() string {
  	if !s.ForcePrefixedName {
  		return constructor
  	}
@@ -151,7 +147,7 @@ index 5a43472b..a9c3d458 100644
 +	}
 +	return fmt.Sprintf("%s.%s", pkg, constructor)
  }
-
+ 
  // Method wraps descriptorpb.MethodDescriptorProto for richer features.
 diff --git a/protoc-gen-grpc-gateway/internal/gengateway/generator.go b/protoc-gen-grpc-gateway/internal/gengateway/generator.go
 index 849d199a..1430db02 100644
@@ -163,7 +159,7 @@ index 849d199a..1430db02 100644
  	"path"
 +	"path/filepath"
 +	"strings"
-
+ 
  	"github.com/golang/glog"
  	"github.com/grpc-ecosystem/grpc-gateway/v2/internal/descriptor"
 @@ -22,11 +24,20 @@ type generator struct {
@@ -173,7 +169,7 @@ index 849d199a..1430db02 100644
 +	separatePackage    bool
 +	additionalImports  []string
  }
-
+ 
  // New returns a new generator which generates grpc gateway files.
 -func New(reg *descriptor.Registry, useRequestContext bool, registerFuncSuffix string,
 -	allowPatchFeature, standalone bool) gen.Generator {
@@ -197,7 +193,7 @@ index 849d199a..1430db02 100644
 +		additionalImports:  additionalImports,
  	}
  }
-
+ 
 @@ -86,10 +99,19 @@ func (g *generator) Generate(targets []*descriptor.File) ([]*descriptor.Response
  			glog.Errorf("%v: %s", err, code)
  			return nil, err
@@ -231,25 +227,28 @@ index 849d199a..1430db02 100644
 +			Name: elems[len(elems)-1],
 +		})
 +	}
-
+ 
  	if g.standalone {
  		imports = append(imports, file.GoPkg)
 diff --git a/protoc-gen-grpc-gateway/internal/gengateway/generator_test.go b/protoc-gen-grpc-gateway/internal/gengateway/generator_test.go
-index 2c5fe023..c4d35ef6 100644
+index 2c5fe023..0eeccd96 100644
 --- a/protoc-gen-grpc-gateway/internal/gengateway/generator_test.go
 +++ b/protoc-gen-grpc-gateway/internal/gengateway/generator_test.go
-@@ -1,6 +1,10 @@
+@@ -1,8 +1,13 @@
  package gengateway
-
+ 
  import (
-+	"golang.org/x/text/cases"
-+	"golang.org/x/text/language"
 +	"path/filepath"
 +	"strings"
  	"testing"
-
+ 
++	"golang.org/x/text/cases"
++	"golang.org/x/text/language"
++
  	"github.com/grpc-ecosystem/grpc-gateway/v2/internal/descriptor"
-@@ -96,3 +100,74 @@ func TestGenerator_Generate(t *testing.T) {
+ 	"google.golang.org/protobuf/proto"
+ 	"google.golang.org/protobuf/types/descriptorpb"
+@@ -96,3 +101,74 @@ func TestGenerator_Generate(t *testing.T) {
  		t.Fatalf("invalid name %q, expected %q", gotName, expectedName)
  	}
  }
@@ -325,12 +324,12 @@ index 2c5fe023..c4d35ef6 100644
 +	}
 +}
 diff --git a/protoc-gen-grpc-gateway/main.go b/protoc-gen-grpc-gateway/main.go
-index 023a18e3..732132f2 100644
+index 023a18e3..64ac3d89 100644
 --- a/protoc-gen-grpc-gateway/main.go
 +++ b/protoc-gen-grpc-gateway/main.go
 @@ -10,6 +10,7 @@
  package main
-
+ 
  import (
 +	"errors"
  	"flag"
@@ -342,26 +341,19 @@ index 023a18e3..732132f2 100644
  	generateUnboundMethods     = flag.Bool("generate_unbound_methods", false, "generate proxy methods even for RPC methods that have no HttpRule annotation")
 +	separatePackage            = flag.Bool("separate_package", false, "generate gateway code to v1gateway package (requires standalone=true).")
  )
-
+ 
  // Variables set by goreleaser at build time
-@@ -62,9 +64,11 @@ func main() {
+@@ -62,9 +64,21 @@ func main() {
  			return err
  		}
-
--		codegenerator.SetSupportedFeaturesOnPluginGen(gen)
+ 
 +		if *separatePackage && !*standalone {
 +			return errors.New("option separate_package=true must be specified with standalone=true")
 +		}
-
++
+ 		codegenerator.SetSupportedFeaturesOnPluginGen(gen)
+ 
 -		generator := gengateway.New(reg, *useRequestContext, *registerFuncSuffix, *allowPatchFeature, *standalone)
-+		codegenerator.SetSupportedFeaturesOnPluginGen(gen)
-
- 		glog.V(1).Infof("Parsing code generator request")
-
-@@ -86,6 +90,15 @@ func main() {
- 			targets = append(targets, f)
- 		}
-
 +		generator := gengateway.New(
 +			reg,
 +			*useRequestContext,
@@ -371,10 +363,10 @@ index 023a18e3..732132f2 100644
 +			*separatePackage,
 +			reg.GetAdditionalImports(),
 +		)
- 		files, err := generator.Generate(targets)
- 		for _, f := range files {
- 			glog.V(1).Infof("NewGeneratedFile %q in %s", f.GetName(), f.GoPkg)
-@@ -112,6 +125,7 @@ func applyFlags(reg *descriptor.Registry) error {
+ 
+ 		glog.V(1).Infof("Parsing code generator request")
+ 
+@@ -112,6 +126,7 @@ func applyFlags(reg *descriptor.Registry) error {
  	}
  	reg.SetStandalone(*standalone)
  	reg.SetAllowDeleteBody(*allowDeleteBody)
