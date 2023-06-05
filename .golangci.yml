@@ -44,6 +44,7 @@ linters:
     # Other disabled linters
     - cyclop            # covered by gocyclo
     - deadcode          # deprecated by author
+    - depguard          # not needed
     - exhaustivestruct  # replaced by exhaustruct
     - funlen            # rely on code review to limit function length
     - gocognit          # dubious "cognitive overhead" quantification

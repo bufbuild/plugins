@@ -37,7 +37,7 @@ jobs:
     - name: Get changed files
       id: changed-files
       if: ${{ inputs.plugins == '' }}
-      uses: tj-actions/changed-files@cf4fe8759a45edd76ed6215da3529d2dbd2a3c68
+      uses: tj-actions/changed-files@b13786805affca18e536ed489687d3d8d1f05d21
       with:
         files: |
           plugins/**
@@ -66,7 +66,7 @@ jobs:
           echo "PLUGINS=${val}" >> $GITHUB_ENV
         fi
     - name: Install buf cli
-      uses: bufbuild/buf-setup-action@v1.19.0
+      uses: bufbuild/buf-setup-action@v1.20.0
       with:
         github_token: ${{ github.token }}
     - name: Set up QEMU
