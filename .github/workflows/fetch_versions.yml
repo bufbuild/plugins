@@ -31,7 +31,7 @@ jobs:
           check-latest: true
           cache: true
       - name: Install buf cli
-        uses: bufbuild/buf-setup-action@v1.19.0
+        uses: bufbuild/buf-setup-action@v1.20.0
         with:
           github_token: ${{ github.token }}
       - name: Set up QEMU
