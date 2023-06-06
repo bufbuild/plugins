@@ -5,6 +5,15 @@ source_url: https://github.com/grpc-ecosystem/grpc-gateway
 description: gRPC to JSON proxy generator following the gRPC HTTP spec.
 output_languages:
   - go
+registry:
+  go:
+    deps:
+      - module: github.com/grpc-ecosystem/grpc-gateway/v2
+        version: v2.16.0
+  opts:
+    - paths=source_relative
+    - standalone=true
+    - separate_package=true
 deps:
   - plugin: buf.build/protocolbuffers/go:v1.30.0
   - plugin: buf.build/grpc/go:v1.3.0
