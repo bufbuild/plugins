@@ -3,6 +3,7 @@ package tests
 import (
 	"context"
 	"fmt"
+	"golang.org/x/mod/semver"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -105,6 +106,9 @@ func TestGeneration(t *testing.T) {
 			for _, image := range images {
 				image := image
 				testPluginWithImage(t, toTest, image)
+			}
+			if toTest.Name == "buf.build/grpc-ecosystem/gateway" && semver.Compare(toTest.PluginVersion, "v2.15.2") >= 0 {
+				testPluginWithImage(t, toTest, "grpc-gateway")
 			}
 		})
 	}

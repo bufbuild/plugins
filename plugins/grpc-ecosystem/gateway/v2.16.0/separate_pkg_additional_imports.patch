@@ -1,0 +1,379 @@
+diff --git a/internal/descriptor/registry.go b/internal/descriptor/registry.go
+index 9cd14cc7..fe6c7199 100644
+--- a/internal/descriptor/registry.go
++++ b/internal/descriptor/registry.go
+@@ -146,6 +146,13 @@ type Registry struct {
+
+ 	// allowPatchFeature determines whether to use PATCH feature involving update masks (using google.protobuf.FieldMask).
+ 	allowPatchFeature bool
++
++	// separatePackage determines whether to output the generated code into a separate package.
++	separatePackage bool
++
++	// additionalImports is a list of additional imports to be added to the generated code.
++	// N.B. additional imports is not a flag option
++	additionalImports []string
+ }
+
+ type repeatedFieldSeparator struct {
+@@ -236,7 +243,9 @@ func (r *Registry) loadFile(filePath string, file *protogen.File) {
+ 	if r.standalone {
+ 		pkg.Alias = "ext" + cases.Title(language.AmericanEnglish).String(pkg.Name)
+ 	}
+-
++	if r.separatePackage {
++		pkg.Name += "gateway"
++	}
+ 	if err := r.ReserveGoPackageAlias(pkg.Name, pkg.Path); err != nil {
+ 		for i := 0; ; i++ {
+ 			alias := fmt.Sprintf("%s_%d", pkg.Name, i)
+@@ -811,3 +820,23 @@ func (r *Registry) SetAllowPatchFeature(allow bool) {
+ func (r *Registry) GetAllowPatchFeature() bool {
+ 	return r.allowPatchFeature
+ }
++
++// SetSeparatePackage sets separatePackage
++func (r *Registry) SetSeparatePackage(use bool) {
++	r.separatePackage = use
++}
++
++// GetSeparatePackage returns separatePackage
++func (r *Registry) GetSeparatePackage() bool {
++	return r.separatePackage
++}
++
++// SetAdditionalImports sets additionalImports
++func (r *Registry) SetAdditionalImports(imports []string) {
++	r.additionalImports = imports
++}
++
++// GetAdditionalImports returns additionalImports
++func (r *Registry) GetAdditionalImports() []string {
++	return r.additionalImports
++}
+diff --git a/internal/descriptor/services.go b/internal/descriptor/services.go
+index 8936a782..1ade5d63 100644
+--- a/internal/descriptor/services.go
++++ b/internal/descriptor/services.go
+@@ -3,6 +3,7 @@ package descriptor
+ import (
+ 	"errors"
+ 	"fmt"
++	"path/filepath"
+ 	"strings"
+
+ 	"github.com/golang/glog"
+@@ -18,6 +19,7 @@ import (
+ func (r *Registry) loadServices(file *File) error {
+ 	glog.V(1).Infof("Loading services from %s", file.GetName())
+ 	var svcs []*Service
++	var additionalImports []string
+ 	for _, sd := range file.GetService() {
+ 		glog.V(2).Infof("Registering %s", sd.GetName())
+ 		svc := &Service{
+@@ -25,6 +27,35 @@ func (r *Registry) loadServices(file *File) error {
+ 			ServiceDescriptorProto: sd,
+ 			ForcePrefixedName:      r.standalone,
+ 		}
++		if r.separatePackage {
++			// when generating a separate package for the gateway, we need to generate an import statement
++			// for the gRPC stubs that are no longer in the same package. This is done by adding the grpc
++			// package to the additionalImports list. In order to prepare a valid import statement, we'll replace
++			// the source package name, something like: ../pet/v1/v1petgateway with ../pet/v1/v1petgrpc
++			const (
++				baseTypePackageName    = "protocolbuffers"
++				baseTypePackageSubPath = baseTypePackageName + "/go"
++				grpcPackageName        = "grpc"
++				grpcPackageSubPath     = grpcPackageName + "/go"
++			)
++			packageName := strings.TrimSuffix(svc.File.GoPkg.Name, "gateway") + grpcPackageName
++			svc.GRPCFile = &File{
++				GoPkg: GoPackage{
++					// additionally, as the `go_package` option is passed through from the generator, and can only be
++					// set the one time, without making major changes, we'll use the package name sent through the
++					// options as a basis, and replace the source package name with the grpc package name.
++					Path: strings.Replace(
++						filepath.Join(svc.File.GoPkg.Path, packageName),
++						baseTypePackageSubPath,
++						grpcPackageSubPath,
++						1,
++					),
++					Name: strings.Replace(packageName, baseTypePackageSubPath, grpcPackageSubPath, 1),
++				},
++			}
++			additionalImports = append(r.GetAdditionalImports(), svc.GRPCFile.GoPkg.Path)
++		}
++		r.SetAdditionalImports(additionalImports)
+ 		for _, md := range sd.GetMethod() {
+ 			glog.V(2).Infof("Processing %s.%s", sd.GetName(), md.GetName())
+ 			opts, err := extractAPIOptions(md)
+diff --git a/internal/descriptor/types.go b/internal/descriptor/types.go
+index 5a43472b..c0c02966 100644
+--- a/internal/descriptor/types.go
++++ b/internal/descriptor/types.go
+@@ -164,6 +164,9 @@ type Service struct {
+ 	*descriptorpb.ServiceDescriptorProto
+ 	// File is the file where this service is defined.
+ 	File *File
++	// GRPCFile is the file where this service's gRPC stubs are defined.
++	// This is nil if the service's gRPC stubs are defined alongside the messages.
++	GRPCFile *File
+ 	// Methods is the list of methods defined in this service.
+ 	Methods []*Method
+ 	// ForcePrefixedName when set to true, prefixes a type with a package prefix.
+@@ -173,7 +176,9 @@ type Service struct {
+ // FQSN returns the fully qualified service name of this service.
+ func (s *Service) FQSN() string {
+ 	components := []string{""}
+-	if s.File.Package != nil {
++	if s.GRPCFile != nil && s.GRPCFile.GetPackage() != "" {
++		components = append(components, s.GRPCFile.GetPackage())
++	} else if s.File.Package != nil {
+ 		components = append(components, s.File.GetPackage())
+ 	}
+ 	components = append(components, s.GetName())
+@@ -185,7 +190,11 @@ func (s *Service) InstanceName() string {
+ 	if !s.ForcePrefixedName {
+ 		return s.GetName()
+ 	}
+-	return fmt.Sprintf("%s.%s", s.File.Pkg(), s.GetName())
++	pkg := s.File.Pkg()
++	if s.GRPCFile != nil {
++		pkg = s.GRPCFile.Pkg()
++	}
++	return fmt.Sprintf("%s.%s", pkg, s.GetName())
+ }
+
+ // ClientConstructorName returns name of the Client constructor with package prefix if needed
+@@ -194,7 +203,11 @@ func (s *Service) ClientConstructorName() string {
+ 	if !s.ForcePrefixedName {
+ 		return constructor
+ 	}
+-	return fmt.Sprintf("%s.%s", s.File.Pkg(), constructor)
++	pkg := s.File.Pkg()
++	if s.GRPCFile != nil {
++		pkg = s.GRPCFile.Pkg()
++	}
++	return fmt.Sprintf("%s.%s", pkg, constructor)
+ }
+
+ // Method wraps descriptorpb.MethodDescriptorProto for richer features.
+diff --git a/protoc-gen-grpc-gateway/internal/gengateway/generator.go b/protoc-gen-grpc-gateway/internal/gengateway/generator.go
+index 849d199a..af8bc1db 100644
+--- a/protoc-gen-grpc-gateway/internal/gengateway/generator.go
++++ b/protoc-gen-grpc-gateway/internal/gengateway/generator.go
+@@ -5,6 +5,8 @@ import (
+ 	"fmt"
+ 	"go/format"
+ 	"path"
++	"path/filepath"
++	"strings"
+
+ 	"github.com/golang/glog"
+ 	"github.com/grpc-ecosystem/grpc-gateway/v2/internal/descriptor"
+@@ -22,11 +24,18 @@ type generator struct {
+ 	registerFuncSuffix string
+ 	allowPatchFeature  bool
+ 	standalone         bool
++	separatePackage    bool
+ }
+
+ // New returns a new generator which generates grpc gateway files.
+-func New(reg *descriptor.Registry, useRequestContext bool, registerFuncSuffix string,
+-	allowPatchFeature, standalone bool) gen.Generator {
++func New(
++	reg *descriptor.Registry,
++	useRequestContext bool,
++	registerFuncSuffix string,
++	allowPatchFeature bool,
++	standalone bool,
++	separatePackage bool,
++) gen.Generator {
+ 	var imports []descriptor.GoPackage
+ 	for _, pkgpath := range []string{
+ 		"context",
+@@ -65,6 +74,7 @@ func New(reg *descriptor.Registry, useRequestContext bool, registerFuncSuffix st
+ 		registerFuncSuffix: registerFuncSuffix,
+ 		allowPatchFeature:  allowPatchFeature,
+ 		standalone:         standalone,
++		separatePackage:    separatePackage,
+ 	}
+ }
+
+@@ -86,10 +96,19 @@ func (g *generator) Generate(targets []*descriptor.File) ([]*descriptor.Response
+ 			glog.Errorf("%v: %s", err, code)
+ 			return nil, err
+ 		}
++		goPkg := file.GoPkg
++		fileNamePrefix := file.GeneratedFilenamePrefix
++		if g.separatePackage {
++			goPkg = descriptor.GoPackage{
++				Path: filepath.Join(file.GoPkg.Path, file.GoPkg.Name),
++				Name: file.GoPkg.Name,
++			}
++			fileNamePrefix = path.Join(file.GeneratedFilenamePrefix, file.GoPkg.Name, filepath.Base(file.GeneratedFilenamePrefix))
++		}
+ 		files = append(files, &descriptor.ResponseFile{
+-			GoPkg: file.GoPkg,
++			GoPkg: goPkg,
+ 			CodeGeneratorResponse_File: &pluginpb.CodeGeneratorResponse_File{
+-				Name:    proto.String(file.GeneratedFilenamePrefix + ".pb.gw.go"),
++				Name:    proto.String(fileNamePrefix + ".pb.gw.go"),
+ 				Content: proto.String(string(formatted)),
+ 			},
+ 		})
+@@ -105,6 +124,14 @@ func (g *generator) generate(file *descriptor.File) (string, error) {
+ 		imports = append(imports, pkg)
+ 	}
+
++	for _, additionalImport := range g.reg.GetAdditionalImports() {
++		elems := strings.Split(additionalImport, "/")
++		imports = append(imports, descriptor.GoPackage{
++			Path: additionalImport,
++			Name: elems[len(elems)-1],
++		})
++	}
++
+ 	if g.standalone {
+ 		imports = append(imports, file.GoPkg)
+ 	}
+diff --git a/protoc-gen-grpc-gateway/internal/gengateway/generator_test.go b/protoc-gen-grpc-gateway/internal/gengateway/generator_test.go
+index 2c5fe023..816fbca1 100644
+--- a/protoc-gen-grpc-gateway/internal/gengateway/generator_test.go
++++ b/protoc-gen-grpc-gateway/internal/gengateway/generator_test.go
+@@ -1,6 +1,8 @@
+ package gengateway
+
+ import (
++	"path/filepath"
++	"strings"
+ 	"testing"
+
+ 	"github.com/grpc-ecosystem/grpc-gateway/v2/internal/descriptor"
+@@ -96,3 +98,75 @@ func TestGenerator_Generate(t *testing.T) {
+ 		t.Fatalf("invalid name %q, expected %q", gotName, expectedName)
+ 	}
+ }
++
++func TestGenerator_GenerateSeparatePackage(t *testing.T) {
++	reg := descriptor.NewRegistry()
++	reg.SetSeparatePackage(true)
++	reg.SetStandalone(true)
++	g := New(reg, true, "Handler", true, true, true)
++	targets := []*descriptor.File{
++		crossLinkFixture(newExampleFileDescriptorWithGoPkg(&descriptor.GoPackage{
++			Path:  "example.com/path/to/example",
++			Name:  "example" + "gateway",
++			Alias: "extexample",
++		}, "path/to/example")),
++	}
++	// Set ForcePrefixedName (usually set when standalone=true).
++	for _, f := range targets {
++		for _, msg := range f.Messages {
++			msg.ForcePrefixedName = true
++			for _, field := range msg.Fields {
++				field.ForcePrefixedName = true
++			}
++		}
++		for _, enum := range f.Enums {
++			enum.ForcePrefixedName = true
++		}
++		imports := make([]string, 0)
++		for _, svc := range f.Services {
++			packageName := strings.TrimSuffix(svc.File.GoPkg.Name, "gateway") + "grpc"
++			svc.ForcePrefixedName = true
++			// replicates behavior in internal/descriptor/services.go (loadServices)
++			svc.GRPCFile = &descriptor.File{
++				GoPkg: descriptor.GoPackage{
++					Path: strings.Replace(
++						filepath.Join(svc.File.GoPkg.Path, packageName),
++						"protocolbuffers/go",
++						"grpc/go",
++						1,
++					),
++					Name: strings.Replace(packageName, "protocolbuffers/go", "grpc/go", 1),
++				},
++			}
++			imports = append(reg.GetAdditionalImports(), svc.GRPCFile.GoPkg.Path)
++		}
++		reg.SetAdditionalImports(imports)
++	}
++	result, err := g.Generate(targets)
++	if err != nil {
++		t.Fatalf("failed to generate stubs: %v", err)
++	}
++	if len(result) != 1 {
++		t.Fatalf("expected to generate one file, got: %d", len(result))
++	}
++	expectedName := "path/to/example/examplegateway/example.pb.gw.go"
++	gotName := result[0].GetName()
++	if gotName != expectedName {
++		t.Fatalf("invalid name %q, expected %q", gotName, expectedName)
++	}
++	if result[0].GoPkg.Path != "example.com/path/to/example/examplegateway" {
++		t.Fatalf("invalid path %q, expected %q", result[0].GoPkg.Path, "example.com/path/to/example/examplegateway")
++	}
++	if result[0].GoPkg.Name != "examplegateway" {
++		t.Fatalf("invalid name %q, expected %q", result[0].GoPkg.Name, "examplegateway")
++	}
++	// Require the two dependencies to be declared as imported packages
++	for _, expectedImport := range []string{
++		`extexample "example.com/path/to/example"`,
++		`"example.com/path/to/example/examplegrpc"`,
++	} {
++		if !strings.Contains(result[0].GetContent(), expectedImport) {
++			t.Fatalf("expected to find import %q in the generated file", expectedImport)
++		}
++	}
++}
+diff --git a/protoc-gen-grpc-gateway/main.go b/protoc-gen-grpc-gateway/main.go
+index 023a18e3..868516bd 100644
+--- a/protoc-gen-grpc-gateway/main.go
++++ b/protoc-gen-grpc-gateway/main.go
+@@ -10,6 +10,7 @@
+ package main
+
+ import (
++	"errors"
+ 	"flag"
+ 	"fmt"
+ 	"os"
+@@ -35,6 +36,7 @@ var (
+ 	versionFlag                = flag.Bool("version", false, "print the current version")
+ 	warnOnUnboundMethods       = flag.Bool("warn_on_unbound_methods", false, "emit a warning message if an RPC method has no HttpRule annotation")
+ 	generateUnboundMethods     = flag.Bool("generate_unbound_methods", false, "generate proxy methods even for RPC methods that have no HttpRule annotation")
++	separatePackage            = flag.Bool("separate_package", false, "generate gateway code to v1gateway package (requires standalone=true).")
+ )
+
+ // Variables set by goreleaser at build time
+@@ -62,9 +64,20 @@ func main() {
+ 			return err
+ 		}
+
+-		codegenerator.SetSupportedFeaturesOnPluginGen(gen)
++		if *separatePackage && !*standalone {
++			return errors.New("option separate_package=true must be specified with standalone=true")
++		}
+
+-		generator := gengateway.New(reg, *useRequestContext, *registerFuncSuffix, *allowPatchFeature, *standalone)
++		generator := gengateway.New(
++			reg,
++			*useRequestContext,
++			*registerFuncSuffix,
++			*allowPatchFeature,
++			*standalone,
++			*separatePackage,
++		)
++
++		codegenerator.SetSupportedFeaturesOnPluginGen(gen)
+
+ 		glog.V(1).Infof("Parsing code generator request")
+
+@@ -112,6 +125,7 @@ func applyFlags(reg *descriptor.Registry) error {
+ 	}
+ 	reg.SetStandalone(*standalone)
+ 	reg.SetAllowDeleteBody(*allowDeleteBody)
++	reg.SetSeparatePackage(*separatePackage)
+
+ 	flag.Visit(func(f *flag.Flag) {
+ 		if f.Name == "allow_repeated_fields_in_body" {
