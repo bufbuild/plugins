@@ -52,7 +52,7 @@ index 9cd14cc7..fe6c7199 100644
 +	return r.additionalImports
 +}
 diff --git a/internal/descriptor/services.go b/internal/descriptor/services.go
-index 8936a782..1ade5d63 100644
+index 8936a782..daf9b64b 100644
 --- a/internal/descriptor/services.go
 +++ b/internal/descriptor/services.go
 @@ -3,6 +3,7 @@ package descriptor
@@ -101,7 +101,7 @@ index 8936a782..1ade5d63 100644
 +					Name: strings.Replace(packageName, baseTypePackageSubPath, grpcPackageSubPath, 1),
 +				},
 +			}
-+			additionalImports = append(r.GetAdditionalImports(), svc.GRPCFile.GoPkg.Path)
++			additionalImports = append(additionalImports, svc.GRPCFile.GoPkg.Path)
 +		}
 +		r.SetAdditionalImports(additionalImports)
  		for _, md := range sd.GetMethod() {
