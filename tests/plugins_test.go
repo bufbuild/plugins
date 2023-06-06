@@ -107,7 +107,7 @@ func TestGeneration(t *testing.T) {
 				image := image
 				testPluginWithImage(t, toTest, image)
 			}
-			if toTest.Name == "buf.build/grpc-ecosystem/gateway" && semver.Compare(toTest.PluginVersion, "v2.15.2") >= 0 {
+			if toTest.Name == "buf.build/grpc-ecosystem/gateway" && semver.Compare(toTest.PluginVersion, "v2.16.0") >= 0 {
 				testPluginWithImage(t, toTest, "grpc-gateway")
 			}
 		})
