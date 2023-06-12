@@ -6,7 +6,7 @@ require (
 	aead.dev/minisign v0.2.0
 	github.com/bufbuild/buf v1.21.0
 	github.com/google/go-github/v50 v50.2.0
-	github.com/hashicorp/go-retryablehttp v0.7.2
+	github.com/hashicorp/go-retryablehttp v0.7.4
 	github.com/sethvargo/go-envconfig v0.9.0
 	github.com/stretchr/testify v1.8.4
 	go.uber.org/multierr v1.11.0
