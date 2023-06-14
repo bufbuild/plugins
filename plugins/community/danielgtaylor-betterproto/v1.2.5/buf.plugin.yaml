@@ -1,0 +1,9 @@
+version: v1
+name: buf.build/community/danielgtaylor-betterproto
+plugin_version: v1.2.5
+source_url: https://github.com/danielgtaylor/python-betterproto
+description: Generate mypy stub files from Protobuf definitions.
+spdx_license_id: MIT
+license_url: https://github.com/danielgtaylor/python-betterproto/blob/v1.2.5/setup.py#L12
+output_languages:
+  - python
