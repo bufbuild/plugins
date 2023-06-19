@@ -11,7 +11,7 @@ require (
 	github.com/stretchr/testify v1.8.4
 	go.uber.org/multierr v1.11.0
 	golang.org/x/mod v0.10.0
-	golang.org/x/oauth2 v0.8.0
+	golang.org/x/oauth2 v0.9.0
 	golang.org/x/sync v0.2.0
 	gopkg.in/yaml.v3 v3.0.1
 )
@@ -32,9 +32,9 @@ require (
 	go.opentelemetry.io/otel/metric v1.16.0 // indirect
 	go.opentelemetry.io/otel/trace v1.16.0 // indirect
 	go.uber.org/atomic v1.11.0 // indirect
-	golang.org/x/crypto v0.9.0 // indirect
-	golang.org/x/net v0.10.0 // indirect
-	golang.org/x/sys v0.8.0 // indirect
+	golang.org/x/crypto v0.10.0 // indirect
+	golang.org/x/net v0.11.0 // indirect
+	golang.org/x/sys v0.9.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/protobuf v1.30.0 // indirect
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
