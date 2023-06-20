@@ -47,3 +47,15 @@ jobs:
           go run ./cmd/download-plugins downloads
       - name: Upload To Release Bucket
         run: gsutil rsync -r downloads gs://buf-plugins
+      - uses: dblock/create-a-github-issue@866beb009af3db457e82ca98efe474969a5ebce8
+        if: failure()
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          GITHUB_SERVER_URL: ${ github.server_url }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
+          GITHUB_RUN_ATTEMPT: ${{ github.run_attempt }}
+        with:
+          filename: .github/automatic-workflow-issue-template.md
+          update_existing: true
+          search_existing: open
