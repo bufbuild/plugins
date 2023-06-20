@@ -22,7 +22,7 @@ import (
 
 	"aead.dev/minisign"
 	"github.com/bufbuild/buf/private/bufpkg/bufplugin/bufpluginref"
-	"github.com/google/go-github/v50/github"
+	"github.com/google/go-github/v53/github"
 	"golang.org/x/mod/semver"
 
 	"github.com/bufbuild/plugins/internal/plugin"

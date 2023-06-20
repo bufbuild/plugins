@@ -253,8 +253,8 @@ func ParsePluginsEnvVar(pluginsEnv string) ([]IncludePlugin, error) {
 }
 
 // getLatestPluginVersionsByName returns a map with keys set to plugin.Name and values set to the latest semver version for the plugin.
-// For example, if plugins contains buf.build/library/connect-web v0.1.1, v0.2.0, and v0.2.1,
-// the returned map will contain: {"buf.build/library/connect-web": "v0.2.1"}.
+// For example, if plugins contains buf.build/bufbuild/connect-web v0.1.1, v0.2.0, and v0.2.1,
+// the returned map will contain: {"buf.build/bufbuild/connect-web": "v0.2.1"}.
 func getLatestPluginVersionsByName(plugins []*Plugin) map[string]string {
 	latestVersions := make(map[string]string)
 	for _, plugin := range plugins {
