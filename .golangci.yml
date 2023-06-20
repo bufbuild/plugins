@@ -47,6 +47,7 @@ linters:
     - depguard          # not needed
     - exhaustivestruct  # replaced by exhaustruct
     - funlen            # rely on code review to limit function length
+    - gochecknoglobals  # sometimes useful to declare constants
     - gocognit          # dubious "cognitive overhead" quantification
     - gofumpt           # prefer standard gofmt
     - goimports         # using gci
@@ -84,5 +85,4 @@ issues:
     - path: _test\.go
       linters:
         - dupword
-        - gochecknoglobals
         - gosec

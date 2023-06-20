@@ -11,6 +11,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 
@@ -21,7 +22,11 @@ import (
 	"github.com/bufbuild/plugins/internal/source"
 )
 
-var errNoVersions = errors.New("no versions found")
+var (
+	bazelDownloadRegexp = regexp.MustCompile(`bazelbuild/bazel/releases/download/[^/]+/bazel-[^-]+-linux`)
+	bazelImageName      = "gcr.io/bazel-public/bazel"
+	errNoVersions       = errors.New("no versions found")
+)
 
 func main() {
 	if len(os.Args) != 2 {
@@ -49,6 +54,9 @@ type createdPlugin struct {
 }
 
 func postProcessCreatedPlugins(plugins []createdPlugin, rootDir string) error {
+	if len(plugins) == 0 {
+		return nil
+	}
 	for _, plugin := range plugins {
 		if err := runGoModTidy(plugin); err != nil {
 			return err
@@ -214,7 +222,7 @@ func run(ctx context.Context, root string) ([]createdPlugin, error) {
 			}
 			latestVersions[config.CacheKey()] = newVersion
 		}
-		// example: library/grpc
+		// example: plugins/grpc
 		pluginDir := filepath.Dir(config.Filename)
 		ok, err := checkDirExists(filepath.Join(pluginDir, newVersion))
 		if err != nil {
@@ -425,6 +433,12 @@ func copyFile(
 	s := bufio.NewScanner(srcFile)
 	for s.Scan() {
 		line := strings.ReplaceAll(s.Text(), prevVersion, newVersion)
+		line = bazelDownloadRegexp.ReplaceAllString(
+			line,
+			fmt.Sprintf(`bazelbuild/bazel/releases/download/%[1]s/bazel-%[1]s-linux`,
+				latestBaseImageVersions[bazelImageName],
+			),
+		)
 		if isDockerfile && len(line) > 5 && strings.EqualFold(line[0:5], "from ") {
 			// Replace FROM line with the latest base image (if found)
 			fields := strings.Fields(line)
@@ -451,15 +465,15 @@ func copyFile(
 	return s.Err()
 }
 
-func getLatestVersionFromDir(dir string) (string, error) {
-	dirs, err := os.ReadDir(dir)
+func getLatestVersionFromDir(basedir string) (string, error) {
+	entries, err := os.ReadDir(basedir)
 	if err != nil {
 		return "", err
 	}
 	var versions []string
-	for _, dir := range dirs {
-		if dir.IsDir() && semver.IsValid(dir.Name()) {
-			versions = append(versions, dir.Name())
+	for _, entry := range entries {
+		if entry.IsDir() && semver.IsValid(entry.Name()) {
+			versions = append(versions, entry.Name())
 		}
 	}
 	if len(versions) == 0 {
