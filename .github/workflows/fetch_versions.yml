@@ -5,7 +5,9 @@ on:
     # Run once a day at 10 AM EST
     - cron: "0 14 * * *"
   workflow_dispatch:
-
+permissions:
+  contents: read
+  issues: write
 jobs:
   fetch-versions:
     if: github.repository == 'bufbuild/plugins'
