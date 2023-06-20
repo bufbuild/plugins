@@ -57,10 +57,7 @@ func postProcessCreatedPlugins(plugins []createdPlugin, rootDir string) error {
 			return err
 		}
 	}
-	if err := runPluginTests(plugins, rootDir); err != nil {
-		return err
-	}
-	return nil
+	return runPluginTests(plugins, rootDir)
 }
 
 // runGoModTidy runs 'go mod tidy' for plugins (like twirp-go) which don't use modules.
