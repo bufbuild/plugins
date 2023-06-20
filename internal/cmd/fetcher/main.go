@@ -34,7 +34,7 @@ func main() {
 		_, _ = fmt.Fprintf(os.Stderr, "failed to fetch versions: %v\n", err)
 		os.Exit(1)
 	}
-	if err := postProcessCreatedPlugins(created); err != nil {
+	if err := postProcessCreatedPlugins(created, root); err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "failed to run post-processing on plugins: %v", err)
 		os.Exit(1)
 	}
@@ -48,7 +48,7 @@ type createdPlugin struct {
 	newVersion      string
 }
 
-func postProcessCreatedPlugins(plugins []createdPlugin) error {
+func postProcessCreatedPlugins(plugins []createdPlugin, rootDir string) error {
 	for _, plugin := range plugins {
 		if err := runGoModTidy(plugin); err != nil {
 			return err
@@ -56,9 +56,9 @@ func postProcessCreatedPlugins(plugins []createdPlugin) error {
 		if err := recreateNPMPackageLock(plugin); err != nil {
 			return err
 		}
-		if err := runPluginTests(plugin); err != nil {
-			return err
-		}
+	}
+	if err := runPluginTests(plugins, rootDir); err != nil {
+		return err
 	}
 	return nil
 }
@@ -124,8 +124,12 @@ func recreateNPMPackageLock(plugin createdPlugin) error {
 
 // runPluginTests runs 'make test PLUGINS="org/name:v<old> org/name:v<new>"' in order to generate plugin.sum files.
 // Additionally, it prints out the diff of generated code between the previous and latest plugin.
-func runPluginTests(plugin createdPlugin) error {
-	basedir := filepath.Dir(filepath.Dir(filepath.Dir(plugin.pluginDir)))
+func runPluginTests(plugins []createdPlugin, rootDir string) error {
+	pluginsEnv := make([]string, 0, len(plugins)*2)
+	for _, plugin := range plugins {
+		pluginsEnv = append(pluginsEnv, "%s/%s:%s", plugin.org, plugin.name, plugin.previousVersion)
+		pluginsEnv = append(pluginsEnv, "%s/%s:%s", plugin.org, plugin.name, plugin.newVersion)
+	}
 	makePath, err := exec.LookPath("make")
 	if err != nil {
 		return err
@@ -137,14 +141,13 @@ func runPluginTests(plugin createdPlugin) error {
 		Args: []string{
 			makePath,
 			"test",
-			fmt.Sprintf("PLUGINS=%[1]s/%[2]s:%[3]s %[1]s/%[2]s:%[4]s", plugin.org, plugin.name, plugin.previousVersion, plugin.newVersion),
+			fmt.Sprintf("PLUGINS=%s", strings.Join(pluginsEnv, ",")),
 		},
-		Dir:    basedir,
+		Dir:    rootDir,
 		Stdout: os.Stdout,
 		Stderr: os.Stderr,
 		Env:    env,
 	}
-	log.Printf("running tests for %[1]s/%[2]s:%[3]s and %[1]s/%[2]s:%[4]s", plugin.org, plugin.name, plugin.previousVersion, plugin.newVersion)
 	if err := cmd.Run(); err != nil {
 		return err
 	}
@@ -152,33 +155,35 @@ func runPluginTests(plugin createdPlugin) error {
 	if err != nil {
 		return err
 	}
-	log.Printf("diff between generated code for %s/%s (%s -> %s)", plugin.org, plugin.name, plugin.previousVersion, plugin.newVersion)
-	diffCmd := exec.Cmd{
-		Path: diffPath,
-		Dir:  filepath.Join(basedir, "tests", "testdata", "buf.build", plugin.org, plugin.name),
-		Args: []string{
-			diffPath,
-			"--exclude",
-			"plugin.sum",
-			"--exclude",
-			"protoc-gen-plugin",
-			"--recursive",
-			"--unified",
-			plugin.previousVersion,
-			plugin.newVersion,
-		},
-		Stdout: os.Stdout,
-		Stderr: os.Stderr,
-	}
-	if err := diffCmd.Run(); err != nil {
-		var exitErr *exec.ExitError
-		if errors.As(err, &exitErr) {
-			// This is expected if there are differences
-			if exitErr.ExitCode() == 1 {
-				return nil
-			}
+	for _, plugin := range plugins {
+		log.Printf("diff between generated code for %s/%s (%s -> %s)", plugin.org, plugin.name, plugin.previousVersion, plugin.newVersion)
+		diffCmd := exec.Cmd{
+			Path: diffPath,
+			Dir:  filepath.Join(rootDir, "tests", "testdata", "buf.build", plugin.org, plugin.name),
+			Args: []string{
+				diffPath,
+				"--exclude",
+				"plugin.sum",
+				"--exclude",
+				"protoc-gen-plugin",
+				"--recursive",
+				"--unified",
+				plugin.previousVersion,
+				plugin.newVersion,
+			},
+			Stdout: os.Stdout,
+			Stderr: os.Stderr,
 		}
-		return err
+		if err := diffCmd.Run(); err != nil {
+			var exitErr *exec.ExitError
+			if errors.As(err, &exitErr) {
+				// This is expected if there are differences
+				if exitErr.ExitCode() == 1 {
+					return nil
+				}
+			}
+			return err
+		}
 	}
 	return nil
 }
