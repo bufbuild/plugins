@@ -1,9 +1,0 @@
-version: v1
-name: buf.build/protocolbuffers/dart
-plugin_version: v21.0.2
-source_url: https://github.com/google/protobuf.dart
-description: Base types for Dart. Generates message and enum types.
-output_languages:
-  - dart
-spdx_license_id: BSD-3-Clause
-license_url: https://github.com/google/protobuf.dart/blob/protoc_plugin-v21.0.2/LICENSE
