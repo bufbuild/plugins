@@ -124,8 +124,8 @@ func recreateNPMPackageLock(plugin createdPlugin) error {
 func runPluginTests(plugins []createdPlugin, rootDir string) error {
 	pluginsEnv := make([]string, 0, len(plugins)*2)
 	for _, plugin := range plugins {
-		pluginsEnv = append(pluginsEnv, "%s/%s:%s", plugin.org, plugin.name, plugin.previousVersion)
-		pluginsEnv = append(pluginsEnv, "%s/%s:%s", plugin.org, plugin.name, plugin.newVersion)
+		pluginsEnv = append(pluginsEnv, fmt.Sprintf("%s/%s:%s", plugin.org, plugin.name, plugin.previousVersion))
+		pluginsEnv = append(pluginsEnv, fmt.Sprintf("%s/%s:%s", plugin.org, plugin.name, plugin.newVersion))
 	}
 	makePath, err := exec.LookPath("make")
 	if err != nil {
