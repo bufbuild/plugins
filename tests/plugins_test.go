@@ -54,8 +54,8 @@ exec docker run --log-driver=none --rm -i {{.ImageName}}:{{.Version}} "$@"
 	// breaks our current test strategy which is to run each plugin in isolation. Override the test options for
 	// these plugins until the tests are updated to support running all plugin dependencies in sequence.
 	testOverrideOptions = map[string][]string{
-		"buf.build/community/neoeinstein-prost-serde": {"no_include"},
 		"buf.build/community/neoeinstein-prost-crate": {"no_features"},
+		"buf.build/community/neoeinstein-prost-serde": {"no_include"},
 		"buf.build/community/neoeinstein-tonic":       {"no_include"},
 	}
 )
