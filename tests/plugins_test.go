@@ -54,6 +54,7 @@ exec docker run --log-driver=none --rm -i {{.ImageName}}:{{.Version}} "$@"
 	// breaks our current test strategy which is to run each plugin in isolation. Override the test options for
 	// these plugins until the tests are updated to support running all plugin dependencies in sequence.
 	testOverrideOptions = map[string][]string{
+		"buf.build/community/neoeinstein-prost-crate": {"no_features"},
 		"buf.build/community/neoeinstein-prost-serde": {"no_include"},
 		"buf.build/community/neoeinstein-tonic":       {"no_include"},
 	}
@@ -74,7 +75,7 @@ func TestGeneration(t *testing.T) {
 			pluginDir := filepath.Join("testdata", pluginMeta.Name, pluginMeta.PluginVersion, image)
 			pluginGenDir := filepath.Join(pluginDir, "gen")
 			require.NoError(t, os.RemoveAll(pluginGenDir))
-			require.NoError(t, os.MkdirAll(pluginDir, 0755))
+			require.NoError(t, os.MkdirAll(pluginDir, 0o755))
 			require.NoError(t, createBufGenYaml(t, pluginDir, pluginMeta))
 			require.NoError(t, createProtocGenPlugin(t, pluginDir, pluginMeta))
 			bufCmd := exec.Command("buf", "generate", filepath.Join(imageDir, image+".bin.gz"))
@@ -98,7 +99,7 @@ func TestGeneration(t *testing.T) {
 			} else {
 				assert.Equal(t, existingPluginSum, genDirHash)
 			}
-			require.NoError(t, os.WriteFile(pluginImageSumFile, []byte(genDirHash+"\n"), 0644))
+			require.NoError(t, os.WriteFile(pluginImageSumFile, []byte(genDirHash+"\n"), 0o644))
 		})
 	}
 
@@ -190,7 +191,7 @@ func loadFilteredPlugins(t *testing.T) []*plugin.Plugin {
 
 func createProtocGenPlugin(t *testing.T, basedir string, plugin *plugin.Plugin) error {
 	t.Helper()
-	protocGenPlugin, err := os.OpenFile(filepath.Join(basedir, "protoc-gen-plugin"), os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0755)
+	protocGenPlugin, err := os.OpenFile(filepath.Join(basedir, "protoc-gen-plugin"), os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o755)
 	if err != nil {
 		return err
 	}
