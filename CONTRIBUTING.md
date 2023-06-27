@@ -84,6 +84,11 @@ We use a combination of a custom command ([internal/cmd/fetcher/main.go](interna
 The `fetcher` command will use `source.yaml` files in each plugin to determine if new plugin versions are available.
 Dependabot is used to determine if base Docker images are up-to-date with bug/security fixes.
 
+### Manual triggering of actions
+
+When triggering a manual execution of the `fetch-versions` workflow, you may want to disable the scheduled execution
+temporarily to ensure that any in-flight generated PR is not overridden by the scheduled execution.
+
 ### Caching
 
 Main branch builds publish Docker images to:
