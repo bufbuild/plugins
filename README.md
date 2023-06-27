@@ -13,8 +13,3 @@ If you'd like a Protobuf plugin to be added to the Buf Schema Registry, open an 
 For help and discussion regarding Protobuf plugins, join us on [Slack](https://buf.build/links/slack).
 
 For feature requests, bugs, or technical questions, email us at [dev@buf.build](dev@buf.build).
-
-## Manual action caveats
-
-When triggering a manual execution of the `fetch versions` workflow, you may want to disable the scheduled execution 
-temporarily to ensure that any in-flight generated PR is not overridden by the scheduled execution.
