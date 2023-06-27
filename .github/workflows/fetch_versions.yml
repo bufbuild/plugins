@@ -1,9 +1,12 @@
 name: Fetch latest versions
 
+# When triggering a manual execution of the workflow, you may want to disable the scheduled execution temporarily
+# to ensure that any in-flight generated PR is not overridden by the scheduled execution.
+
 on:
   schedule:
-    # Run once a day at 10 AM EST
-    - cron: "0 14 * * *"
+    # Run once a day at 8 AM EST
+    - cron: "0 12 * * *"
   workflow_dispatch:
 permissions:
   contents: read
