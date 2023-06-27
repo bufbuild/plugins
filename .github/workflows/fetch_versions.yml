@@ -5,8 +5,8 @@ name: Fetch latest versions
 
 on:
   schedule:
-    # Run once a day at 8 AM EST
-    - cron: "0 12 * * *"
+    # Run once a day at 10 AM EST
+    - cron: "0 14 * * *"
   workflow_dispatch:
 permissions:
   contents: read
