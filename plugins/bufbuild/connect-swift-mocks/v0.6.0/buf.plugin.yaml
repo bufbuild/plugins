@@ -1,0 +1,26 @@
+version: v1
+name: buf.build/bufbuild/connect-swift-mocks
+plugin_version: v0.6.0
+source_url: https://github.com/bufbuild/connect-swift
+description: Generates mocks that are compatible with Connect-Swift clients.
+deps:
+  - plugin: buf.build/apple/swift:v1.21.0
+output_languages:
+  - swift
+registry:
+  swift:
+    deps:
+      - source: https://github.com/bufbuild/connect-swift.git
+        package: connect-swift
+        products: [ ConnectMocks ]
+        swift_versions: [ ".v5" ]
+        version: 0.6.0
+        platforms:
+          macos: v10_15
+          ios: v12
+          tvos: v13
+  opts:
+    - Visibility=Public
+    - FileNaming=PathToUnderscores
+spdx_license_id: Apache-2.0
+license_url: https://github.com/bufbuild/connect-swift/blob/0.6.0/LICENSE
