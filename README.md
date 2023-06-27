@@ -16,5 +16,5 @@ For feature requests, bugs, or technical questions, email us at [dev@buf.build](
 
 ## Manual action caveats
 
-When triggering a manual execution of the fetch-versions workflow, you may want to disable the scheduled execution 
+When triggering a manual execution of the `fetch versions` workflow, you may want to disable the scheduled execution 
 temporarily to ensure that any in-flight generated PR is not overridden by the scheduled execution.
