@@ -16,6 +16,7 @@ registry:
         version: 1.8.10
     deps:
       - com.google.protobuf:protobuf-kotlin:3.22.4
+      - org.jetbrains.kotlin:kotlin-stdlib:1.8.10
       - org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.8.10
     additional_runtimes:
       - name: lite
