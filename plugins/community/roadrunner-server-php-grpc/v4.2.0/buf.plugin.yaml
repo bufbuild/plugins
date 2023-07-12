@@ -1,0 +1,11 @@
+version: v1
+name: buf.build/community/roadrunner-server-php-grpc
+plugin_version: v4.2.0
+source_url: https://github.com/roadrunner-server/grpc
+description: Generates code for the PHP RoadRunner application server.
+deps:
+  - plugin: buf.build/protocolbuffers/php:v23.4
+spdx_license_id: MIT
+license_url: https://github.com/roadrunner-server/grpc/blob/v4.2.0/LICENSE
+output_languages:
+  - php
