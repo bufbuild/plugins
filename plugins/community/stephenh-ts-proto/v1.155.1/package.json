@@ -1,0 +1,7 @@
+{
+    "name": "plugins-stephenh-ts-proto",
+    "version": "1.0.0",
+    "dependencies": {
+        "ts-proto": "1.155.1"
+    }
+}
