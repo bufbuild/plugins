@@ -43,7 +43,7 @@ jobs:
     - name: Get changed files
       id: changed-files
       if: ${{ inputs.plugins == '' }}
-      uses: tj-actions/changed-files@87e23c4c79a603288642711155953c7da34b11ac
+      uses: tj-actions/changed-files@2a968ff601949c81b47d9c1fdb789b0d25ddeea2
       with:
         base_sha: ${{ steps.last_successful_commit_push.outputs.base }}
         files: |
