@@ -4,8 +4,8 @@ plugin_version: v1.3.0
 source_url: https://github.com/grpc/grpc-kotlin
 description: Generates Kotlin client and server stubs for the gRPC framework.
 deps:
-  - plugin: buf.build/grpc/java:v1.54.1
-  - plugin: buf.build/protocolbuffers/kotlin:v22.3
+  - plugin: buf.build/grpc/java:v1.56.1
+  - plugin: buf.build/protocolbuffers/kotlin:v23.4
 output_languages:
   - kotlin
 spdx_license_id: Apache-2.0
