@@ -1,0 +1,67 @@
+diff --git a/src/google/protobuf/compiler/java/message.cc b/src/google/protobuf/compiler/java/message.cc
+index 3ef504526..3d46c2e43 100644
+--- a/src/google/protobuf/compiler/java/message.cc
++++ b/src/google/protobuf/compiler/java/message.cc
+@@ -1337,8 +1337,7 @@ void ImmutableMessageGenerator::GenerateTopLevelKotlinMembers(
+       "message",
+       EscapeKotlinKeywords(name_resolver_->GetClassName(descriptor_, true)),
+       "message_kt",
+-      EscapeKotlinKeywords(
+-          name_resolver_->GetKotlinExtensionsClassName(descriptor_)));
++      name_resolver_->GetKotlinExtensionsClassNameEscaped(descriptor_));
+ 
+   for (int i = 0; i < descriptor_->nested_type_count(); i++) {
+     if (IsMapEntry(descriptor_->nested_type(i))) continue;
+diff --git a/src/google/protobuf/compiler/java/message_lite.cc b/src/google/protobuf/compiler/java/message_lite.cc
+index b5fddc2a9..7321ed31f 100644
+--- a/src/google/protobuf/compiler/java/message_lite.cc
++++ b/src/google/protobuf/compiler/java/message_lite.cc
+@@ -859,8 +859,7 @@ void ImmutableMessageLiteGenerator::GenerateTopLevelKotlinMembers(
+       "message",
+       EscapeKotlinKeywords(name_resolver_->GetClassName(descriptor_, true)),
+       "message_kt",
+-      EscapeKotlinKeywords(
+-          name_resolver_->GetKotlinExtensionsClassName(descriptor_)));
++      name_resolver_->GetKotlinExtensionsClassNameEscaped(descriptor_));
+ 
+   for (int i = 0; i < descriptor_->nested_type_count(); i++) {
+     if (IsMapEntry(descriptor_->nested_type(i))) continue;
+diff --git a/src/google/protobuf/compiler/java/name_resolver.cc b/src/google/protobuf/compiler/java/name_resolver.cc
+index 0017e172a..b027865b1 100644
+--- a/src/google/protobuf/compiler/java/name_resolver.cc
++++ b/src/google/protobuf/compiler/java/name_resolver.cc
+@@ -358,6 +358,19 @@ std::string ClassNameResolver::GetKotlinExtensionsClassName(
+                           descriptor->file(), true, true, true);
+ }
+ 
++std::string ClassNameResolver::GetKotlinExtensionsClassNameEscaped(
++    const Descriptor* descriptor) {
++  std::string name_without_package = ClassNameWithoutPackageKotlin(descriptor);
++  std::string full_name = GetClassFullName(name_without_package,
++                                           descriptor->file(), true, true, true);
++  std::string name_without_package_suffix = absl::StrCat(".", name_without_package, "Kt");
++  size_t package_end = full_name.rfind(name_without_package_suffix);
++  if (package_end != std::string::npos) {
++    return absl::StrCat("`", full_name.substr(0, package_end), "`", name_without_package_suffix);
++  }
++  return full_name;
++}
++
+ std::string ClassNameResolver::GetJavaMutableClassName(
+     const Descriptor* descriptor) {
+   return GetJavaClassFullName(ClassNameWithoutPackage(descriptor, false),
+diff --git a/src/google/protobuf/compiler/java/name_resolver.h b/src/google/protobuf/compiler/java/name_resolver.h
+index 205bdc6a4..c602c489c 100644
+--- a/src/google/protobuf/compiler/java/name_resolver.h
++++ b/src/google/protobuf/compiler/java/name_resolver.h
+@@ -124,6 +124,7 @@ class ClassNameResolver {
+   std::string GetJavaImmutableClassName(const EnumDescriptor* descriptor);
+   std::string GetKotlinFactoryName(const Descriptor* descriptor);
+   std::string GetKotlinExtensionsClassName(const Descriptor* descriptor);
++  std::string GetKotlinExtensionsClassNameEscaped(const Descriptor* descriptor);
+   std::string GetJavaMutableClassName(const Descriptor* descriptor);
+   std::string GetJavaMutableClassName(const EnumDescriptor* descriptor);
+   // Gets the outer class and the actual class for downgraded mutable messages.
+-- 
+2.41.0
+
