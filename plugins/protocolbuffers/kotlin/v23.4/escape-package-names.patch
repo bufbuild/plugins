@@ -62,6 +62,3 @@ index 205bdc6a4..c602c489c 100644
    std::string GetJavaMutableClassName(const Descriptor* descriptor);
    std::string GetJavaMutableClassName(const EnumDescriptor* descriptor);
    // Gets the outer class and the actual class for downgraded mutable messages.
--- 
-2.41.0
-
