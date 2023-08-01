@@ -1,0 +1,5 @@
+source:
+  github:
+    owner: cludden
+    repository: protoc-gen-go-temporal
+

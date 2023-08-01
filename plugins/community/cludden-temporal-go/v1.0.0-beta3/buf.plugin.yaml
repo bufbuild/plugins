@@ -1,0 +1,9 @@
+version: v1
+name: buf.build/cludden-temporal-go
+plugin_version: v1.0.0-beta3
+source_url: https://github.com/cludden/protoc-gen-go-temporal
+description: A protoc plugin for generating temporal clients and workers in Go from protobuf schemas.
+output_languages:
+  - go
+spdx_license_id: MIT
+license_url: https://github.com/cludden/protoc-gen-go-temporal/blob/main/LICENSE.md
