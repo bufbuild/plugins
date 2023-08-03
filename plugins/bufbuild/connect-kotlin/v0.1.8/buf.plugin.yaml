@@ -20,8 +20,10 @@ registry:
     deps:
       - build.buf:connect-kotlin:0.1.8
       - build.buf:connect-kotlin-google-java-ext:0.1.8
+      - build.buf:connect-kotlin-okhttp:0.1.8
     additional_runtimes:
       - name: lite
         deps:
           - build.buf:connect-kotlin:0.1.8
           - build.buf:connect-kotlin-google-javalite-ext:0.1.8
+          - build.buf:connect-kotlin-okhttp:0.1.8
