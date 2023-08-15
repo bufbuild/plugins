@@ -20,9 +20,8 @@ jobs:
       - name: Install Go
         uses: actions/setup-go@v4
         with:
-          go-version: 1.20.x
+          go-version: '1.21'
           check-latest: true
-          cache: true
       - name: Cache Plugins
         id: cache-plugins
         uses: actions/cache@v3
