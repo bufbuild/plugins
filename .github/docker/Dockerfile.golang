@@ -1,3 +1,3 @@
-FROM golang:1.20.7-bullseye
+FROM golang:1.21.0-bullseye
 
 CMD echo this is a dummy file used to automate dependency upgrades for plugins
