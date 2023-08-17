@@ -1,6 +1,6 @@
 version: v1
 name: buf.build/connectrpc/es
-plugin_version: v0.13.0
+plugin_version: v0.14.0
 source_url: https://github.com/connectrpc/connect-es
 description: Generates code that is compatible with browsers and Node.js for working with Connect, gRPC, and gRPC-Web.
 deps:
@@ -14,6 +14,6 @@ registry:
     rewrite_import_path_suffix: connect.js
     deps:
       - package: '@connectrpc/connect'
-        version: ^0.10.0
+        version: ^0.14.0
 spdx_license_id: Apache-2.0
-license_url: https://github.com/connectrpc/connect-es/blob/v0.13.0/LICENSE
+license_url: https://github.com/connectrpc/connect-es/blob/v0.14.0/LICENSE
