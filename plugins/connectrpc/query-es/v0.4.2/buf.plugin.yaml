@@ -18,4 +18,4 @@ registry:
       - package: '@bufbuild/protobuf'
         version: ^1.3.0
 spdx_license_id: Apache-2.0
-license_url: https://github.com/connectrpc/connect-query-es/blob/main/LICENSE
+license_url: https://github.com/connectrpc/connect-query-es/blob/v0.4.2/LICENSE
