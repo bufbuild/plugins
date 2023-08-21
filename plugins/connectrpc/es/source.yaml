@@ -1,0 +1,3 @@
+source:
+  npm_registry:
+    name: "@connectrpc/protoc-gen-connect-es"
