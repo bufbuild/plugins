@@ -1,4 +1,7 @@
 source:
+  # Users are encouraged to use the https://buf.build/connectrpc/go plugin which supersedes
+  # https://buf.build/bufbuild/connect-go.
+  disabled: true 
   github:
     owner: bufbuild
     repository: connect-go
