@@ -1,0 +1,9 @@
+version: v1
+name: buf.build/protocolbuffers/python
+plugin_version: v24.1
+source_url: https://github.com/protocolbuffers/protobuf
+description: Base types for Python. Generates message and enum types.
+output_languages:
+  - python
+spdx_license_id: BSD-3-Clause
+license_url: https://github.com/protocolbuffers/protobuf/blob/v24.1/LICENSE
