@@ -1,4 +1,3 @@
 source:
-  github:
-    owner: connectrpc
-    repository: connect-query-es
+  npm_registry:
+    name: "@connectrpc/protoc-gen-connect-query"
