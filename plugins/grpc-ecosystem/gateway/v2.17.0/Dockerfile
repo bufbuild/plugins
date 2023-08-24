@@ -2,7 +2,7 @@
 FROM golang:1.20.6-bullseye AS build
 
 WORKDIR /tmp
-RUN git clone --depth 1 --branch v2.16.2 https://github.com/grpc-ecosystem/grpc-gateway.git
+RUN git clone --depth 1 --branch v2.17.0 https://github.com/grpc-ecosystem/grpc-gateway.git
 COPY --link separate_pkg_additional_imports.patch /tmp/separate_pkg_additional_imports.patch
 WORKDIR /tmp/grpc-gateway
 RUN git apply /tmp/separate_pkg_additional_imports.patch
