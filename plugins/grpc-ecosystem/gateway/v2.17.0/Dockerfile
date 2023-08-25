@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1.4
-FROM golang:1.20.7-bullseye AS build
+FROM golang:1.21.0-bullseye AS build
 
 WORKDIR /tmp
 RUN git clone --depth 1 --branch v2.17.0 https://github.com/grpc-ecosystem/grpc-gateway.git
@@ -12,7 +12,7 @@ RUN --mount=type=cache,target=/go/pkg/mod \
     go build -ldflags "-s -w" -trimpath
 
 FROM scratch
-COPY --from=build --link /etc/passwd /etc/passwd
-COPY --from=build --link --chown=root:root /tmp/grpc-gateway/protoc-gen-grpc-gateway .
+COPY --from=build --link --chown=root:root /etc/passwd /etc/passwd
+COPY --from=build --link /tmp/grpc-gateway/protoc-gen-grpc-gateway .
 USER nobody
 ENTRYPOINT [ "/protoc-gen-grpc-gateway" ]
