@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1.4
-FROM golang:1.20.6-bullseye AS build
+FROM golang:1.21.0-bullseye AS build
 
 WORKDIR /tmp
 RUN git clone --depth 1 --branch v2.17.0 https://github.com/grpc-ecosystem/grpc-gateway.git
