@@ -14,6 +14,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"aead.dev/minisign"
 	"github.com/google/go-github/v53/github"
@@ -33,9 +34,11 @@ func run() error {
 	var (
 		minisignPublicKey string
 		releaseTag        string
+		since             time.Duration
 	)
 	flag.StringVar(&minisignPublicKey, "minisign-public-key", "", "path to minisign public key file (default: bufbuild/plugins public key)")
 	flag.StringVar(&releaseTag, "release-tag", "", "release to download (default: latest release)")
+	flag.DurationVar(&since, "since", 0, "only download plugins created/modified since this time")
 	flag.Parse()
 
 	if len(flag.Args()) != 1 {
@@ -43,6 +46,12 @@ func run() error {
 		flag.PrintDefaults()
 		os.Exit(2)
 	}
+
+	releaseSince := ""
+	if since > 0 {
+		releaseSince = fmt.Sprintf("%s.1", time.Now().UTC().Add(-since).Format("20060102"))
+	}
+
 	downloadDir := flag.Arg(0)
 	if err := createDownloadDir(downloadDir); err != nil {
 		return err
@@ -107,6 +116,9 @@ func run() error {
 			if !matched {
 				continue
 			}
+		}
+		if releaseSince != "" && pluginRelease.ReleaseTag < releaseSince {
+			continue
 		}
 		exists, err := pluginExistsMatchingDigest(pluginRelease, downloadDir)
 		if err != nil {
