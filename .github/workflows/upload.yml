@@ -2,7 +2,19 @@ name: Upload to GCS
 
 on:
   workflow_call:
+    inputs:
+      since:
+        description: 'Upload plugins created or modified since this time (Go duration syntax)'
+        default: '24h'
+        required: false
+        type: string
   workflow_dispatch:
+    inputs:
+      since:
+        description: 'Upload plugins created or modified since this time (Go duration syntax)'
+        default: '24h'
+        required: false
+        type: string
 
 permissions:
   contents: read
@@ -36,7 +48,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: |
-          go run ./cmd/download-plugins -since 24h downloads
+          go run ./cmd/download-plugins -since ${{ inputs.since }} downloads
       - name: Upload To Release Bucket
         run: gsutil rsync -r downloads gs://buf-plugins
       - uses: dblock/create-a-github-issue@866beb009af3db457e82ca98efe474969a5ebce8
