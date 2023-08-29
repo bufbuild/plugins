@@ -2,7 +2,6 @@ package main
 
 import (
 	"archive/zip"
-	"bytes"
 	"compress/flate"
 	"context"
 	"encoding/json"
@@ -22,6 +21,9 @@ import (
 
 	"aead.dev/minisign"
 	"github.com/bufbuild/buf/private/bufpkg/bufplugin/bufpluginref"
+	githubkeychain "github.com/google/go-containerregistry/pkg/authn/github"
+	"github.com/google/go-containerregistry/pkg/name"
+	"github.com/google/go-containerregistry/pkg/v1/remote"
 	"github.com/google/go-github/v53/github"
 	"golang.org/x/mod/semver"
 
@@ -582,38 +584,22 @@ func fetchRegistryImageAndImageID(plugin *plugin.Plugin) (string, string, error)
 	if err != nil {
 		return "", "", err
 	}
-	imageName := fmt.Sprintf("ghcr.io/%s/plugins-%s-%s", release.GithubOwnerBufbuild, identity.Owner(), identity.Plugin())
-	cmd, err := dockerCmd("manifest", "inspect", "--verbose", imageName+":"+plugin.PluginVersion)
+	imageName := fmt.Sprintf("ghcr.io/%s/plugins-%s-%s:%s", release.GithubOwnerBufbuild, identity.Owner(), identity.Plugin(), plugin.PluginVersion)
+	parsedName, err := name.ParseReference(imageName)
 	if err != nil {
 		return "", "", err
 	}
-	var bb bytes.Buffer
-	cmd.Stdout = &bb
-	if err := cmd.Run(); err != nil {
-		// this may occur if this runs prior to publishing a newly added plugin
-		return "", "", nil //nolint:nilerr
+	remoteImage, err := remote.Image(parsedName, remote.WithAuthFromKeychain(githubkeychain.Keychain))
+	if err != nil {
+		return "", "", err
 	}
-	type manifestJSON struct {
-		Descriptor struct {
-			Digest string `json:"digest"`
-		} `json:"Descriptor"` //nolint:tagliatelle
-		SchemaV2Manifest struct {
-			Config struct {
-				Digest string `json:"digest"`
-			} `json:"config"`
-		} `json:"SchemaV2Manifest"` //nolint:tagliatelle
+	manifest, err := remoteImage.Manifest()
+	if err != nil {
+		return "", "", err
 	}
-	var result manifestJSON
-	if err := json.Unmarshal(bb.Bytes(), &result); err != nil {
-		return "", "", fmt.Errorf("unable to parse docker manifest inspect output: %w", err)
+	remoteDigest, err := remoteImage.Digest()
+	if err != nil {
+		return "", "", err
 	}
-	descriptorDigest := result.Descriptor.Digest
-	if descriptorDigest == "" {
-		return "", "", errors.New("unable to parse descriptor digest from docker manifest inspect output")
-	}
-	imageDigest := result.SchemaV2Manifest.Config.Digest
-	if imageDigest == "" {
-		return "", "", errors.New("unable to parse image config digest from docker manifest inspect output")
-	}
-	return fmt.Sprintf("%s@%s", imageName, descriptorDigest), imageDigest, nil
+	return fmt.Sprintf("%s@%s", imageName, remoteDigest.String()), manifest.Config.Digest.String(), nil
 }
