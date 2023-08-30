@@ -2,7 +2,19 @@ name: Upload to GCS
 
 on:
   workflow_call:
+    inputs:
+      since:
+        description: 'Upload plugins created or modified since this time (Go duration syntax)'
+        default: '24h'
+        required: false
+        type: string
   workflow_dispatch:
+    inputs:
+      since:
+        description: 'Upload plugins created or modified since this time (Go duration syntax)'
+        default: '24h'
+        required: false
+        type: string
 
 permissions:
   contents: read
@@ -20,17 +32,8 @@ jobs:
       - name: Install Go
         uses: actions/setup-go@v4
         with:
-          go-version: 1.20.x
+          go-version: '1.21'
           check-latest: true
-          cache: true
-      - name: Cache Plugins
-        id: cache-plugins
-        uses: actions/cache@v3
-        with:
-          path: downloads
-          key: ${{ runner.os }}-plugin-downloads-${{ hashFiles('**/plugin-releases.json') }}
-          restore-keys: |
-            ${{ runner.os }}-plugin-downloads
         # uses https://cloud.google.com/iam/docs/workload-identity-federation to
         # swap a GitHub OIDC token for GCP service account credentials, allowing
         # this workflow to manage the buf-plugins bucket
@@ -45,7 +48,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: |
-          go run ./cmd/download-plugins downloads
+          go run ./cmd/download-plugins -since ${{ inputs.since }} downloads
       - name: Upload To Release Bucket
         run: gsutil rsync -r downloads gs://buf-plugins
       - uses: dblock/create-a-github-issue@866beb009af3db457e82ca98efe474969a5ebce8

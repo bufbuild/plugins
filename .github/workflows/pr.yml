@@ -37,7 +37,7 @@ jobs:
     - name: Get changed files
       id: changed-files
       if: ${{ inputs.plugins == '' }}
-      uses: tj-actions/changed-files@de0eba32790fb9bf87471b32855a30fc8f9d5fc6
+      uses: tj-actions/changed-files@c860b5c47fa71f461da850094ef2f6e3d6514e44
       with:
         files: |
           plugins/**
@@ -52,9 +52,8 @@ jobs:
     - name: Install Go
       uses: actions/setup-go@v4
       with:
-        go-version: 1.20.x
+        go-version: '1.21'
         check-latest: true
-        cache: true
     - name: Set PLUGINS env var from changed files
       if: ${{ inputs.plugins == '' }}
       env:
@@ -73,7 +72,7 @@ jobs:
       uses: docker/setup-qemu-action@2b82ce82d56a2a04d2637cd93a637ae1b359c0a7
     - name: Set up Docker Buildx
       id: buildx
-      uses: docker/setup-buildx-action@4c0219f9ac95b02789c1075625400b2acbff50b1
+      uses: docker/setup-buildx-action@885d1462b80bc1c1c7f0b00334ad271f09369c55
     - name: Login to Docker Hub
       if: ${{ env.DOCKERHUB_USERNAME != '' }}
       uses: docker/login-action@465a07811f14bebb1938fbed4728c6a1ff8901fc
