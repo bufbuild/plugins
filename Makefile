@@ -8,7 +8,7 @@ DOCKER_BUILD_EXTRA_ARGS ?=
 GO_TEST_FLAGS ?= -race -count=1
 
 BUF ?= buf
-BUF_PLUGIN_PUSH_ARGS ?= --visibility=public
+BUF_PLUGIN_PUSH_ARGS ?= --visibility=public --override-remote=bufbuild.internal
 
 # Specify a space separated list of plugin name (and optional version) to just build/test individual plugins.
 # For example:
