@@ -1,0 +1,58 @@
+diff --git a/Sources/protoc-gen-swift/FileGenerator.swift b/Sources/protoc-gen-swift/FileGenerator.swift
+index 90fd06a6..93460574 100644
+--- a/Sources/protoc-gen-swift/FileGenerator.swift
++++ b/Sources/protoc-gen-swift/FileGenerator.swift
+@@ -121,6 +121,13 @@ class FileGenerator {
+                 p.print("\(visibilityAnnotation)import \(i)\n")
+             }
+         }
++        let neededCustomImports = generatorOptions.extraModuleImports
++        if !neededCustomImports.isEmpty {
++            p.print()
++            for i in neededCustomImports {
++                p.print("import \(i)\n")
++            }
++        }
+ 
+         p.print("\n")
+         generateVersionCheck(printer: &p)
+diff --git a/Sources/protoc-gen-swift/GeneratorOptions.swift b/Sources/protoc-gen-swift/GeneratorOptions.swift
+index 69ecdb86..e0f2e26e 100644
+--- a/Sources/protoc-gen-swift/GeneratorOptions.swift
++++ b/Sources/protoc-gen-swift/GeneratorOptions.swift
+@@ -50,6 +50,7 @@ class GeneratorOptions {
+   let protoToModuleMappings: ProtoFileToModuleMappings
+   let visibility: Visibility
+   let implementationOnlyImports: Bool
++  let extraModuleImports: [String]
+ 
+   /// A string snippet to insert for the visibility
+   let visibilitySourceSnippet: String
+@@ -60,6 +61,7 @@ class GeneratorOptions {
+     var visibility: Visibility = .internal
+     var swiftProtobufModuleName: String? = nil
+     var implementationOnlyImports: Bool = false
++    var externalModuleImports: [String] = []
+ 
+     for pair in parseParameter(string:parameter) {
+       switch pair.key {
+@@ -94,6 +96,12 @@ class GeneratorOptions {
+         if let value = Bool(pair.value) {
+           implementationOnlyImports = value
+         }
++      case "ExtraModuleImports":
++        if !pair.value.isEmpty {
++            externalModuleImports.append(pair.value)
++        } else {
++          throw GenerationError.invalidParameterValue(name: pair.key, value: pair.value)
++        }
+       default:
+         throw GenerationError.unknownParameter(name: pair.key)
+       }
+@@ -122,5 +130,6 @@ class GeneratorOptions {
+     }
+ 
+     self.implementationOnlyImports = implementationOnlyImports
++    self.extraModuleImports = externalModuleImports
+   }
+ }
