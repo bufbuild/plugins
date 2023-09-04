@@ -1,0 +1,9 @@
+version: v1
+name: buf.build/community/danielgtaylor-betterproto
+plugin_version: v2.0.0b6
+source_url: https://github.com/danielgtaylor/python-betterproto
+description: Better Protobuf / gRPC Support for Python.
+spdx_license_id: MIT
+license_url: https://github.com/danielgtaylor/python-betterproto/blob/v.2.0.0b6/LICENSE.md
+output_languages:
+  - python
