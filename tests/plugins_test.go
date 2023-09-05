@@ -57,7 +57,7 @@ exec docker run --log-driver=none --rm -i {{.ImageName}}:{{.Version}} "$@"
 		"buf.build/community/neoeinstein-prost-crate": {"no_features"},
 		"buf.build/community/neoeinstein-prost-serde": {"no_include"},
 		"buf.build/community/neoeinstein-tonic":       {"no_include"},
-		"buf.build/protocolbuffers/rust":              {"experimental-codegen=enabled,kernel=upb"},
+		"buf.build/protocolbuffers/rust":              {"experimental-codegen=enabled", "kernel=upb"},
 	}
 )
 
