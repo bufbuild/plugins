@@ -38,6 +38,12 @@ func Build(
 		"buildx",
 		"build",
 		"--load",
+		// These require building with the docker-container buildx driver
+		// The Makefile sets this up for us with 'docker buildx create --use ...'
+		"--cache-to",
+		"type=local,dest=.tmp/dockercache,mode=max,compression=zstd",
+		"--cache-from",
+		"type=local,src=.tmp/dockercache",
 		"--label",
 		fmt.Sprintf("build.buf.plugins.config.owner=%s", identity.Owner()),
 		"--label",
@@ -61,31 +67,6 @@ func Build(
 	defer func() {
 		retErr = errors.Join(retErr, f.Close())
 	}()
-	buildStages, err := ParseDockerfileBuildStages(f)
-	if err != nil {
-		return nil, err
-	}
-	for _, stage := range buildStages {
-		// Build each stage of multi-stage build (to improve caching)
-		cmd := exec.CommandContext(
-			ctx,
-			dockerCmd,
-			commonArgs...,
-		)
-		cmd.Args = append(
-			cmd.Args,
-			"--target",
-			stage,
-			"-t",
-			imageName+"-"+stage,
-		)
-		cmd.Args = append(cmd.Args, filepath.Dir(plugin.Path))
-		output, err := cmd.CombinedOutput()
-		if err != nil {
-			return output, err
-		}
-	}
-	// Build the final stage of multi-stage build
 	cmd := exec.CommandContext(
 		ctx,
 		dockerCmd,
