@@ -1,9 +1,11 @@
 .DEFAULT_GOAL := all
 
 SHELL := /usr/bin/env bash -o pipefail
+TMP := .tmp
 DOCKER ?= docker
 DOCKER_ORG ?= bufbuild
 DOCKER_BUILD_EXTRA_ARGS ?=
+DOCKER_BUILDER := bufbuild-plugins
 
 GO_TEST_FLAGS ?= -race -count=1
 
@@ -29,7 +31,10 @@ all: build
 
 .PHONY: build
 build:
-	@go run ./internal/cmd/dockerbuild -org "$(DOCKER_ORG)" -- $(DOCKER_BUILD_EXTRA_ARGS)
+	docker buildx inspect "$(DOCKER_BUILDER)" 2> /dev/null || docker buildx create --use --name="$(DOCKER_BUILDER)"
+	go run ./internal/cmd/dockerbuild -org "$(DOCKER_ORG)" -- $(DOCKER_BUILD_EXTRA_ARGS) || \
+		(docker buildx rm "$(DOCKER_BUILDER)"; exit 1)
+	docker buildx rm "$(DOCKER_BUILDER)"
 
 .PHONY: dockerpush
 dockerpush:
@@ -53,3 +58,7 @@ push: build
 		fi; \
 		$(BUF) beta registry plugin push $${plugin_dir} $(BUF_PLUGIN_PUSH_ARGS) --image $(DOCKER_ORG)/plugins-$${PLUGIN_OWNER}-$${PLUGIN_NAME}:$${PLUGIN_VERSION} || exit 1; \
 	done
+
+.PHONY: clean
+clean:
+	rm -rf $(TMP)
