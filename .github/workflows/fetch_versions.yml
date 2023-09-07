@@ -48,6 +48,13 @@ jobs:
           GITHUB_TOKEN: ${{ steps.generate_token.outputs.token }}
         run: |
           go run ./internal/cmd/fetcher .
+      - name: Archive plugin generated code
+        uses: actions/upload-artifact@v3
+        with:
+          name: plugin-generated-code
+          path: |
+            tests/testdata/**/gen/**
+          retention-days: 7
       - name: Create PR
         uses: peter-evans/create-pull-request@153407881ec5c347639a548ade7d8ad1d6740e38
         with:
