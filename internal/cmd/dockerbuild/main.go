@@ -1,6 +1,7 @@
 package main
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"flag"
@@ -8,11 +9,13 @@ import (
 	"log"
 	"os"
 	"runtime"
+	"slices"
 	"strings"
 	"time"
 
 	"github.com/bufbuild/buf/private/bufpkg/bufplugin/bufpluginref"
 	"github.com/bufbuild/buf/private/pkg/interrupt"
+	"golang.org/x/mod/semver"
 	"golang.org/x/sync/errgroup"
 
 	"github.com/bufbuild/plugins/internal/docker"
@@ -67,12 +70,12 @@ func run(basedir string, dockerOrg string, args []string) error {
 		case "grpc":
 			switch identity.Plugin() {
 			case "cpp", "csharp", "objc", "php", "python", "ruby":
-				pluginKey = owner + "/" + pluginToBuild.PluginVersion
+				pluginKey = owner
 			}
 		case "protocolbuffers":
 			switch identity.Plugin() {
-			case "cpp", "csharp", "java", "kotlin", "objc", "php", "pyi", "python", "ruby":
-				pluginKey = owner + "/" + pluginToBuild.PluginVersion
+			case "cpp", "csharp", "java", "kotlin", "objc", "php", "pyi", "python", "ruby", "rust":
+				pluginKey = owner
 			}
 		default:
 			// Assume everything else can be built independently
@@ -89,6 +92,16 @@ func run(basedir string, dockerOrg string, args []string) error {
 	eg.SetLimit(limit)
 	for _, plugins := range pluginGroups {
 		plugins := plugins
+		if len(plugins) > 1 {
+			// Sort plugins to build first by version, then by name.
+			// This ensures the best use of the Docker build cache for expensive builds like protoc/grpc plugins.
+			slices.SortFunc(plugins, func(a, b *plugin.Plugin) int {
+				if v := semver.Compare(a.PluginVersion, b.PluginVersion); v != 0 {
+					return v
+				}
+				return cmp.Compare(a.Name, b.Name)
+			})
+		}
 		eg.Go(func() error {
 			for _, pluginToBuild := range plugins {
 				log.Println("building:", pluginToBuild.Name, pluginToBuild.PluginVersion)
