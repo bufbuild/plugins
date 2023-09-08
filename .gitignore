@@ -1,5 +1,6 @@
 .build/
 .idea/
+.tmp/
 .vscode/
 node_modules/
 tests/testdata/**/buf.gen.yaml
