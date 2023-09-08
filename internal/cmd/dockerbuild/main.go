@@ -64,18 +64,19 @@ func run(basedir string, dockerOrg string, args []string) error {
 			return err
 		}
 		var pluginKey string
+		const bazelPluginKey = "bazel"
 		// Group grpc/protobuf builds together so one finishes to completion before running additional jobs.
 		// This is important because builds can share the Docker cache to optimize longer Bazel builds.
 		switch owner := identity.Owner(); owner {
 		case "grpc":
 			switch identity.Plugin() {
 			case "cpp", "csharp", "objc", "php", "python", "ruby":
-				pluginKey = owner
+				pluginKey = bazelPluginKey
 			}
 		case "protocolbuffers":
 			switch identity.Plugin() {
 			case "cpp", "csharp", "java", "kotlin", "objc", "php", "pyi", "python", "ruby", "rust":
-				pluginKey = owner
+				pluginKey = bazelPluginKey
 			}
 		default:
 			// Assume everything else can be built independently
