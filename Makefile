@@ -31,7 +31,7 @@ all: build
 
 .PHONY: build
 build:
-	docker buildx inspect "$(DOCKER_BUILDER)" 2> /dev/null || docker buildx create --use --name="$(DOCKER_BUILDER)"
+	docker buildx inspect "$(DOCKER_BUILDER)" 2> /dev/null || docker buildx create --use --bootstrap --name="$(DOCKER_BUILDER)"
 	go run ./internal/cmd/dockerbuild -org "$(DOCKER_ORG)" -- $(DOCKER_BUILD_EXTRA_ARGS) || \
 		(docker buildx rm "$(DOCKER_BUILDER)"; exit 1)
 	docker buildx rm "$(DOCKER_BUILDER)"
