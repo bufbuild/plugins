@@ -14,9 +14,9 @@ WORKDIR /build
 RUN curl -fsSL -o protoc.tar.gz https://github.com/protocolbuffers/protobuf/releases/download/v24.3/protobuf-24.3.tar.gz \
  && tar --strip-components=1 -zxf protoc.tar.gz \
  && rm protoc.tar.gz
+RUN bazel build '//:protoc_lib'
 COPY escape-package-names.patch .
 RUN patch -p1 -u < escape-package-names.patch
-RUN bazel build '//:protoc_lib'
 COPY --link BUILD kotlin.cc plugins/
 RUN bazel build '//plugins:protoc-gen-kotlin.stripped'
 

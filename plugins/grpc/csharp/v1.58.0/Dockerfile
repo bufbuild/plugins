@@ -4,7 +4,7 @@ FROM debian:bullseye-20230904 AS build
 ARG TARGETARCH
 
 RUN apt-get update \
- && apt-get install -y curl git cmake build-essential autoconf clang libc++-dev libtool pkg-config g++ unzip zip
+ && apt-get install -y curl git cmake build-essential autoconf clang libc++-dev libtool pkg-config unzip zip
 RUN arch=${TARGETARCH}; \
     if [ "${arch}" = "amd64" ]; then arch="x86_64"; fi; \
     curl -fsSL -o /usr/local/bin/bazel https://github.com/bazelbuild/bazel/releases/download/6.3.2/bazel-6.3.2-linux-${arch} \
@@ -12,7 +12,7 @@ RUN arch=${TARGETARCH}; \
 
 WORKDIR /build
 
-RUN git clone --depth 1 --branch v1.58.0 --recursive https://github.com/grpc/grpc
+RUN git clone --depth 1 --branch v1.58.0 https://github.com/grpc/grpc
 WORKDIR /build/grpc
 RUN bazel build //src/compiler:grpc_plugin_support
 RUN bazel build //src/compiler:grpc_csharp_plugin.stripped
