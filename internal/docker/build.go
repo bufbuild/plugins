@@ -22,6 +22,10 @@ func Build(
 	dockerOrg string,
 	args []string,
 ) (_ []byte, retErr error) {
+	cacheDir := ".tmp/dockercache"
+	if err := os.MkdirAll(cacheDir, 0755); err != nil {
+		return nil, err
+	}
 	dockerCmd, err := exec.LookPath("docker")
 	if err != nil {
 		return nil, err
@@ -41,9 +45,9 @@ func Build(
 		// These require building with the docker-container buildx driver
 		// The Makefile sets this up for us with 'docker buildx create --use ...'
 		"--cache-to",
-		"type=local,dest=.tmp/dockercache,mode=max,compression=zstd",
+		fmt.Sprintf("type=local,dest=%s,mode=max,compression=zstd", cacheDir),
 		"--cache-from",
-		"type=local,src=.tmp/dockercache",
+		fmt.Sprintf("type=local,src=%s", cacheDir),
 		"--label",
 		fmt.Sprintf("build.buf.plugins.config.owner=%s", identity.Owner()),
 		"--label",
