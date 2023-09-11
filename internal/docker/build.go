@@ -23,7 +23,7 @@ func Build(
 	args []string,
 ) (_ []byte, retErr error) {
 	cacheDir := ".tmp/dockercache"
-	if err := os.MkdirAll(cacheDir, 0o755); err != nil {
+	if err := os.MkdirAll(cacheDir, 0755); err != nil {
 		return nil, err
 	}
 	dockerCmd, err := exec.LookPath("docker")
