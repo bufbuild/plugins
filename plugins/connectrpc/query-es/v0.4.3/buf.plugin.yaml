@@ -4,7 +4,7 @@ plugin_version: v0.4.3
 source_url: https://github.com/connectrpc/connect-query-es
 description: Generates client stubs for calling Connect services with TanStack Query.
 deps:
-  - plugin: buf.build/bufbuild/es:v1.3.0
+  - plugin: buf.build/bufbuild/es:v1.3.1
 output_languages:
   - javascript
   - typescript
