@@ -127,12 +127,10 @@ func recreateNPMPackageLock(plugin createdPlugin) error {
 	return cmd.Run()
 }
 
-// runPluginTests runs 'make test PLUGINS="org/name:v<old> org/name:v<new>"' in order to generate plugin.sum files.
-// Additionally, it prints out the diff of generated code between the previous and latest plugin.
+// runPluginTests runs 'make test PLUGINS="org/name:v<new>"' in order to generate plugin.sum files.
 func runPluginTests(plugins []createdPlugin, rootDir string) error {
 	pluginsEnv := make([]string, 0, len(plugins)*2)
 	for _, plugin := range plugins {
-		pluginsEnv = append(pluginsEnv, fmt.Sprintf("%s/%s:%s", plugin.org, plugin.name, plugin.previousVersion))
 		pluginsEnv = append(pluginsEnv, fmt.Sprintf("%s/%s:%s", plugin.org, plugin.name, plugin.newVersion))
 	}
 	makePath, err := exec.LookPath("make")
@@ -153,44 +151,7 @@ func runPluginTests(plugins []createdPlugin, rootDir string) error {
 		Stderr: os.Stderr,
 		Env:    env,
 	}
-	if err := cmd.Run(); err != nil {
-		return err
-	}
-	diffPath, err := exec.LookPath("diff")
-	if err != nil {
-		return err
-	}
-	for _, plugin := range plugins {
-		log.Printf("diff between generated code for %s/%s (%s -> %s)", plugin.org, plugin.name, plugin.previousVersion, plugin.newVersion)
-		diffCmd := exec.Cmd{
-			Path: diffPath,
-			Dir:  filepath.Join(rootDir, "tests", "testdata", "buf.build", plugin.org, plugin.name),
-			Args: []string{
-				diffPath,
-				"--exclude",
-				"plugin.sum",
-				"--exclude",
-				"protoc-gen-plugin",
-				"--recursive",
-				"--unified",
-				plugin.previousVersion,
-				plugin.newVersion,
-			},
-			Stdout: os.Stdout,
-			Stderr: os.Stderr,
-		}
-		if err := diffCmd.Run(); err != nil {
-			var exitErr *exec.ExitError
-			if errors.As(err, &exitErr) {
-				// This is expected if there are differences
-				if exitErr.ExitCode() == 1 {
-					return nil
-				}
-			}
-			return err
-		}
-	}
-	return nil
+	return cmd.Run()
 }
 
 func run(ctx context.Context, root string) ([]createdPlugin, error) {

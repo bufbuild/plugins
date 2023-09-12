@@ -26,15 +26,15 @@ defaults:
 
 jobs:
   ci:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest-4-cores
     steps:
     - name: set PLUGINS from workflow inputs
       if: ${{ inputs.plugins }}
       run: echo "PLUGINS=${{ inputs.plugins }}" >> $GITHUB_ENV
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         fetch-depth: 0
-    - uses: nrwl/nx-set-shas@177b48373c6dc583ce0d9257ffb484bdd232fedf
+    - uses: nrwl/nx-set-shas@0e2d18b530b83b68263ff7b74e46b1ba300c83fc
       id: last_successful_commit_push
       if: ${{ inputs.plugins == '' }}
       with:
@@ -43,7 +43,7 @@ jobs:
     - name: Get changed files
       id: changed-files
       if: ${{ inputs.plugins == '' }}
-      uses: tj-actions/changed-files@c860b5c47fa71f461da850094ef2f6e3d6514e44
+      uses: tj-actions/changed-files@246636f5fa148b5ad8e65ca4c57b18af3123e5f6
       with:
         base_sha: ${{ steps.last_successful_commit_push.outputs.base }}
         files: |
