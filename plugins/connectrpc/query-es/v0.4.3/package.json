@@ -1,0 +1,7 @@
+{
+  "name": "plugins-connectrpc-query-es",
+  "version": "1.0.0",
+  "dependencies": {
+    "@connectrpc/protoc-gen-connect-query": "0.4.3"
+  }
+}
