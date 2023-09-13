@@ -28,6 +28,11 @@ const (
 	mavenURL          = "https://repo1.maven.org/maven2"
 )
 
+var (
+	// ErrSemverPreRelease is returned when a version is a pre-release.
+	ErrSemverPreRelease = errors.New("pre-release versions are not supported")
+)
+
 // Client is a client used to fetch latest package version.
 type Client struct {
 	httpClient *http.Client
@@ -60,11 +65,17 @@ func (c *Client) Fetch(ctx context.Context, config *source.Config) (string, erro
 	if err != nil {
 		return "", fmt.Errorf("%s: %w", config.Source.Name(), err)
 	}
-	validSemver, ok := ensureSemverPrefix(version)
-	if !ok {
+	// We must ensure that the version is prefixed with "v" for the semver package.
+	if !strings.HasPrefix(version, "v") {
+		version = "v" + version
+	}
+	if !semver.IsValid(version) {
 		return "", fmt.Errorf("%s: invalid semver: %s", config.Source.Name(), version)
 	}
-	return validSemver, nil
+	if semver.Prerelease(version) != "" {
+		return "", fmt.Errorf("%s: %w: %s", config.Source.Name(), ErrSemverPreRelease, version)
+	}
+	return version, nil
 }
 
 func (c *Client) fetch(ctx context.Context, config *source.Config) (string, error) {
