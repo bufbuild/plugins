@@ -172,13 +172,17 @@ func run(ctx context.Context, root string) ([]createdPlugin, error) {
 	created := make([]createdPlugin, 0, len(configs))
 	for _, config := range configs {
 		if config.Source.Disabled {
-			log.Printf("skipping source: %s\n", config.Filename)
+			log.Printf("skipping source: %s", config.Filename)
 			continue
 		}
 		newVersion := latestVersions[config.CacheKey()]
 		if newVersion == "" {
 			newVersion, err = client.Fetch(ctx, config)
 			if err != nil {
+				if errors.Is(err, fetchclient.ErrSemverPrerelease) {
+					log.Printf("skipping source: %s: %v", config.Filename, err)
+					continue
+				}
 				return nil, err
 			}
 			latestVersions[config.CacheKey()] = newVersion
