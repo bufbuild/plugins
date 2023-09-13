@@ -29,8 +29,8 @@ const (
 )
 
 var (
-	// ErrSemverPreRelease is returned when a version is a pre-release.
-	ErrSemverPreRelease = errors.New("pre-release versions are not supported")
+	// ErrSemverPrerelease is returned when a version is a pre-release.
+	ErrSemverPrerelease = errors.New("pre-release versions are not supported")
 )
 
 // Client is a client used to fetch latest package version.
@@ -73,7 +73,7 @@ func (c *Client) Fetch(ctx context.Context, config *source.Config) (string, erro
 		return "", fmt.Errorf("%s: invalid semver: %s", config.Source.Name(), version)
 	}
 	if semver.Prerelease(version) != "" {
-		return "", fmt.Errorf("%s: %w: %s", config.Source.Name(), ErrSemverPreRelease, version)
+		return "", fmt.Errorf("%s: %w: %s", config.Source.Name(), ErrSemverPrerelease, version)
 	}
 	return version, nil
 }

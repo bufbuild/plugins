@@ -179,7 +179,7 @@ func run(ctx context.Context, root string) ([]createdPlugin, error) {
 		if newVersion == "" {
 			newVersion, err = client.Fetch(ctx, config)
 			if err != nil {
-				if errors.Is(err, fetchclient.ErrSemverPreRelease) {
+				if errors.Is(err, fetchclient.ErrSemverPrerelease) {
 					log.Println(err)
 					continue
 				}
