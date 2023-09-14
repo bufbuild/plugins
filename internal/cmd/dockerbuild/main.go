@@ -48,7 +48,7 @@ func main() {
 		cacheDir:        *cacheDir,
 		dockerBuildArgs: flag.Args(),
 	}
-	if err := cmd.run(flag.Args()); err != nil {
+	if err := cmd.run(); err != nil {
 		log.Fatalf("failed to build: %v", err)
 	}
 }
@@ -64,7 +64,7 @@ type command struct {
 	dockerBuildArgs []string
 }
 
-func (c *command) run(args []string) error {
+func (c *command) run() error {
 	// Catch ctrl+c to kill the build process
 	ctx, cancel := interrupt.WithCancel(context.Background())
 	defer cancel()
