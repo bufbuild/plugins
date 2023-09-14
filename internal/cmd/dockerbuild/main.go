@@ -85,10 +85,18 @@ func (c *command) run() error {
 	}
 	// Build bazel plugins on their own as they are very resource intensive.
 	if bazelPlugins, ok := pluginGroups[bazelPluginGroup]; ok {
+		delete(pluginGroups, bazelPluginGroup)
+		// Sort plugins to build first by version, then by name.
+		// This ensures the best use of the Docker build cache for expensive builds like protoc/grpc plugins.
+		slices.SortFunc(bazelPlugins, func(a, b *plugin.Plugin) int {
+			if v := semver.Compare(a.PluginVersion, b.PluginVersion); v != 0 {
+				return v
+			}
+			return cmp.Compare(a.Name, b.Name)
+		})
 		if err := c.buildPluginGroup(ctx, bazelPluginGroup, bazelPlugins); err != nil {
 			return err
 		}
-		delete(pluginGroups, bazelPluginGroup)
 		if len(pluginGroups) == 0 {
 			return nil
 		}
@@ -103,16 +111,6 @@ func (c *command) run() error {
 	for pluginGroup, plugins := range pluginGroups {
 		pluginGroup := pluginGroup
 		plugins := plugins
-		if len(plugins) > 1 {
-			// Sort plugins to build first by version, then by name.
-			// This ensures the best use of the Docker build cache for expensive builds like protoc/grpc plugins.
-			slices.SortFunc(plugins, func(a, b *plugin.Plugin) int {
-				if v := semver.Compare(a.PluginVersion, b.PluginVersion); v != 0 {
-					return v
-				}
-				return cmp.Compare(a.Name, b.Name)
-			})
-		}
 		eg.Go(func() error {
 			return c.buildPluginGroup(ctx, pluginGroup, plugins)
 		})
