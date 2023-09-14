@@ -40,7 +40,7 @@ func main() {
 		os.Exit(1)
 	}
 	if err := postProcessCreatedPlugins(created); err != nil {
-		_, _ = fmt.Fprintf(os.Stderr, "failed to run post-processing on plugins: %v", err)
+		_, _ = fmt.Fprintf(os.Stderr, "failed to run post-processing on plugins: %v\n", err)
 		os.Exit(1)
 	}
 }
@@ -65,9 +65,9 @@ func postProcessCreatedPlugins(plugins []createdPlugin) error {
 		if err := recreateNPMPackageLock(plugin); err != nil {
 			return fmt.Errorf("failed to recreate package-lock.json for %s: %w", newPluginRef, err)
 		}
-		if err := runPluginTests(plugin); err != nil {
-			return fmt.Errorf("failed to run plugin tests for %s: %w", newPluginRef, err)
-		}
+	}
+	if err := runPluginTests(plugins); err != nil {
+		return fmt.Errorf("failed to run plugin tests: %w", err)
 	}
 	return nil
 }
@@ -132,9 +132,11 @@ func recreateNPMPackageLock(plugin createdPlugin) error {
 }
 
 // runPluginTests runs 'make test PLUGINS="org/name:v<new>"' in order to generate plugin.sum files.
-func runPluginTests(plugin createdPlugin) error {
-	baseDir := filepath.Dir(filepath.Dir(filepath.Dir(plugin.pluginDir)))
-	pluginRef := fmt.Sprintf("%s/%s:%s", plugin.org, plugin.name, plugin.newVersion)
+func runPluginTests(plugins []createdPlugin) error {
+	pluginsEnv := make([]string, 0, len(plugins))
+	for _, plugin := range plugins {
+		pluginsEnv = append(pluginsEnv, fmt.Sprintf("%s/%s:%s", plugin.org, plugin.name, plugin.newVersion))
+	}
 	makePath, err := exec.LookPath("make")
 	if err != nil {
 		return err
@@ -146,18 +148,17 @@ func runPluginTests(plugin createdPlugin) error {
 		Args: []string{
 			makePath,
 			"test",
-			fmt.Sprintf("PLUGINS=%s", pluginRef),
+			fmt.Sprintf("PLUGINS=%s", strings.Join(pluginsEnv, ",")),
 		},
-		Dir: baseDir,
 		Env: env,
 	}
 	start := time.Now()
-	log.Printf("starting running tests for %s", pluginRef)
+	log.Printf("starting running tests for %d plugins", len(plugins))
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("%w\n%s", err, out)
 	}
-	log.Printf("finished running tests for %s in: %.2fs", pluginRef, time.Since(start).Seconds())
+	log.Printf("finished running tests in: %.2fs", time.Since(start).Seconds())
 	return nil
 }
 
