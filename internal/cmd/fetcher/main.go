@@ -39,8 +39,8 @@ func main() {
 		_, _ = fmt.Fprintf(os.Stderr, "failed to fetch versions: %v\n", err)
 		os.Exit(1)
 	}
-	if err := postProcessCreatedPlugins(created, root); err != nil {
-		_, _ = fmt.Fprintf(os.Stderr, "failed to run post-processing on plugins: %v", err)
+	if err := postProcessCreatedPlugins(created); err != nil {
+		_, _ = fmt.Fprintf(os.Stderr, "failed to run post-processing on plugins: %v\n", err)
 		os.Exit(1)
 	}
 }
@@ -53,19 +53,23 @@ type createdPlugin struct {
 	newVersion      string
 }
 
-func postProcessCreatedPlugins(plugins []createdPlugin, rootDir string) error {
+func postProcessCreatedPlugins(plugins []createdPlugin) error {
 	if len(plugins) == 0 {
 		return nil
 	}
 	for _, plugin := range plugins {
+		newPluginRef := fmt.Sprintf("%s/%s:%s", plugin.org, plugin.name, plugin.newVersion)
 		if err := runGoModTidy(plugin); err != nil {
-			return err
+			return fmt.Errorf("failed to run go mod tidy for %s: %w", newPluginRef, err)
 		}
 		if err := recreateNPMPackageLock(plugin); err != nil {
-			return err
+			return fmt.Errorf("failed to recreate package-lock.json for %s: %w", newPluginRef, err)
 		}
 	}
-	return runPluginTests(plugins, rootDir)
+	if err := runPluginTests(plugins); err != nil {
+		return fmt.Errorf("failed to run plugin tests: %w", err)
+	}
+	return nil
 }
 
 // runGoModTidy runs 'go mod tidy' for plugins (like twirp-go) which don't use modules.
@@ -128,8 +132,8 @@ func recreateNPMPackageLock(plugin createdPlugin) error {
 }
 
 // runPluginTests runs 'make test PLUGINS="org/name:v<new>"' in order to generate plugin.sum files.
-func runPluginTests(plugins []createdPlugin, rootDir string) error {
-	pluginsEnv := make([]string, 0, len(plugins)*2)
+func runPluginTests(plugins []createdPlugin) error {
+	pluginsEnv := make([]string, 0, len(plugins))
 	for _, plugin := range plugins {
 		pluginsEnv = append(pluginsEnv, fmt.Sprintf("%s/%s:%s", plugin.org, plugin.name, plugin.newVersion))
 	}
@@ -146,11 +150,15 @@ func runPluginTests(plugins []createdPlugin, rootDir string) error {
 			"test",
 			fmt.Sprintf("PLUGINS=%s", strings.Join(pluginsEnv, ",")),
 		},
-		Dir:    rootDir,
+		Env:    env,
 		Stdout: os.Stdout,
 		Stderr: os.Stderr,
-		Env:    env,
 	}
+	start := time.Now()
+	log.Printf("starting running tests for %d plugins", len(plugins))
+	defer func() {
+		log.Printf("finished running tests in: %.2fs", time.Since(start).Seconds())
+	}()
 	return cmd.Run()
 }
 
