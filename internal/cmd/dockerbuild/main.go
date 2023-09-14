@@ -15,10 +15,10 @@ import (
 	"time"
 
 	"github.com/bufbuild/buf/private/pkg/interrupt"
-	"github.com/bufbuild/plugins/internal/docker"
 	"golang.org/x/mod/semver"
 	"golang.org/x/sync/errgroup"
 
+	"github.com/bufbuild/plugins/internal/docker"
 	"github.com/bufbuild/plugins/internal/plugin"
 )
 
@@ -79,10 +79,7 @@ func (c *command) run() error {
 	if len(includedPlugins) == 0 {
 		return nil // nothing to build
 	}
-	pluginGroups, err := getPluginGroups(includedPlugins)
-	if err != nil {
-		return err
-	}
+	pluginGroups := getPluginGroups(includedPlugins)
 	// Build bazel plugins on their own as they are very resource intensive.
 	if bazelPlugins, ok := pluginGroups[bazelPluginGroup]; ok {
 		delete(pluginGroups, bazelPluginGroup)
@@ -118,7 +115,7 @@ func (c *command) run() error {
 	return eg.Wait()
 }
 
-func getPluginGroups(plugins []*plugin.Plugin) (map[string][]*plugin.Plugin, error) {
+func getPluginGroups(plugins []*plugin.Plugin) map[string][]*plugin.Plugin {
 	pluginGroups := make(map[string][]*plugin.Plugin)
 	for _, pluginToBuild := range plugins {
 		var pluginKey string
@@ -142,7 +139,7 @@ func getPluginGroups(plugins []*plugin.Plugin) (map[string][]*plugin.Plugin, err
 		}
 		pluginGroups[pluginKey] = append(pluginGroups[pluginKey], pluginToBuild)
 	}
-	return pluginGroups, nil
+	return pluginGroups
 }
 
 func (c *command) buildPluginGroup(ctx context.Context, pluginGroup string, plugins []*plugin.Plugin) error {
