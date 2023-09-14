@@ -39,7 +39,7 @@ func main() {
 		_, _ = fmt.Fprintf(os.Stderr, "failed to fetch versions: %v\n", err)
 		os.Exit(1)
 	}
-	if err := postProcessCreatedPlugins(created, root); err != nil {
+	if err := postProcessCreatedPlugins(created); err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "failed to run post-processing on plugins: %v", err)
 		os.Exit(1)
 	}
@@ -53,19 +53,22 @@ type createdPlugin struct {
 	newVersion      string
 }
 
-func postProcessCreatedPlugins(plugins []createdPlugin, rootDir string) error {
+func postProcessCreatedPlugins(plugins []createdPlugin) error {
 	if len(plugins) == 0 {
 		return nil
 	}
 	for _, plugin := range plugins {
 		if err := runGoModTidy(plugin); err != nil {
-			return err
+			return fmt.Errorf("failed to run go mod tidy for %s/%s:%s: %w", plugin.org, plugin.name, plugin.newVersion, err)
 		}
 		if err := recreateNPMPackageLock(plugin); err != nil {
-			return err
+			return fmt.Errorf("failed to recreate package-lock.json for %s/%s:%s: %w", plugin.org, plugin.name, plugin.newVersion, err)
+		}
+		if err := runPluginTests(plugin); err != nil {
+			return fmt.Errorf("failed to run plugin tests: %w", err)
 		}
 	}
-	return runPluginTests(plugins, rootDir)
+	return nil
 }
 
 // runGoModTidy runs 'go mod tidy' for plugins (like twirp-go) which don't use modules.
@@ -128,11 +131,9 @@ func recreateNPMPackageLock(plugin createdPlugin) error {
 }
 
 // runPluginTests runs 'make test PLUGINS="org/name:v<new>"' in order to generate plugin.sum files.
-func runPluginTests(plugins []createdPlugin, rootDir string) error {
-	pluginsEnv := make([]string, 0, len(plugins)*2)
-	for _, plugin := range plugins {
-		pluginsEnv = append(pluginsEnv, fmt.Sprintf("%s/%s:%s", plugin.org, plugin.name, plugin.newVersion))
-	}
+func runPluginTests(plugin createdPlugin) error {
+	baseDir := filepath.Dir(filepath.Dir(filepath.Dir(plugin.pluginDir)))
+	pluginRef := fmt.Sprintf("%s/%s:%s", plugin.org, plugin.name, plugin.newVersion)
 	makePath, err := exec.LookPath("make")
 	if err != nil {
 		return err
@@ -144,14 +145,19 @@ func runPluginTests(plugins []createdPlugin, rootDir string) error {
 		Args: []string{
 			makePath,
 			"test",
-			fmt.Sprintf("PLUGINS=%s", strings.Join(pluginsEnv, ",")),
+			fmt.Sprintf("PLUGINS=%s", pluginRef),
 		},
-		Dir:    rootDir,
-		Stdout: os.Stdout,
-		Stderr: os.Stderr,
-		Env:    env,
+		Dir: baseDir,
+		Env: env,
 	}
-	return cmd.Run()
+	start := time.Now()
+	log.Printf("starting running tests for %s", pluginRef)
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("%w\n%s", err, out)
+	}
+	log.Printf("finished running tests for %s in: %.2fs", pluginRef, time.Since(start).Seconds())
+	return nil
 }
 
 func run(ctx context.Context, root string) ([]createdPlugin, error) {
