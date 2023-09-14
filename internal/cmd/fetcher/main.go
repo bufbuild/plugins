@@ -58,14 +58,15 @@ func postProcessCreatedPlugins(plugins []createdPlugin) error {
 		return nil
 	}
 	for _, plugin := range plugins {
+		newPluginRef := fmt.Sprintf("%s/%s:%s", plugin.org, plugin.name, plugin.newVersion)
 		if err := runGoModTidy(plugin); err != nil {
-			return fmt.Errorf("failed to run go mod tidy for %s/%s:%s: %w", plugin.org, plugin.name, plugin.newVersion, err)
+			return fmt.Errorf("failed to run go mod tidy for %s: %w", newPluginRef, err)
 		}
 		if err := recreateNPMPackageLock(plugin); err != nil {
-			return fmt.Errorf("failed to recreate package-lock.json for %s/%s:%s: %w", plugin.org, plugin.name, plugin.newVersion, err)
+			return fmt.Errorf("failed to recreate package-lock.json for %s: %w", newPluginRef, err)
 		}
 		if err := runPluginTests(plugin); err != nil {
-			return fmt.Errorf("failed to run plugin tests: %w", err)
+			return fmt.Errorf("failed to run plugin tests for %s: %w", newPluginRef, err)
 		}
 	}
 	return nil
