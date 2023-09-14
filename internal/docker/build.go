@@ -8,8 +8,6 @@ import (
 	"os/exec"
 	"path/filepath"
 
-	"github.com/bufbuild/buf/private/bufpkg/bufplugin/bufpluginref"
-
 	"github.com/bufbuild/plugins/internal/plugin"
 )
 
@@ -27,14 +25,8 @@ func Build(
 	if err != nil {
 		return nil, err
 	}
-	identity, err := bufpluginref.PluginIdentityForString(plugin.Name)
-	if err != nil {
-		return nil, err
-	}
-	imageName, err := ImageName(plugin, dockerOrg)
-	if err != nil {
-		return nil, err
-	}
+	identity := plugin.Identity
+	imageName := ImageName(plugin, dockerOrg)
 	commonArgs := []string{
 		"buildx",
 		"build",

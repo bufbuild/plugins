@@ -20,7 +20,6 @@ import (
 	"time"
 
 	"aead.dev/minisign"
-	"github.com/bufbuild/buf/private/bufpkg/bufplugin/bufpluginref"
 	githubkeychain "github.com/google/go-containerregistry/pkg/authn/github"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
@@ -182,10 +181,6 @@ func (c *command) calculateNewReleasePlugins(currentRelease *release.PluginRelea
 	var existingPlugins []release.PluginRelease
 
 	if err := plugin.Walk(c.rootDir, func(plugin *plugin.Plugin) error {
-		identity, err := bufpluginref.PluginIdentityForString(plugin.Name)
-		if err != nil {
-			return err
-		}
 		pluginYamlDigest, err := release.CalculateDigest(plugin.Path)
 		if err != nil {
 			return err
@@ -194,6 +189,7 @@ func (c *command) calculateNewReleasePlugins(currentRelease *release.PluginRelea
 		if err != nil {
 			return err
 		}
+		identity := plugin.Identity
 		if registryImage == "" || imageID == "" {
 			log.Printf("unable to detect registry image and image ID for plugin %s/%s:%s", identity.Owner(), identity.Plugin(), plugin.PluginVersion)
 			return nil
@@ -202,10 +198,7 @@ func (c *command) calculateNewReleasePlugins(currentRelease *release.PluginRelea
 		pluginRelease := pluginNameVersionToRelease[key]
 		// Found existing release - only rebuild if changed image digest or buf.plugin.yaml digest
 		if pluginRelease.ImageID != imageID || pluginRelease.PluginYAMLDigest != pluginYamlDigest {
-			downloadURL, err := c.pluginDownloadURL(plugin, releaseName)
-			if err != nil {
-				return err
-			}
+			downloadURL := c.pluginDownloadURL(plugin, releaseName)
 			zipDigest, err := createPluginZip(tmpDir, plugin, registryImage, imageID)
 			if err != nil {
 				return err
@@ -420,10 +413,7 @@ func createPluginZip(basedir string, plugin *plugin.Plugin, registryImage string
 	if err := pullImage(registryImage); err != nil {
 		return "", err
 	}
-	zipName, err := pluginZipName(plugin)
-	if err != nil {
-		return "", err
-	}
+	zipName := pluginZipName(plugin)
 	pluginTempDir, err := os.MkdirTemp(basedir, strings.TrimSuffix(zipName, filepath.Ext(zipName)))
 	if err != nil {
 		return "", err
@@ -563,27 +553,18 @@ func calculateNextRelease(now time.Time, latestRelease *github.RepositoryRelease
 	return releaseName, nil
 }
 
-func (c *command) pluginDownloadURL(plugin *plugin.Plugin, releaseName string) (string, error) {
-	zipName, err := pluginZipName(plugin)
-	if err != nil {
-		return "", err
-	}
-	return fmt.Sprintf("https://github.com/%s/%s/releases/download/%s/%s", c.githubReleaseOwner, release.GithubRepoPlugins, releaseName, zipName), nil
+func (c *command) pluginDownloadURL(plugin *plugin.Plugin, releaseName string) string {
+	zipName := pluginZipName(plugin)
+	return fmt.Sprintf("https://github.com/%s/%s/releases/download/%s/%s", c.githubReleaseOwner, release.GithubRepoPlugins, releaseName, zipName)
 }
 
-func pluginZipName(plugin *plugin.Plugin) (string, error) {
-	identity, err := bufpluginref.PluginIdentityForString(plugin.Name)
-	if err != nil {
-		return "", err
-	}
-	return fmt.Sprintf("%s-%s-%s.zip", identity.Owner(), identity.Plugin(), plugin.PluginVersion), nil
+func pluginZipName(plugin *plugin.Plugin) string {
+	identity := plugin.Identity
+	return fmt.Sprintf("%s-%s-%s.zip", identity.Owner(), identity.Plugin(), plugin.PluginVersion)
 }
 
 func fetchRegistryImageAndImageID(plugin *plugin.Plugin) (string, string, error) {
-	identity, err := bufpluginref.PluginIdentityForString(plugin.Name)
-	if err != nil {
-		return "", "", err
-	}
+	identity := plugin.Identity
 	imageName := fmt.Sprintf("ghcr.io/%s/plugins-%s-%s:%s", release.GithubOwnerBufbuild, identity.Owner(), identity.Plugin(), plugin.PluginVersion)
 	parsedName, err := name.ParseReference(imageName)
 	if err != nil {
