@@ -20,15 +20,9 @@ func Build(
 	ctx context.Context,
 	plugin *plugin.Plugin,
 	dockerOrg string,
+	cachePath string,
 	args []string,
 ) (_ []byte, retErr error) {
-	cacheDir, err := filepath.Abs(".tmp/dockercache")
-	if err != nil {
-		return nil, err
-	}
-	if err := os.MkdirAll(cacheDir, 0755); err != nil {
-		return nil, err
-	}
 	dockerCmd, err := exec.LookPath("docker")
 	if err != nil {
 		return nil, err
@@ -45,12 +39,6 @@ func Build(
 		"buildx",
 		"build",
 		"--load",
-		// These require building with the docker-container buildx driver
-		// The Makefile sets this up for us with 'docker buildx create --use ...'
-		"--cache-to",
-		fmt.Sprintf("type=local,dest=%s,mode=max,compression=zstd", cacheDir),
-		"--cache-from",
-		fmt.Sprintf("type=local,src=%s", cacheDir),
 		"--label",
 		fmt.Sprintf("build.buf.plugins.config.owner=%s", identity.Owner()),
 		"--label",
@@ -65,6 +53,23 @@ func Build(
 		fmt.Sprintf("org.opencontainers.image.licenses=%s", plugin.SPDXLicenseID),
 		"--progress",
 		"plain",
+	}
+	if cachePath != "" {
+		cacheDir, err := filepath.Abs(cachePath)
+		if err != nil {
+			return nil, err
+		}
+		if err := os.MkdirAll(cacheDir, 0755); err != nil {
+			return nil, err
+		}
+		commonArgs = append(commonArgs, []string{
+			// These require building with the docker-container buildx driver
+			// The Makefile sets this up for us with 'docker buildx create --use ...'
+			"--cache-to",
+			fmt.Sprintf("type=local,dest=%s,mode=max,compression=zstd", cacheDir),
+			"--cache-from",
+			fmt.Sprintf("type=local,src=%s", cacheDir),
+		}...)
 	}
 	commonArgs = append(commonArgs, args...)
 	f, err := os.Open(filepath.Join(filepath.Dir(plugin.Path), "Dockerfile"))
