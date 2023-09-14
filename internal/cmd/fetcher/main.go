@@ -150,16 +150,16 @@ func runPluginTests(plugins []createdPlugin) error {
 			"test",
 			fmt.Sprintf("PLUGINS=%s", strings.Join(pluginsEnv, ",")),
 		},
-		Env: env,
+		Env:    env,
+		Stdout: os.Stdout,
+		Stderr: os.Stderr,
 	}
 	start := time.Now()
 	log.Printf("starting running tests for %d plugins", len(plugins))
-	out, err := cmd.CombinedOutput()
-	if err != nil {
-		return fmt.Errorf("%w\n%s", err, out)
-	}
-	log.Printf("finished running tests in: %.2fs", time.Since(start).Seconds())
-	return nil
+	defer func() {
+		log.Printf("finished running tests in: %.2fs", time.Since(start).Seconds())
+	}()
+	return cmd.Run()
 }
 
 func run(ctx context.Context, root string) ([]createdPlugin, error) {
