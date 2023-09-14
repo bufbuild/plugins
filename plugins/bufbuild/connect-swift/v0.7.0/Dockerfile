@@ -1,4 +1,4 @@
-# syntax=docker/dockerfile:1.4
+# syntax=docker/dockerfile:1.6
 FROM swift:5.8.1-focal AS build
 
 WORKDIR /app
