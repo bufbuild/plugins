@@ -21,16 +21,17 @@ import (
 
 func main() {
 	var (
-		dir = flag.String("dir", ".", "Directory path to plugins")
-		org = flag.String("org", "bufbuild", "Docker Organization")
+		dir      = flag.String("dir", ".", "Directory path to plugins")
+		org      = flag.String("org", "bufbuild", "Docker Organization")
+		cacheDir = flag.String("cache-dir", "", "Cache directory")
 	)
 	flag.Parse()
-	if err := run(*dir, *org, flag.Args()); err != nil {
+	if err := run(*dir, *org, *cacheDir, flag.Args()); err != nil {
 		log.Fatalf("failed to build: %v", err)
 	}
 }
 
-func run(basedir string, dockerOrg string, args []string) error {
+func run(basedir string, dockerOrg string, cacheDir string, args []string) error {
 	// Catch ctrl+c to kill the build process
 	ctx, cancel := interrupt.WithCancel(context.Background())
 	defer cancel()
@@ -48,7 +49,7 @@ func run(basedir string, dockerOrg string, args []string) error {
 	for _, pluginToBuild := range includedPlugins {
 		log.Println("building:", pluginToBuild.Name, pluginToBuild.PluginVersion)
 		start := time.Now()
-		output, err := docker.Build(ctx, pluginToBuild, dockerOrg, args)
+		output, err := docker.Build(ctx, pluginToBuild, dockerOrg, cacheDir, args)
 		if err != nil {
 			if errors.Is(err, context.Canceled) || strings.Contains(err.Error(), "signal: killed") {
 				return err
