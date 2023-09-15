@@ -1,4 +1,7 @@
 source:
+  # Users are encouraged to use the https://buf.build/connectrpc/swift-mocks plugin which supersedes
+  # https://buf.build/bufbuild/connect-swift-mocks.
+  disabled: true 
   github:
     owner: bufbuild
     repository: connect-swift
