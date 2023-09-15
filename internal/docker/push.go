@@ -14,10 +14,7 @@ func Push(ctx context.Context, plugin *plugin.Plugin, dockerOrg string) ([]byte,
 	if err != nil {
 		return nil, err
 	}
-	imageName, err := ImageName(plugin, dockerOrg)
-	if err != nil {
-		return nil, err
-	}
+	imageName := ImageName(plugin, dockerOrg)
 	cmd := exec.CommandContext(
 		ctx,
 		dockerCmd,
