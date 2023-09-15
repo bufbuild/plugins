@@ -1,5 +1,5 @@
 version: v1
-name: buf.build/bufbuild/swift
+name: buf.build/connectrpc/swift
 plugin_version: v0.8.0
 source_url: https://github.com/connectrpc/connect-swift
 description: Idiomatic gRPC & Connect RPCs for Swift.
