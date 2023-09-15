@@ -1,0 +1,28 @@
+version: v1
+name: buf.build/connectrpc/kotlin
+plugin_version: v0.1.11
+source_url: https://github.com/connectrpc/connect-kotlin
+description: Idiomatic gRPC & Connect RPCs for Kotlin.
+deps:
+  - plugin: buf.build/protocolbuffers/kotlin:v24.3
+output_languages:
+  - kotlin
+spdx_license_id: Apache-2.0
+license_url: https://github.com/connectrpc/connect-kotlin/blob/v0.1.11/LICENSE
+registry:
+  opts:
+    - generateCallbackMethods=true
+  maven:
+    compiler:
+      kotlin:
+        version: 1.8.22
+    deps:
+      - com.connectrpc:connect-kotlin:0.1.11
+      - com.connectrpc:connect-kotlin-google-java-ext:0.1.11
+      - com.connectrpc:connect-kotlin-okhttp:0.1.11
+    additional_runtimes:
+      - name: lite
+        deps:
+          - com.connectrpc:connect-kotlin:0.1.11
+          - com.connectrpc:connect-kotlin-google-javalite-ext:0.1.11
+          - com.connectrpc:connect-kotlin-okhttp:0.1.11
