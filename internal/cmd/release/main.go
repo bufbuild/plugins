@@ -2,6 +2,7 @@ package main
 
 import (
 	"archive/zip"
+	"cmp"
 	"compress/flate"
 	"context"
 	"encoding/json"
@@ -14,7 +15,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"sort"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -253,7 +254,7 @@ func pluginDependencies(plugin *plugin.Plugin) []string {
 		}
 		deps[i] = dep.Plugin
 	}
-	sort.Strings(deps)
+	slices.Sort(deps)
 	return deps
 }
 
@@ -276,12 +277,11 @@ func (c *command) loadMinisignPublicKeyFromFileOrPrivateKey(privateKey minisign.
 }
 
 func sortPluginsByNameVersion(plugins []release.PluginRelease) {
-	sort.Slice(plugins, func(i, j int) bool {
-		p1, p2 := plugins[i], plugins[j]
-		if p1.PluginName != p2.PluginName {
-			return p1.PluginName < p2.PluginName
+	slices.SortFunc(plugins, func(a, b release.PluginRelease) int {
+		if c := cmp.Compare(a.PluginName, b.PluginName); c != 0 {
+			return c
 		}
-		return semver.Compare(p1.PluginVersion, p2.PluginVersion) < 0
+		return semver.Compare(a.PluginVersion, b.PluginVersion)
 	})
 }
 
