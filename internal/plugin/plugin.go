@@ -1,13 +1,14 @@
 package plugin
 
 import (
+	"cmp"
 	"context"
 	"fmt"
 	"io/fs"
 	"log"
 	"os"
 	"path/filepath"
-	"sort"
+	"slices"
 	"strconv"
 	"strings"
 	"unicode"
@@ -85,12 +86,11 @@ func Walk(dir string, f func(plugin *Plugin) error) error {
 	}); err != nil {
 		return err
 	}
-	sort.SliceStable(unsorted, func(i, j int) bool {
-		p1, p2 := unsorted[i], unsorted[j]
-		if p1.Name != p2.Name {
-			return p1.Name < p2.Name
+	slices.SortFunc(unsorted, func(a, b *Plugin) int {
+		if c := cmp.Compare(a.Name, b.Name); c != 0 {
+			return c
 		}
-		return semver.Compare(p1.PluginVersion, p2.PluginVersion) < 0
+		return semver.Compare(a.PluginVersion, b.PluginVersion)
 	})
 	sorted, err := sortByDependencyOrder(unsorted)
 	if err != nil {
