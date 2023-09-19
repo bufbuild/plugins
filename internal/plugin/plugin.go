@@ -86,7 +86,7 @@ func Walk(dir string, f func(plugin *Plugin) error) error {
 	}); err != nil {
 		return err
 	}
-	slices.SortStableFunc(unsorted, func(a, b *Plugin) int {
+	slices.SortFunc(unsorted, func(a, b *Plugin) int {
 		if c := cmp.Compare(a.Name, b.Name); c != 0 {
 			return c
 		}
