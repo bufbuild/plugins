@@ -10,7 +10,7 @@ output_languages:
 registry:
   python:
     deps:
-        package: grpc
-        version: 1.57.0 # maybe?
+        - package: grpc
+          version: 1.57.0
 spdx_license_id: Apache-2.0
 license_url: https://github.com/grpc/grpc/blob/v1.57.0/LICENSE
