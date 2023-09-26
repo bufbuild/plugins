@@ -1,0 +1,23 @@
+version: v1
+name: buf.build/grpc/kotlin
+plugin_version: v1.4.0
+source_url: https://github.com/grpc/grpc-kotlin
+description: Generates Kotlin client and server stubs for the gRPC framework.
+deps:
+  - plugin: buf.build/grpc/java:v1.57.2
+  - plugin: buf.build/protocolbuffers/kotlin:v24.0
+output_languages:
+  - kotlin
+spdx_license_id: Apache-2.0
+license_url: https://github.com/grpc/grpc-kotlin/blob/v1.4.0/LICENSE
+registry:
+  maven:
+    compiler:
+      kotlin:
+        version: 1.8.22
+    deps:
+      - io.grpc:grpc-kotlin-stub:1.4.0
+      - org.jetbrains.kotlinx:kotlinx-coroutines-core-jvm:1.6.1
+    additional_runtimes:
+      - name: lite
+        opts: [lite]
