@@ -8,8 +8,7 @@ output_languages:
 registry:
   python:
     deps:
-      - source: https://github.com/protocolbuffers/protobuf
-        package: google-protobuf
-        version: v24.0
+      - package: protobuf
+        version: v4.24.0
 spdx_license_id: BSD-3-Clause
 license_url: https://github.com/protocolbuffers/protobuf/blob/v24.0/LICENSE
