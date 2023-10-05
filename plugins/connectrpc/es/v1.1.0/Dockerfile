@@ -1,4 +1,4 @@
-# syntax=docker/dockerfile:1.4
+# syntax=docker/dockerfile:1.6
 FROM node:18.17.1-alpine3.18 AS build
 WORKDIR /app
 COPY --link package*.json .
