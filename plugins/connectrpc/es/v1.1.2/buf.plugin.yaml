@@ -4,7 +4,7 @@ plugin_version: v1.1.2
 source_url: https://github.com/connectrpc/connect-es
 description: Generates code that is compatible with browsers and Node.js for working with Connect, gRPC, and gRPC-Web.
 deps:
-  - plugin: buf.build/bufbuild/es:v1.3.1
+  - plugin: buf.build/bufbuild/es:v1.3.3
 output_languages:
   - javascript
   - typescript
