@@ -1,0 +1,9 @@
+version: v1
+name: buf.build/community/google-gnostic-openapi
+plugin_version: v0.7.0
+source_url: https://github.com/google/gnostic
+description: Generates an OpenAPI description for a REST API that corresponds to a Protocol Buffer service.
+output_languages:
+  - go
+spdx_license_id: Apache-2.0
+license_url: https://github.com/google/gnostic/blob/v0.7.0/LICENSE
