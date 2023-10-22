@@ -15,17 +15,17 @@ func TestGatherSourceFilenames(t *testing.T) {
 	// Walk entire directory with a depth of 1
 	filenames, err := gatherSourceFilenames("testdata/success")
 	require.NoError(t, err)
-	assert.Equal(t, 2, len(filenames))
+	assert.Len(t, filenames, 2)
 	filenames, err = gatherSourceFilenames("testdata/success/connect-go")
 	require.NoError(t, err)
-	assert.Equal(t, 1, len(filenames))
+	assert.Len(t, filenames, 1)
 	filenames, err = gatherSourceFilenames("testdata/success")
 	require.NoError(t, err)
-	assert.Equal(t, 2, len(filenames))
+	assert.Len(t, filenames, 2)
 
 	filenames, err = gatherSourceFilenames("testdata/fail")
 	require.NoError(t, err)
-	assert.Equal(t, 2, len(filenames))
+	assert.Len(t, filenames, 2)
 
 	// Invalid directory
 	_, err = gatherSourceFilenames("notexists")
@@ -36,7 +36,7 @@ func TestLoadSourceFile(t *testing.T) {
 	t.Parallel()
 	filenames, err := gatherSourceFilenames("testdata/success/connect-go")
 	require.NoError(t, err)
-	assert.Equal(t, 1, len(filenames))
+	assert.Len(t, filenames, 1)
 	config, err := loadConfigFile(filenames[0])
 	require.NoError(t, err)
 	assert.Equal(t, filenames[0], config.Filename)
@@ -46,7 +46,7 @@ func TestGatherConfigs(t *testing.T) {
 	t.Parallel()
 	configs, err := GatherConfigs("testdata/success")
 	require.NoError(t, err)
-	assert.Equal(t, 2, len(configs))
+	assert.Len(t, configs, 2)
 
 	for _, config := range configs {
 		name := filepath.Base(filepath.Dir(config.Filename))
@@ -54,14 +54,14 @@ func TestGatherConfigs(t *testing.T) {
 		case "connect-go":
 			source := config.Source.GitHub
 			require.NotNil(t, source)
-			assert.Equal(t, source.Owner, "bufbuild")
-			assert.Equal(t, source.Repository, "connect-go")
+			assert.Equal(t, "bufbuild", source.Owner)
+			assert.Equal(t, "connect-go", source.Repository)
 			assert.Nil(t, config.Source.DartFlutter)
 		case "connect-web":
 			source := config.Source.NPMRegistry
 			require.NotNil(t, source)
-			assert.Equal(t, source.Name, "@bufbuild/protoc-gen-connect-web")
-			assert.Equal(t, true, config.Source.Disabled)
+			assert.Equal(t, "@bufbuild/protoc-gen-connect-web", source.Name)
+			assert.True(t, config.Source.Disabled)
 			assert.Nil(t, config.Source.DartFlutter)
 		default:
 			assert.FailNow(t, "unknown plugin name", name)
