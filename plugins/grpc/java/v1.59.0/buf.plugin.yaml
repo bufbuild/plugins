@@ -2,6 +2,7 @@ version: v1
 name: buf.build/grpc/java
 plugin_version: v1.59.0
 source_url: https://github.com/grpc/grpc-java
+integration_guide_url: https://grpc.io/docs/languages/java/quickstart
 description: Generates Java client and server stubs for the gRPC framework.
 deps:
   - plugin: buf.build/protocolbuffers/java:v24.4
