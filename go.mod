@@ -4,7 +4,7 @@ go 1.21
 
 require (
 	aead.dev/minisign v0.2.0
-	github.com/bufbuild/buf v1.27.2-0.20231024140333-c29e78de52cf
+	github.com/bufbuild/buf v1.27.2
 	github.com/google/go-containerregistry v0.16.1
 	github.com/google/go-github/v53 v53.2.0
 	github.com/hashicorp/go-retryablehttp v0.7.4
