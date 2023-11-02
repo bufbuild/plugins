@@ -15,8 +15,6 @@ RUN curl -fsSL -o protoc.tar.gz https://github.com/protocolbuffers/protobuf/rele
  && tar --strip-components=1 -zxf protoc.tar.gz \
  && rm protoc.tar.gz
 RUN bazel build '//:protoc_lib'
-COPY escape-package-names.patch .
-RUN patch -p1 -u < escape-package-names.patch
 COPY --link BUILD kotlin.cc plugins/
 RUN bazel build '//plugins:protoc-gen-kotlin.stripped'
 

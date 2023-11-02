@@ -1,5 +1,4 @@
 *
 !BUILD
 !Dockerfile
-!escape-package-names.patch
 !kotlin.cc
