@@ -65,6 +65,7 @@ func TestGeneration(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping code generation test")
 	}
+	ctx := context.Background()
 	allowEmpty, _ := strconv.ParseBool(os.Getenv("ALLOW_EMPTY_PLUGIN_SUM"))
 	testPluginWithImage := func(t *testing.T, pluginMeta *plugin.Plugin, image string) {
 		t.Helper()
@@ -78,7 +79,7 @@ func TestGeneration(t *testing.T) {
 			require.NoError(t, os.MkdirAll(pluginDir, 0o755))
 			require.NoError(t, createBufGenYaml(t, pluginDir, pluginMeta))
 			require.NoError(t, createProtocGenPlugin(t, pluginDir, pluginMeta))
-			bufCmd := exec.Command("buf", "generate", filepath.Join(imageDir, image+".bin.gz"))
+			bufCmd := exec.CommandContext(ctx, "buf", "generate", filepath.Join(imageDir, image+".bin.gz"))
 			bufCmd.Dir = pluginDir
 			output, err := bufCmd.CombinedOutput()
 			require.NoErrorf(t, err, "buf generate failed - output: %s", string(output))

@@ -15,6 +15,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/bufbuild/buf/private/pkg/interrupt"
 	"go.uber.org/multierr"
 	"golang.org/x/mod/semver"
 
@@ -34,12 +35,13 @@ func main() {
 		os.Exit(2)
 	}
 	root := os.Args[1]
-	created, err := run(context.Background(), root)
+	ctx, _ := interrupt.WithCancel(context.Background())
+	created, err := run(ctx, root)
 	if err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "failed to fetch versions: %v\n", err)
 		os.Exit(1)
 	}
-	if err := postProcessCreatedPlugins(created); err != nil {
+	if err := postProcessCreatedPlugins(ctx, created); err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "failed to run post-processing on plugins: %v\n", err)
 		os.Exit(1)
 	}
@@ -53,20 +55,20 @@ type createdPlugin struct {
 	newVersion      string
 }
 
-func postProcessCreatedPlugins(plugins []createdPlugin) error {
+func postProcessCreatedPlugins(ctx context.Context, plugins []createdPlugin) error {
 	if len(plugins) == 0 {
 		return nil
 	}
 	for _, plugin := range plugins {
 		newPluginRef := fmt.Sprintf("%s/%s:%s", plugin.org, plugin.name, plugin.newVersion)
-		if err := runGoModTidy(plugin); err != nil {
+		if err := runGoModTidy(ctx, plugin); err != nil {
 			return fmt.Errorf("failed to run go mod tidy for %s: %w", newPluginRef, err)
 		}
-		if err := recreateNPMPackageLock(plugin); err != nil {
+		if err := recreateNPMPackageLock(ctx, plugin); err != nil {
 			return fmt.Errorf("failed to recreate package-lock.json for %s: %w", newPluginRef, err)
 		}
 	}
-	if err := runPluginTests(plugins); err != nil {
+	if err := runPluginTests(ctx, plugins); err != nil {
 		return fmt.Errorf("failed to run plugin tests: %w", err)
 	}
 	return nil
@@ -74,7 +76,7 @@ func postProcessCreatedPlugins(plugins []createdPlugin) error {
 
 // runGoModTidy runs 'go mod tidy' for plugins (like twirp-go) which don't use modules.
 // In order to get more reproducible builds, we check in a go.mod/go.sum file.
-func runGoModTidy(plugin createdPlugin) error {
+func runGoModTidy(ctx context.Context, plugin createdPlugin) error {
 	versionDir := filepath.Join(plugin.pluginDir, plugin.newVersion)
 	goMod := filepath.Join(versionDir, "go.mod")
 	_, err := os.Stat(goMod)
@@ -85,24 +87,17 @@ func runGoModTidy(plugin createdPlugin) error {
 		// no go.mod/go.sum to update
 		return nil
 	}
-	goPath, err := exec.LookPath("go")
-	if err != nil {
-		return err
-	}
 	log.Printf("running go mod tidy for %s/%s:%s", plugin.org, plugin.name, plugin.newVersion)
-	cmd := exec.Cmd{
-		Path:   goPath,
-		Args:   []string{goPath, "mod", "tidy"},
-		Dir:    versionDir,
-		Stdout: os.Stdout,
-		Stderr: os.Stderr,
-	}
+	cmd := exec.CommandContext(ctx, "go", "mod", "tidy")
+	cmd.Dir = versionDir
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
 	return cmd.Run()
 }
 
 // recreateNPMPackageLock will remove an existing package-lock.json file and recreate it.
 // This will ensure that we correctly resolve any updated versions in package.json.
-func recreateNPMPackageLock(plugin createdPlugin) error {
+func recreateNPMPackageLock(ctx context.Context, plugin createdPlugin) error {
 	versionDir := filepath.Join(plugin.pluginDir, plugin.newVersion)
 	npmPackageLock := filepath.Join(versionDir, "package-lock.json")
 	_, err := os.Stat(npmPackageLock)
@@ -116,49 +111,31 @@ func recreateNPMPackageLock(plugin createdPlugin) error {
 	if err := os.Remove(npmPackageLock); err != nil {
 		return err
 	}
-	npmPath, err := exec.LookPath("npm")
-	if err != nil {
-		return err
-	}
 	log.Printf("recreating package-lock.json for %s/%s:%s", plugin.org, plugin.name, plugin.newVersion)
-	cmd := exec.Cmd{
-		Path:   npmPath,
-		Args:   []string{npmPath, "install"},
-		Dir:    versionDir,
-		Stdout: os.Stdout,
-		Stderr: os.Stderr,
-	}
+	cmd := exec.CommandContext(ctx, "npm", "install")
+	cmd.Dir = versionDir
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
 	return cmd.Run()
 }
 
 // runPluginTests runs 'make test PLUGINS="org/name:v<new>"' in order to generate plugin.sum files.
-func runPluginTests(plugins []createdPlugin) error {
+func runPluginTests(ctx context.Context, plugins []createdPlugin) error {
 	pluginsEnv := make([]string, 0, len(plugins))
 	for _, plugin := range plugins {
 		pluginsEnv = append(pluginsEnv, fmt.Sprintf("%s/%s:%s", plugin.org, plugin.name, plugin.newVersion))
 	}
-	makePath, err := exec.LookPath("make")
-	if err != nil {
-		return err
-	}
 	env := os.Environ()
 	env = append(env, "ALLOW_EMPTY_PLUGIN_SUM=true")
-	cmd := exec.Cmd{
-		Path: makePath,
-		Args: []string{
-			makePath,
-			"test",
-			fmt.Sprintf("PLUGINS=%s", strings.Join(pluginsEnv, ",")),
-		},
-		Env:    env,
-		Stdout: os.Stdout,
-		Stderr: os.Stderr,
-	}
 	start := time.Now()
 	log.Printf("starting running tests for %d plugins", len(plugins))
 	defer func() {
 		log.Printf("finished running tests in: %.2fs", time.Since(start).Seconds())
 	}()
+	cmd := exec.CommandContext(ctx, "make", "test", fmt.Sprintf("PLUGINS=%s", strings.Join(pluginsEnv, ","))) //nolint:gosec
+	cmd.Env = env
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
 	return cmd.Run()
 }
 

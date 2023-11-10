@@ -32,10 +32,10 @@ all: build
 
 .PHONY: build
 build:
-	docker buildx inspect "$(DOCKER_BUILDER)" 2> /dev/null || docker buildx create --use --bootstrap --name="$(DOCKER_BUILDER)"
+	docker buildx inspect "$(DOCKER_BUILDER)" 2> /dev/null || docker buildx create --use --bootstrap --name="$(DOCKER_BUILDER)" > /dev/null
 	go run ./internal/cmd/dockerbuild -cache-dir "$(DOCKER_CACHE_DIR)" -org "$(DOCKER_ORG)" -- $(DOCKER_BUILD_EXTRA_ARGS) || \
 		(docker buildx rm "$(DOCKER_BUILDER)"; exit 1)
-	docker buildx rm "$(DOCKER_BUILDER)"
+	docker buildx rm "$(DOCKER_BUILDER)" > /dev/null
 
 .PHONY: dockerpush
 dockerpush:

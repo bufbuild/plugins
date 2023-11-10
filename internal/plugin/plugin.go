@@ -1,16 +1,19 @@
 package plugin
 
 import (
+	"bytes"
 	"cmp"
 	"context"
 	"fmt"
 	"io/fs"
 	"log"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"slices"
 	"strconv"
 	"strings"
+	"sync"
 	"unicode"
 
 	"github.com/bufbuild/buf/private/bufpkg/bufplugin/bufpluginconfig"
@@ -28,10 +31,13 @@ type Plugin struct {
 	bufpluginconfig.ExternalConfig `yaml:"-"`
 	// Plugin identity (parsed from ExternalConfig.Name).
 	Identity bufpluginref.PluginIdentity `yaml:"-"`
+	// For callers that need git commit info - ensure we only calculate it once.
+	gitCommitOnce sync.Once `yaml:"-"`
+	gitCommit     string    `yaml:"-"`
 }
 
 func (p *Plugin) String() string {
-	return fmt.Sprintf("%+v", *p)
+	return fmt.Sprintf("%s:%s", p.Identity.IdentityString(), p.Version)
 }
 
 // Dependency represents a dependency one plugin has on another.
@@ -289,6 +295,48 @@ func (p IncludePlugin) Matches(pluginName, pluginVersion, latestVersion string) 
 		return pluginVersion == latestVersion
 	}
 	return p.version == pluginVersion
+}
+
+// GitCommit calculates the last git commit for the plugin's directory.
+// This will return an empty string if there are uncommitted changes to the plugin's directory.
+// This is used to label the built Docker image and also avoid unnecessary Docker builds.
+func (p *Plugin) GitCommit(ctx context.Context) string {
+	p.gitCommitOnce.Do(func() {
+		if gitModified, err := calculateGitModified(ctx, p.Path); err != nil {
+			log.Printf("failed to calculate git modified status: %v", err)
+		} else if !gitModified {
+			p.gitCommit, err = calculateGitCommit(ctx, p.Path)
+			if err != nil {
+				log.Printf("failed to calculate git commit: %v", err)
+			}
+		}
+	})
+	return p.gitCommit
+}
+
+// calculateGitCommit returns the last commit in the plugin's directory (used to determine the "revision" of a plugin).
+func calculateGitCommit(ctx context.Context, pluginYamlPath string) (string, error) {
+	cmd := exec.CommandContext(ctx, "git", "log", "-n", "1", "--pretty=%H", filepath.Dir(pluginYamlPath)) //nolint:gosec
+	var output bytes.Buffer
+	cmd.Stdout = &output
+	cmd.Stderr = os.Stderr
+	if err := cmd.Run(); err != nil {
+		return "", err
+	}
+	return strings.TrimSpace(output.String()), nil
+}
+
+// calculateGitModified determines if there are uncommitted changes to the plugin's directory.
+// If this returns true, we don't add the plugin's git commit to the built Docker image.
+func calculateGitModified(ctx context.Context, pluginYamlPath string) (bool, error) {
+	cmd := exec.CommandContext(ctx, "git", "status", "--porcelain", filepath.Dir(pluginYamlPath)) //nolint:gosec
+	var output bytes.Buffer
+	cmd.Stdout = &output
+	cmd.Stderr = os.Stderr
+	if err := cmd.Run(); err != nil {
+		return false, err
+	}
+	return strings.TrimSpace(output.String()) != "", nil
 }
 
 // changedFiles contains data from the tj-actions/changed-files action.

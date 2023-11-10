@@ -10,14 +10,10 @@ import (
 // Push pushes a docker image for the given plugin to the Docker organization.
 // It assumes it has already been built in a previous step.
 func Push(ctx context.Context, plugin *plugin.Plugin, dockerOrg string) ([]byte, error) {
-	dockerCmd, err := exec.LookPath("docker")
-	if err != nil {
-		return nil, err
-	}
 	imageName := ImageName(plugin, dockerOrg)
 	cmd := exec.CommandContext(
 		ctx,
-		dockerCmd,
+		"docker",
 		"push",
 		imageName,
 	)
