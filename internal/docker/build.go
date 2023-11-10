@@ -7,26 +7,22 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"time"
 
 	"github.com/bufbuild/plugins/internal/plugin"
 )
 
-// Build runs a Docker build command for the specified plugin tagging it with the given organization.
+// Build runs a Docker build command for the specified plugin tagging it with the given image name.
 // The args parameter passes any additional arguments to be passed to the build.
 // Returns the combined stdout/stderr of the build along with any error.
 func Build(
 	ctx context.Context,
 	plugin *plugin.Plugin,
-	dockerOrg string,
+	imageName string,
 	cachePath string,
 	args []string,
 ) (_ []byte, retErr error) {
-	dockerCmd, err := exec.LookPath("docker")
-	if err != nil {
-		return nil, err
-	}
 	identity := plugin.Identity
-	imageName := ImageName(plugin, dockerOrg)
 	commonArgs := []string{
 		"buildx",
 		"build",
@@ -40,11 +36,18 @@ func Build(
 		"--label",
 		"org.opencontainers.image.source=https://github.com/bufbuild/plugins",
 		"--label",
+		fmt.Sprintf("org.opencontainers.image.created=%s", time.Now().UTC().Format(time.RFC3339)),
+		"--label",
 		fmt.Sprintf("org.opencontainers.image.description=%s", plugin.Description),
 		"--label",
 		fmt.Sprintf("org.opencontainers.image.licenses=%s", plugin.SPDXLicenseID),
+		"--label",
+		fmt.Sprintf("org.opencontainers.image.vendor=%s", "Buf Technologies, Inc."),
 		"--progress",
 		"plain",
+	}
+	if gitCommit := plugin.GitCommit(ctx); gitCommit != "" {
+		commonArgs = append(commonArgs, "--label", fmt.Sprintf("org.opencontainers.image.revision=%s", gitCommit))
 	}
 	if cachePath != "" {
 		cacheDir, err := filepath.Abs(cachePath)
@@ -71,16 +74,6 @@ func Build(
 	defer func() {
 		retErr = errors.Join(retErr, f.Close())
 	}()
-	cmd := exec.CommandContext(
-		ctx,
-		dockerCmd,
-		commonArgs...,
-	)
-	cmd.Args = append(
-		cmd.Args,
-		"-t",
-		imageName,
-	)
-	cmd.Args = append(cmd.Args, filepath.Dir(plugin.Path))
+	cmd := exec.CommandContext(ctx, "docker", append(commonArgs, "-t", imageName, filepath.Dir(plugin.Path))...) //nolint:gosec
 	return cmd.CombinedOutput()
 }

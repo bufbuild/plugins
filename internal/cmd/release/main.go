@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"aead.dev/minisign"
+	"github.com/bufbuild/buf/private/pkg/interrupt"
 	githubkeychain "github.com/google/go-containerregistry/pkg/authn/github"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
@@ -80,6 +81,8 @@ type command struct {
 }
 
 func (c *command) run() error {
+	ctx, cancel := interrupt.WithCancel(context.Background())
+	defer cancel()
 	// Create temporary directory
 	tmpDir, err := os.MkdirTemp("", "plugins-release")
 	if err != nil {
@@ -94,8 +97,6 @@ func (c *command) run() error {
 			log.Printf("failed to remove %q: %v", tmpDir, err)
 		}
 	}()
-
-	ctx := context.Background()
 	client := release.NewClient(ctx)
 	latestRelease, err := client.GetLatestRelease(ctx, c.githubReleaseOwner, release.GithubRepoPlugins)
 	if err != nil && !errors.Is(err, release.ErrNotFound) {
@@ -128,7 +129,7 @@ func (c *command) run() error {
 		return fmt.Errorf("failed to determine next release name: %w", err)
 	}
 
-	plugins, err := c.calculateNewReleasePlugins(releases, releaseName, now, tmpDir)
+	plugins, err := c.calculateNewReleasePlugins(ctx, releases, releaseName, now, tmpDir)
 	if err != nil {
 		return fmt.Errorf("failed to calculate new release contents: %w", err)
 	}
@@ -166,7 +167,7 @@ func (c *command) run() error {
 	return nil
 }
 
-func (c *command) calculateNewReleasePlugins(currentRelease *release.PluginReleases, releaseName string, now time.Time, tmpDir string) (
+func (c *command) calculateNewReleasePlugins(ctx context.Context, currentRelease *release.PluginReleases, releaseName string, now time.Time, tmpDir string) (
 	[]release.PluginRelease, error,
 ) {
 	pluginNameVersionToRelease := make(map[pluginNameVersion]release.PluginRelease, len(currentRelease.Releases))
@@ -200,7 +201,7 @@ func (c *command) calculateNewReleasePlugins(currentRelease *release.PluginRelea
 		// Found existing release - only rebuild if changed image digest or buf.plugin.yaml digest
 		if pluginRelease.ImageID != imageID || pluginRelease.PluginYAMLDigest != pluginYamlDigest {
 			downloadURL := c.pluginDownloadURL(plugin, releaseName)
-			zipDigest, err := createPluginZip(tmpDir, plugin, registryImage, imageID)
+			zipDigest, err := createPluginZip(ctx, tmpDir, plugin, registryImage, imageID)
 			if err != nil {
 				return err
 			}
@@ -409,8 +410,8 @@ func signPluginReleases(dir string, privateKey minisign.PrivateKey) error {
 	return nil
 }
 
-func createPluginZip(basedir string, plugin *plugin.Plugin, registryImage string, imageID string) (string, error) {
-	if err := pullImage(registryImage); err != nil {
+func createPluginZip(ctx context.Context, basedir string, plugin *plugin.Plugin, registryImage string, imageID string) (string, error) {
+	if err := pullImage(ctx, registryImage); err != nil {
 		return "", err
 	}
 	zipName := pluginZipName(plugin)
@@ -423,7 +424,7 @@ func createPluginZip(basedir string, plugin *plugin.Plugin, registryImage string
 			log.Printf("failed to remove %q: %v", pluginTempDir, err)
 		}
 	}()
-	if err := saveImageToDir(imageID, pluginTempDir); err != nil {
+	if err := saveImageToDir(ctx, imageID, pluginTempDir); err != nil {
 		return "", err
 	}
 	log.Printf("creating %s", zipName)
@@ -480,11 +481,8 @@ func addFileToZip(zipWriter *zip.Writer, path string) error {
 	return nil
 }
 
-func saveImageToDir(imageRef string, dir string) error {
-	cmd, err := dockerCmd("save", imageRef, "-o", "image.tar")
-	if err != nil {
-		return err
-	}
+func saveImageToDir(ctx context.Context, imageRef string, dir string) error {
+	cmd := dockerCmd(ctx, "save", imageRef, "-o", "image.tar")
 	cmd.Dir = dir
 	return cmd.Run()
 }
@@ -504,30 +502,16 @@ func createPluginReleases(dir string, plugins []release.PluginRelease) error {
 	return encoder.Encode(&release.PluginReleases{Releases: plugins})
 }
 
-func pullImage(name string) error {
-	cmd, err := dockerCmd("pull", name)
-	if err != nil {
-		return err
-	}
+func pullImage(ctx context.Context, name string) error {
 	log.Printf("pulling image: %s", name)
-	return cmd.Run()
+	return dockerCmd(ctx, "pull", name).Run()
 }
 
-func dockerCmd(command string, args ...string) (*exec.Cmd, error) {
-	dockerPath, err := exec.LookPath("docker")
-	if err != nil {
-		return nil, err
-	}
-	cmd := &exec.Cmd{
-		Path: dockerPath,
-		Args: append([]string{
-			dockerPath,
-			command,
-		}, args...),
-		Stdout: os.Stdout,
-		Stderr: os.Stderr,
-	}
-	return cmd, nil
+func dockerCmd(ctx context.Context, command string, args ...string) *exec.Cmd {
+	cmd := exec.CommandContext(ctx, "docker", append([]string{command}, args...)...) //nolint:gosec
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	return cmd
 }
 
 func calculateNextRelease(now time.Time, latestRelease *github.RepositoryRelease) (string, error) {
