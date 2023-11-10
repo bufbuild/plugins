@@ -15,6 +15,5 @@ registry:
     deps:
       # https://github.com/nipunn1313/mypy-protobuf/tree/v3.5.0#requirements-to-run-typecheckers-on-stubs-generated-by-mypy-protobuf
       # > Earlier releases might work, but aren't tested.
-      # TODO: Should we just remove the version specifiers, then?
       - "types-protobuf >= 4.23.0.2"
       - "protobuf >= 4.23.4"
