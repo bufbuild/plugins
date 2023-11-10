@@ -21,6 +21,8 @@ import (
 	"os/exec"
 	"strings"
 
+	"github.com/bufbuild/buf/private/pkg/interrupt"
+
 	"github.com/bufbuild/plugins/internal/release"
 )
 
@@ -49,7 +51,8 @@ type command struct {
 }
 
 func (c *command) run() error {
-	ctx := context.Background()
+	ctx, cancel := interrupt.WithCancel(context.Background())
+	defer cancel()
 	client := release.NewClient(ctx)
 	githubRelease, err := client.GetReleaseByTag(ctx, release.GithubOwnerBufbuild, release.GithubRepoPlugins, c.release)
 	if err != nil {
@@ -64,7 +67,7 @@ func (c *command) run() error {
 		return fmt.Errorf("invalid plugin-releases.json format: %w", err)
 	}
 	for _, pluginRelease := range pluginReleases.Releases {
-		image, err := fetchRegistryImage(pluginRelease)
+		image, err := fetchRegistryImage(ctx, pluginRelease)
 		if err != nil {
 			return err
 		}
@@ -78,14 +81,14 @@ func (c *command) run() error {
 		}
 		taggedImage += ":" + pluginRelease.PluginVersion
 		log.Printf("updating image tag %q to point from %q to %q", taggedImage, image, pluginRelease.RegistryImage)
-		if err := pullImage(pluginRelease.RegistryImage); err != nil {
+		if err := pullImage(ctx, pluginRelease.RegistryImage); err != nil {
 			return fmt.Errorf("failed to pull %q: %w", pluginRelease.RegistryImage, err)
 		}
-		if err := tagImage(pluginRelease.RegistryImage, taggedImage); err != nil {
+		if err := tagImage(ctx, pluginRelease.RegistryImage, taggedImage); err != nil {
 			return fmt.Errorf("failed to tag %q: %w", taggedImage, err)
 		}
 		if !c.dryRun {
-			if err := pushImage(taggedImage); err != nil {
+			if err := pushImage(ctx, taggedImage); err != nil {
 				return fmt.Errorf("failed to push %q: %w", taggedImage, err)
 			}
 		}
@@ -93,60 +96,38 @@ func (c *command) run() error {
 	return nil
 }
 
-func pullImage(name string) error {
-	cmd, err := dockerCmd("pull", name)
-	if err != nil {
-		return err
-	}
+func pullImage(ctx context.Context, name string) error {
 	log.Printf("pulling image: %s", name)
-	return cmd.Run()
+	return dockerCmd(ctx, "pull", name).Run()
 }
 
-func tagImage(previousName, newName string) error {
-	cmd, err := dockerCmd("tag", previousName, newName)
-	if err != nil {
-		return err
-	}
+func tagImage(ctx context.Context, previousName, newName string) error {
 	log.Printf("tagging image: %s => %s", previousName, newName)
-	return cmd.Run()
+	return dockerCmd(ctx, "tag", previousName, newName).Run()
 }
 
-func pushImage(name string) error {
-	cmd, err := dockerCmd("push", name)
-	if err != nil {
-		return err
-	}
+func pushImage(ctx context.Context, name string) error {
 	log.Printf("pushing image: %s", name)
-	return cmd.Run()
+	return dockerCmd(ctx, "push", name).Run()
 }
 
-func dockerCmd(command string, args ...string) (*exec.Cmd, error) {
-	dockerPath, err := exec.LookPath("docker")
-	if err != nil {
-		return nil, err
-	}
-	cmd := &exec.Cmd{
-		Path: dockerPath,
-		Args: append([]string{
-			dockerPath,
-			command,
-		}, args...),
-		Stdout: os.Stdout,
-		Stderr: os.Stderr,
-	}
-	return cmd, nil
+func dockerCmd(ctx context.Context, command string, args ...string) *exec.Cmd {
+	commandArgs := make([]string, 0, len(args)+1)
+	commandArgs = append(commandArgs, command)
+	commandArgs = append(commandArgs, args...)
+	cmd := exec.CommandContext(ctx, "docker", commandArgs...)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	return cmd
 }
 
-func fetchRegistryImage(pluginRelease release.PluginRelease) (string, error) {
+func fetchRegistryImage(ctx context.Context, pluginRelease release.PluginRelease) (string, error) {
 	owner, pluginName, found := strings.Cut(pluginRelease.PluginName, "/")
 	if !found {
 		return "", fmt.Errorf("invalid plugin name: %q", pluginRelease.PluginName)
 	}
 	imageName := fmt.Sprintf("ghcr.io/%s/plugins-%s-%s", release.GithubOwnerBufbuild, owner, pluginName)
-	cmd, err := dockerCmd("manifest", "inspect", "--verbose", imageName+":"+pluginRelease.PluginVersion)
-	if err != nil {
-		return "", err
-	}
+	cmd := dockerCmd(ctx, "manifest", "inspect", "--verbose", imageName+":"+pluginRelease.PluginVersion)
 	var bb bytes.Buffer
 	cmd.Stdout = &bb
 	if err := cmd.Run(); err != nil {

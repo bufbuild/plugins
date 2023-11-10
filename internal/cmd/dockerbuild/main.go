@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"slices"
@@ -155,9 +156,14 @@ func (c *command) buildPluginGroup(ctx context.Context, pluginGroup string, plug
 				pluginCacheDir = filepath.Join(c.cacheDir, pluginIdentity.Owner(), pluginIdentity.Plugin(), pluginToBuild.PluginVersion)
 			}
 		}
+		if !c.shouldBuild(ctx, pluginToBuild) {
+			log.Println("skipping (up-to-date):", pluginToBuild.Name, pluginToBuild.PluginVersion)
+			continue
+		}
 		log.Println("building:", pluginToBuild.Name, pluginToBuild.PluginVersion)
 		start := time.Now()
-		output, err := docker.Build(ctx, pluginToBuild, c.dockerOrg, pluginCacheDir, c.dockerBuildArgs)
+		imageName := docker.ImageName(pluginToBuild, c.dockerOrg)
+		output, err := docker.Build(ctx, pluginToBuild, imageName, pluginCacheDir, c.dockerBuildArgs)
 		if err != nil {
 			if errors.Is(err, context.Canceled) || strings.Contains(err.Error(), "signal: killed") {
 				return err
@@ -174,4 +180,29 @@ func (c *command) buildPluginGroup(ctx context.Context, pluginGroup string, plug
 		log.Println("built:", pluginToBuild.Name, pluginToBuild.PluginVersion, "in", elapsed.Round(time.Second))
 	}
 	return nil
+}
+
+func (c *command) shouldBuild(ctx context.Context, plugin *plugin.Plugin) bool {
+	gitCommit := plugin.GitCommit(ctx)
+	// There are uncommitted changes to the plugin's directory - we should always rebuild.
+	if gitCommit == "" {
+		return true
+	}
+	imageName := docker.ImageName(plugin, c.dockerOrg)
+	cmd := exec.CommandContext(
+		ctx,
+		"docker",
+		"image",
+		"inspect",
+		imageName,
+		"--format",
+		`{{ index .Config.Labels "org.opencontainers.image.revision" }}`,
+	)
+	output, err := cmd.Output()
+	if err != nil {
+		// This could be because the image doesn't exist or any other error.
+		// Err on the side of caution and assume that we should rebuild the image.
+		return true
+	}
+	return strings.TrimSpace(string(output)) != gitCommit
 }

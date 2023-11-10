@@ -3,7 +3,7 @@ module github.com/bufbuild/plugins
 go 1.21
 
 require (
-	aead.dev/minisign v0.2.0
+	aead.dev/minisign v0.2.1
 	github.com/bufbuild/buf v1.27.3-0.20231106140608-d7a87496b879
 	github.com/google/go-containerregistry v0.16.1
 	github.com/google/go-github/v53 v53.2.0
@@ -11,9 +11,9 @@ require (
 	github.com/sethvargo/go-envconfig v0.9.0
 	github.com/stretchr/testify v1.8.4
 	go.uber.org/multierr v1.11.0
-	golang.org/x/mod v0.13.0
+	golang.org/x/mod v0.14.0
 	golang.org/x/oauth2 v0.13.0
-	golang.org/x/sync v0.4.0
+	golang.org/x/sync v0.5.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 
