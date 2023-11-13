@@ -7,3 +7,13 @@ spdx_license_id: Apache-2.0
 license_url: https://github.com/nipunn1313/mypy-protobuf/blob/v3.5.0/LICENSE
 output_languages:
   - python
+registry:
+  python:
+    package_type: "stub-only"
+    # https://github.com/nipunn1313/mypy-protobuf/blob/v3.5.0/setup.cfg#L20
+    requires_python: ">=3.8"
+    deps:
+      # https://github.com/nipunn1313/mypy-protobuf/tree/v3.5.0#requirements-to-run-typecheckers-on-stubs-generated-by-mypy-protobuf
+      # > Earlier releases might work, but aren't tested.
+      - "types-protobuf >= 4.23.0.2"
+      - "protobuf >= 4.23.4"

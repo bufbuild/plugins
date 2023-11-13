@@ -7,3 +7,11 @@ spdx_license_id: MIT
 license_url: https://github.com/danielgtaylor/python-betterproto/blob/v1.2.5/setup.py#L12
 output_languages:
   - python
+registry:
+  python:
+    package_type: "runtime"
+    # https://github.com/danielgtaylor/python-betterproto/blob/v1.2.5/setup.py#L20
+    requires_python: ">=3.6"
+    # https://github.com/danielgtaylor/python-betterproto/tree/v1.2.5#installation--getting-started
+    deps:
+      - "betterproto"

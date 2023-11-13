@@ -7,3 +7,12 @@ output_languages:
   - python
 spdx_license_id: BSD-3-Clause
 license_url: https://github.com/protocolbuffers/protobuf/blob/v25.0/LICENSE
+registry:
+  python:
+    package_type: "stub-only"
+    # https://github.com/protocolbuffers/protobuf/blob/v25.0/python/setup.py#L434
+    requires_python: ">=3.8"
+    deps:
+      # https://pypi.org/project/protobuf/
+      - "protobuf"
+      - "types-protobuf"
