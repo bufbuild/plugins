@@ -16,10 +16,10 @@ import (
 	"time"
 
 	"github.com/bufbuild/buf/private/pkg/interrupt"
-	"github.com/bufbuild/plugins/internal/docker"
 	"go.uber.org/multierr"
 	"golang.org/x/mod/semver"
 
+	"github.com/bufbuild/plugins/internal/docker"
 	"github.com/bufbuild/plugins/internal/fetchclient"
 	"github.com/bufbuild/plugins/internal/source"
 )
