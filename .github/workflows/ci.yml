@@ -71,9 +71,8 @@ jobs:
           echo "PLUGINS=${val}" >> $GITHUB_ENV
         fi
     - name: Install buf cli
-      uses: bufbuild/buf-setup-action@v1
-      with:
-        github_token: ${{ github.token }}
+      run: |
+        go install github.com/bufbuild/buf/cmd/buf@v1.28.2-0.20231128013053-57a9b07c7833
     - name: Set up QEMU
       uses: docker/setup-qemu-action@68827325e0b33c7199eb31dd4e31fbe9023e06e3
     - name: Set up Docker Buildx
