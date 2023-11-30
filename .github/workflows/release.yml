@@ -12,6 +12,9 @@ permissions:
   issues: write
   packages: read
 
+# Only allow a single release workflow to run at a time.
+concurrency: ${{ github.workflow }}
+
 jobs:
   release:
     environment: production
