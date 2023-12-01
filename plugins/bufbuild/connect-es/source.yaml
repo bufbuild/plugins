@@ -1,3 +1,5 @@
 source:
+  # Use connectrpc/es instead
+  disabled: true
   npm_registry:
     name: "@bufbuild/protoc-gen-connect-es"
