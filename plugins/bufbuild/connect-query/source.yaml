@@ -1,4 +1,5 @@
 source:
+  # Use connectrpc/query-es instead
   disabled: true
   npm_registry:
     name: "@bufbuild/protoc-gen-connect-query"
