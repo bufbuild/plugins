@@ -1,0 +1,7 @@
+{
+  "name": "plugins-connectrpc-es",
+  "version": "1.1.4",
+  "dependencies": {
+    "@connectrpc/protoc-gen-connect-es": "1.1.4"
+  }
+}
