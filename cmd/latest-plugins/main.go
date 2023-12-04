@@ -19,8 +19,9 @@ import (
 
 	"aead.dev/minisign"
 	"github.com/bufbuild/buf/private/pkg/interrupt"
-	"github.com/bufbuild/plugins/internal/release"
 	"golang.org/x/mod/semver"
+
+	"github.com/bufbuild/plugins/internal/release"
 )
 
 func main() {
