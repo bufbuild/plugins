@@ -3,9 +3,11 @@ package release
 import (
 	"crypto/sha256"
 	"encoding/hex"
+	"fmt"
 	"io"
 	"log"
 	"os"
+	"strings"
 	"time"
 )
 
@@ -60,4 +62,39 @@ func CalculateDigest(path string) (string, error) {
 	}
 	hashBytes := hash.Sum(nil)
 	return "sha256:" + hex.EncodeToString(hashBytes), nil
+}
+
+// SortReleasesInDependencyOrder sorts the list of plugin releases so that a plugin's dependencies come before each plugin.
+// The original slice is unmodified - it returns a copy in sorted order, or an error if there is a cycle or unmet dependency.
+func SortReleasesInDependencyOrder(original []PluginRelease) ([]PluginRelease, error) {
+	// Make a defensive copy of the original list
+	plugins := make([]PluginRelease, len(original))
+	copy(plugins, original)
+	resolved := make([]PluginRelease, 0, len(plugins))
+	resolvedMap := make(map[string]struct{}, len(plugins))
+	for len(plugins) > 0 {
+		var unresolved []PluginRelease
+		for _, plugin := range plugins {
+			foundDeps := true
+			for _, dep := range plugin.Dependencies {
+				// TODO: This is kinda ugly - we don't include the remote on names in plugin-releases.json but do on deps.
+				if _, ok := resolvedMap[strings.TrimPrefix(dep, "buf.build/")]; !ok {
+					foundDeps = false
+					break
+				}
+			}
+			if foundDeps {
+				resolved = append(resolved, plugin)
+				resolvedMap[plugin.PluginName+":"+plugin.PluginVersion] = struct{}{}
+			} else {
+				unresolved = append(unresolved, plugin)
+			}
+		}
+		// We either have a cycle or a bug in dependency calculation
+		if len(unresolved) == len(plugins) {
+			return nil, fmt.Errorf("failed to resolve dependencies: %v", unresolved)
+		}
+		plugins = unresolved
+	}
+	return resolved, nil
 }
