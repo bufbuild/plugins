@@ -133,7 +133,7 @@ Note, although some fields are optional, it is suggested to include as many as p
     It is recommended to leave this off (the plugin will depend on the latest revision at time of publishing).
 * `registry`: Configuration to enable a plugin for use with Generated SDKs.
   Must specify one of `go`, `npm`, `maven`, `python`, or `swift`.
-  * `opts`: Options specified to the plugin when generating code for the SDK.
+  * `opts`: Options supplied to the plugin when generating code for the SDK.
   * `go`: Generated SDK configuration for a Go plugin.
     * `min_version`: The minimum Go version required by the plugin (e.g. `1.19`), used as the [go directive] in the `go.mod` file.
     * `deps`: A list of Go module requirements. Each requirement corresponds to a [require directive] in the `go.mod` file.
