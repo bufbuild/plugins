@@ -13,29 +13,28 @@ GO_TEST_FLAGS ?= -race -count=1
 BUF ?= buf
 BUF_PLUGIN_PUSH_ARGS ?= --visibility=public
 
-# Specify a space separated list of plugin name (and optional version) to just build/test individual plugins.
+# Specify a space or comma separated list of plugin name (and optional version) to build/test individual plugins.
 # For example:
-# $ make PLUGINS="connect-go connect-web" # builds all versions of connect-go and connect-web plugins
-# $ make PLUGINS="connect-go:v0.4.0"      # builds connect-go v0.4.0 plugin
-# $ make PLUGINS="bufbuild/connect-go"    # can use optional prefix of the org
+# $ make PLUGINS="connectrpc/go connectrpc/es" # builds all versions of connect-go and connect-es plugins
+# $ make PLUGINS="connectrpc/go:v1.12.0"       # builds connect-go v1.12.0 plugin
 export PLUGINS ?=
 
 PLUGIN_YAML_FILES := $(shell PLUGINS="$(PLUGINS)" go run ./internal/cmd/dependency-order -relative . 2>/dev/null)
 
 .PHONY: all
 all: build
-	@if [[ -z "${PLUGINS}" ]]; then \
-		echo "No plugins specified to build with PLUGINS env var."; \
-		echo "See Makefile for example PLUGINS env var usage."; \
-		echo "To build all plugins (will take a long time), build with 'make PLUGINS=all'."; \
-	fi
 
 .PHONY: build
 build:
+ifeq ($(PLUGINS),)
+	@echo "No plugins specified to build with PLUGINS env var."
+	@echo "See Makefile for example PLUGINS env var usage."
+else
 	docker buildx inspect "$(DOCKER_BUILDER)" 2> /dev/null || docker buildx create --use --bootstrap --name="$(DOCKER_BUILDER)" > /dev/null
 	go run ./internal/cmd/dockerbuild -cache-dir "$(DOCKER_CACHE_DIR)" -org "$(DOCKER_ORG)" -- $(DOCKER_BUILD_EXTRA_ARGS) || \
 		(docker buildx rm "$(DOCKER_BUILDER)"; exit 1)
 	docker buildx rm "$(DOCKER_BUILDER)" > /dev/null
+endif
 
 .PHONY: dockerpush
 dockerpush:
