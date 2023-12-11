@@ -43,7 +43,7 @@ jobs:
           workload_identity_provider: projects/491113660045/locations/global/workloadIdentityPools/plugins-workload-pool/providers/plugins-workload-provider
           service_account: buf-plugins-1-publisher@buf-plugins-1.iam.gserviceaccount.com
       - name: Setup gcloud
-        uses: google-github-actions/setup-gcloud@e30db14379863a8c79331b04a9969f4c1e225e0b
+        uses: google-github-actions/setup-gcloud@825196879a077b7efa50db2e88409f44de4635c2
       - name: Download Plugins
         env:
           GITHUB_TOKEN: ${{ github.token }}
