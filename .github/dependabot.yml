@@ -13,3 +13,7 @@ updates:
     directory: "/.github/docker"
     schedule:
       interval: "daily"
+    groups:
+      distroless:
+        patterns:
+          - "distroless/*"
