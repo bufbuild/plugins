@@ -34,7 +34,7 @@ jobs:
     - uses: actions/checkout@v4
       with:
         fetch-depth: 0
-    - uses: nrwl/nx-set-shas@fd23edded2d5f52bb3ccdb650278f1f664434b67
+    - uses: nrwl/nx-set-shas@76907e7e5d3cd17ddb5e2b123389f054bffcdd03
       id: last_successful_commit_push
       if: ${{ inputs.plugins == '' }}
       with:
