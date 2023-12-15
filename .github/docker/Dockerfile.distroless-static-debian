@@ -1,3 +1,3 @@
-FROM gcr.io/distroless/static-debian12:latest@sha256:38662a8f5569c1e31823b6e106e62e8568ca7a35f52a4a02675db54827cc5615
+FROM gcr.io/distroless/static-debian12:latest@sha256:4a2c1a51ae5e10ec4758a0f981be3ce5d6ac55445828463fce8dff3a355e0b75
 
 CMD echo this is a dummy file used to automate dependency upgrades for plugins
