@@ -12,4 +12,4 @@ updates:
   - package-ecosystem: "docker"
     directory: "/.github/docker"
     schedule:
-      interval: "daily"
+      interval: "weekly"
