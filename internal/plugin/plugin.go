@@ -203,7 +203,10 @@ func FilterByPluginsEnv(plugins []*Plugin, pluginsEnv string) ([]*Plugin, error)
 // This allows PR builds to only build the plugins which changed instead of all plugins.
 func FilterByChangedFiles(plugins []*Plugin, lookuper envconfig.Lookuper) ([]*Plugin, error) {
 	var changedFiles changedFiles
-	if err := envconfig.ProcessWith(context.Background(), &changedFiles, lookuper); err != nil {
+	if err := envconfig.ProcessWith(context.Background(), &envconfig.Config{
+		Target:   &changedFiles,
+		Lookuper: lookuper,
+	}); err != nil {
 		return nil, err
 	}
 	// ANY_MODIFIED env var not set - filter everything
