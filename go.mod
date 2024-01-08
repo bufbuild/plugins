@@ -8,7 +8,7 @@ require (
 	github.com/google/go-containerregistry v0.17.0
 	github.com/google/go-github/v53 v53.2.0
 	github.com/hashicorp/go-retryablehttp v0.7.5
-	github.com/sethvargo/go-envconfig v0.9.0
+	github.com/sethvargo/go-envconfig v1.0.0
 	github.com/stretchr/testify v1.8.4
 	go.uber.org/multierr v1.11.0
 	golang.org/x/mod v0.14.0
