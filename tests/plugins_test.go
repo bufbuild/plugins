@@ -59,7 +59,8 @@ exec docker run --log-driver=none --rm -i {{.ImageName}}:{{.Version}} "$@"
 		"buf.build/community/neoeinstein-tonic":       {"no_include"},
 	}
 	// Some plugins do not generate any code for the test protos, so we allow an empty plugin.sum file for these
-	// plugins.
+	// plugins. The format of the map is map[pluginName]map[image]bool, where the bool indicates whether an empty
+	// plugin.sum file is allowed for the given image.
 	allowedEmptyPluginSums = map[string]map[string]bool{
 		"buf.build/bufbuild/validate-java":            {"eliza": true, "petapis": true},
 		"buf.build/grpc-ecosystem/gateway":            {"eliza": true, "petapis": true},
