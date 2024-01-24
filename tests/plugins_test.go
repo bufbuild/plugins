@@ -60,9 +60,10 @@ exec docker run --log-driver=none --rm -i {{.ImageName}}:{{.Version}} "$@"
 	}
 	// Some plugins do not generate any code for the test protos, so we allow an empty plugin.sum file for these
 	// plugins.
-	allowedEmptyPluginSums = map[string]bool{
-		"buf.build/bufbuild/validate-java": true,
-		"buf.build/grpc-ecosystem/gateway": true,
+	allowedEmptyPluginSums = map[string]map[string]bool{
+		"buf.build/bufbuild/validate-java":            {"eliza": true, "petapis": true},
+		"buf.build/grpc-ecosystem/gateway":            {"eliza": true, "petapis": true},
+		"buf.build/community/mercari-grpc-federation": {"eliza": true, "petapis": true},
 	}
 )
 
@@ -95,8 +96,11 @@ func TestGeneration(t *testing.T) {
 			// for these plugins. See grpc-ecosystem/gateway for an example.
 			genDirFiles, err := os.ReadDir(pluginGenDir)
 			require.NoError(t, err, "failed to read generated code directory")
-			if len(genDirFiles) == 0 && !allowedEmptyPluginSums[pluginMeta.Name] {
-				t.Fatalf("generated code directory is empty for %s", pluginMeta)
+			if len(genDirFiles) == 0 {
+				allowedEmptyImages, ok := allowedEmptyPluginSums[pluginMeta.Name]
+				if !ok || !allowedEmptyImages[image] {
+					t.Fatalf("generated code directory is empty for %s", pluginMeta)
+				}
 			}
 			genDirHash, err := dirhash.HashDir(pluginGenDir, "", dirhash.Hash1)
 			require.NoError(t, err, "failed to calculate directory hash of generated code")
@@ -134,6 +138,9 @@ func TestGeneration(t *testing.T) {
 			}
 			if toTest.Name == "buf.build/grpc-ecosystem/gateway" && semver.Compare(toTest.PluginVersion, "v2.16.0") >= 0 {
 				testPluginWithImage(t, toTest, "grpc-gateway")
+			}
+			if toTest.Name == "buf.build/community/mercari-grpc-federation" {
+				testPluginWithImage(t, toTest, "grpc-federation")
 			}
 		})
 	}
