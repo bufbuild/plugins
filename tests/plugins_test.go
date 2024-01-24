@@ -228,6 +228,7 @@ func createProtocGenPlugin(t *testing.T, basedir string, plugin *plugin.Plugin) 
 
 // isEmptyDirHash returns true if the given dirHash is the hash of an empty directory.
 func isEmptyDirHash(t *testing.T, dirHash string) bool {
+	t.Helper()
 	emptyDir := t.TempDir()
 	emptyDirHash, err := dirhash.HashDir(emptyDir, "", dirhash.Hash1)
 	require.NoError(t, err)
