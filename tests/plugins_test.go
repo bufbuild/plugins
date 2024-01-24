@@ -83,6 +83,12 @@ func TestGeneration(t *testing.T) {
 			bufCmd.Dir = pluginDir
 			output, err := bufCmd.CombinedOutput()
 			require.NoErrorf(t, err, "buf generate failed - output: %s", string(output))
+			// Ensure the gen directory is not empty, otherwise we'll get a sum of an empty directory.
+			genDirFiles, err := os.ReadDir(pluginGenDir)
+			require.NoError(t, err, "failed to read generated code directory")
+			if len(genDirFiles) == 0 {
+				t.Fatal("generated code directory is empty")
+			}
 			genDirHash, err := dirhash.HashDir(pluginGenDir, "", dirhash.Hash1)
 			require.NoError(t, err, "failed to calculate directory hash of generated code")
 			pluginImageSumFile := filepath.Join(pluginDir, "plugin.sum")
