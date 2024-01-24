@@ -58,6 +58,12 @@ exec docker run --log-driver=none --rm -i {{.ImageName}}:{{.Version}} "$@"
 		"buf.build/community/neoeinstein-prost-serde": {"no_include"},
 		"buf.build/community/neoeinstein-tonic":       {"no_include"},
 	}
+	// Some plugins do not generate any code for the test protos, so we allow an empty plugin.sum file for these
+	// plugins.
+	allowedEmptyPluginSums = map[string]bool{
+		"buf.build/bufbuild/validate-java": true,
+		"buf.build/grpc-ecosystem/gateway": true,
+	}
 )
 
 func TestGeneration(t *testing.T) {
@@ -86,8 +92,8 @@ func TestGeneration(t *testing.T) {
 			// Ensure the gen directory is not empty, otherwise we'll get a sum of an empty directory.
 			genDirFiles, err := os.ReadDir(pluginGenDir)
 			require.NoError(t, err, "failed to read generated code directory")
-			if len(genDirFiles) == 0 {
-				t.Fatal("generated code directory is empty")
+			if len(genDirFiles) == 0 && !allowedEmptyPluginSums[pluginMeta.Name] {
+				t.Fatalf("generated code directory is empty for %s", pluginMeta)
 			}
 			genDirHash, err := dirhash.HashDir(pluginGenDir, "", dirhash.Hash1)
 			require.NoError(t, err, "failed to calculate directory hash of generated code")
@@ -106,6 +112,7 @@ func TestGeneration(t *testing.T) {
 			} else {
 				assert.Equal(t, existingPluginSum, genDirHash)
 			}
+			require.False(t, isEmptyDirHash(t, genDirHash), "checksum of generated code directory is empty")
 			require.NoError(t, os.WriteFile(pluginImageSumFile, []byte(genDirHash+"\n"), 0o644))
 		})
 	}
@@ -217,4 +224,12 @@ func createProtocGenPlugin(t *testing.T, basedir string, plugin *plugin.Plugin) 
 		"ImageName": fmt.Sprintf("%s/plugins-%s-%s", dockerOrg, fields[1], fields[2]),
 		"Version":   plugin.PluginVersion,
 	})
+}
+
+// isEmptyDirHash returns true if the given dirHash is the hash of an empty directory.
+func isEmptyDirHash(t *testing.T, dirHash string) bool {
+	emptyDir := t.TempDir()
+	emptyDirHash, err := dirhash.HashDir(emptyDir, "", dirhash.Hash1)
+	require.NoError(t, err)
+	return dirHash == emptyDirHash
 }
