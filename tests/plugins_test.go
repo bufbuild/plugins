@@ -120,6 +120,9 @@ func TestGeneration(t *testing.T) {
 			if toTest.Name == "buf.build/grpc-ecosystem/gateway" && semver.Compare(toTest.PluginVersion, "v2.16.0") >= 0 {
 				testPluginWithImage(t, toTest, "grpc-gateway")
 			}
+			if toTest.Name == "buf.build/community/mercari-grpc-federation" {
+				testPluginWithImage(t, toTest, "grpc-federation")
+			}
 		})
 	}
 }
