@@ -7,5 +7,7 @@ RUN --mount=type=cache,target=/go/pkg/mod \
 FROM scratch
 COPY --from=build --link --chown=root:root /etc/passwd /etc/passwd
 COPY --from=build --link --chown=root:root /go/bin/protoc-gen-grpc-federation .
+COPY --from=build --link --chown=root:root /usr/local/go/bin/go /bin/go
+ENV GOROOT /
 USER nobody
 ENTRYPOINT [ "/protoc-gen-grpc-federation" ]
