@@ -1,4 +1,8 @@
 source:
+  # Disabling this plugin until it can be updated to work without invoking the
+  # Go toolchain for formatting. For more information, see:
+  # https://github.com/bufbuild/plugins/pull/1022#issuecomment-1908230254
+  disabled: true 
   github:
     owner: mercari
     repository: grpc-federation
