@@ -37,7 +37,7 @@ type Plugin struct {
 }
 
 func (p *Plugin) String() string {
-	return fmt.Sprintf("%s:%s", p.Identity.IdentityString(), p.Version)
+	return fmt.Sprintf("%s:%s", p.Identity.IdentityString(), p.PluginVersion)
 }
 
 // Dependency represents a dependency one plugin has on another.
