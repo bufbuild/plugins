@@ -90,6 +90,9 @@ func TestGeneration(t *testing.T) {
 			output, err := bufCmd.CombinedOutput()
 			require.NoErrorf(t, err, "buf generate failed - output: %s", string(output))
 			// Ensure the gen directory is not empty, otherwise we'll get a sum of an empty directory.
+			// This is either a problem with the plugin itself, or the input. Some plugins require
+			// input protos that contain custom options to generate code. We should craft a test proto
+			// for these plugins. See grpc-ecosystem/gateway for an example.
 			genDirFiles, err := os.ReadDir(pluginGenDir)
 			require.NoError(t, err, "failed to read generated code directory")
 			if len(genDirFiles) == 0 && !allowedEmptyPluginSums[pluginMeta.Name] {
@@ -112,7 +115,6 @@ func TestGeneration(t *testing.T) {
 			} else {
 				assert.Equal(t, existingPluginSum, genDirHash)
 			}
-			require.False(t, isEmptyDirHash(t, genDirHash), "checksum of generated code directory is empty")
 			require.NoError(t, os.WriteFile(pluginImageSumFile, []byte(genDirHash+"\n"), 0o644))
 		})
 	}
@@ -224,13 +226,4 @@ func createProtocGenPlugin(t *testing.T, basedir string, plugin *plugin.Plugin) 
 		"ImageName": fmt.Sprintf("%s/plugins-%s-%s", dockerOrg, fields[1], fields[2]),
 		"Version":   plugin.PluginVersion,
 	})
-}
-
-// isEmptyDirHash returns true if the given dirHash is the hash of an empty directory.
-func isEmptyDirHash(t *testing.T, dirHash string) bool {
-	t.Helper()
-	emptyDir := t.TempDir()
-	emptyDirHash, err := dirhash.HashDir(emptyDir, "", dirhash.Hash1)
-	require.NoError(t, err)
-	return dirHash == emptyDirHash
 }
