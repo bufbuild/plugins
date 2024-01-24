@@ -32,3 +32,23 @@ The content must first be manually pushed to the local BSR instance from the grp
 the host, logging into the registry, updating then pushing the module.
 
 The BSR-hosted version of the repository is annotations only and does not produce valuable test output.
+
+### grpc-federation.bin.gz
+
+This is a sample image built from
+https://github.com/mercari/grpc-federation/blob/v0.9.2/_examples/01_minimum/proto/federation/federation.proto,
+and has a dependency on https://buf.build/mercari/grpc-federation.
+
+Pull this file, add a buf.yaml file (`buf mod init`), then add this dependency and run `buf mod
+update`:
+
+```
+deps:
+  - buf.build/mercari/grpc-federation
+```
+
+Build and commit the resulting image into tests/testdata/images:
+
+```
+buf build federation.proto -o grpc-federation.bin.gz
+```
