@@ -1,4 +1,7 @@
 source:
+  # Use mfridman/protoc-gen-go-json instead
+  # For more info, see https://gist.github.com/mitchellh/90029601268e59a29e64e55bab1c5bdc
+  disabled: true
   github:
     owner: mitchellh
     repository: protoc-gen-go-json
