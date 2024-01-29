@@ -1,4 +1,4 @@
-# syntax=docker/dockerfile:1.4
+# syntax=docker/dockerfile:1.6
 FROM golang:1.21.6-bookworm AS build
 RUN --mount=type=cache,target=/go/pkg/mod \
     CGO_ENABLED=0 \
