@@ -107,8 +107,6 @@ func (c *command) run() error {
 	eg, ctx = errgroup.WithContext(ctx)
 	eg.SetLimit(limit)
 	for pluginGroup, plugins := range pluginGroups {
-		pluginGroup := pluginGroup
-		plugins := plugins
 		eg.Go(func() error {
 			return c.buildPluginGroup(ctx, pluginGroup, plugins)
 		})

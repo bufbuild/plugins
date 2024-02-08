@@ -75,7 +75,7 @@ func getLatestPluginsAndDependencies(releases *release.PluginReleases) ([]releas
 	for _, pluginRelease := range releases.Releases {
 		owner, pluginName, found := strings.Cut(pluginRelease.PluginName, "/")
 		if !found {
-			return nil, fmt.Errorf("failed to split plugin pluginName into owner/pluginName")
+			return nil, errors.New("failed to split plugin pluginName into owner/pluginName")
 		}
 		switch owner {
 		case "community": // Disable community plugins by default

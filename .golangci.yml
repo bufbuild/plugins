@@ -61,6 +61,7 @@ linters:
     - maligned          # readability trumps efficient struct packing
     - nlreturn          # generous whitespace violates house style
     - nosnakecase       # deprecated in https://github.com/golangci/golangci-lint/pull/3065
+    - perfsprint        # waiting for https://github.com/catenacyber/perfsprint/issues/21
     - rowserrcheck      # no SQL code in plugins
     - scopelint         # deprecated by author
     - sqlclosecheck     # no SQL code in plugins

@@ -10,7 +10,7 @@ Prior to opening a PR to add a new plugin to this repository, open an issue usin
 
 The build requires the following:
 
-* [Go](https://go.dev/dl/) (1.21+)
+* [Go](https://go.dev/dl/) (1.22+)
 * [Buf](https://github.com/bufbuild/buf) (1.28.1+)
 * [yq](https://github.com/mikefarah/yq)
 
