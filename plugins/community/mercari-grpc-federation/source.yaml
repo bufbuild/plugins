@@ -1,4 +1,7 @@
 source:
+  # Disabling until we can figure out a path forward with this plugin, see comment
+  # https://github.com/bufbuild/plugins/issues/1054#issuecomment-1934275559
+  disabled: true
   github:
     owner: mercari
     repository: grpc-federation
