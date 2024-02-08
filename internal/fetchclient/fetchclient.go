@@ -11,7 +11,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/google/go-github/v53/github"
+	"github.com/google/go-github/v58/github"
 	"github.com/hashicorp/go-retryablehttp"
 	"golang.org/x/mod/semver"
 	"golang.org/x/oauth2"

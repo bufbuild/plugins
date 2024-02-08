@@ -17,7 +17,7 @@ import (
 	"time"
 
 	"aead.dev/minisign"
-	"github.com/google/go-github/v53/github"
+	"github.com/google/go-github/v58/github"
 	"golang.org/x/mod/semver"
 
 	"github.com/bufbuild/plugins/internal/plugin"

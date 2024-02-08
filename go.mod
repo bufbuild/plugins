@@ -6,20 +6,18 @@ require (
 	aead.dev/minisign v0.2.1
 	github.com/bufbuild/buf v1.29.0
 	github.com/google/go-containerregistry v0.19.0
-	github.com/google/go-github/v53 v53.2.0
+	github.com/google/go-github/v58 v58.0.0
 	github.com/hashicorp/go-retryablehttp v0.7.5
 	github.com/sethvargo/go-envconfig v1.0.0
 	github.com/stretchr/testify v1.8.4
 	go.uber.org/multierr v1.11.0
-	golang.org/x/mod v0.14.0
-	golang.org/x/oauth2 v0.16.0
+	golang.org/x/mod v0.15.0
+	golang.org/x/oauth2 v0.17.0
 	golang.org/x/sync v0.6.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 
 require (
-	github.com/ProtonMail/go-crypto v0.0.0-20230619160724-3fbb1f12458c // indirect
-	github.com/cloudflare/circl v1.3.7 // indirect
 	github.com/containerd/stargz-snapshotter/estargz v0.15.1 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/docker/cli v24.0.7+incompatible // indirect
@@ -45,9 +43,9 @@ require (
 	go.opentelemetry.io/otel/metric v1.22.0 // indirect
 	go.opentelemetry.io/otel/trace v1.22.0 // indirect
 	go.uber.org/atomic v1.11.0 // indirect
-	golang.org/x/crypto v0.18.0 // indirect
-	golang.org/x/net v0.20.0 // indirect
-	golang.org/x/sys v0.16.0 // indirect
+	golang.org/x/crypto v0.19.0 // indirect
+	golang.org/x/net v0.21.0 // indirect
+	golang.org/x/sys v0.17.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/protobuf v1.32.0 // indirect
 )
