@@ -1,6 +1,6 @@
 module github.com/bufbuild/plugins
 
-go 1.21
+go 1.22.0
 
 require (
 	aead.dev/minisign v0.2.1
