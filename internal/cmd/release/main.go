@@ -271,7 +271,7 @@ func (c *command) loadMinisignPublicKeyFromFileOrPrivateKey(privateKey minisign.
 		var ok bool
 		publicKey, ok = privateKey.Public().(minisign.PublicKey)
 		if !ok {
-			return minisign.PublicKey{}, fmt.Errorf("unable to retrieve minisign public key from private key")
+			return minisign.PublicKey{}, errors.New("unable to retrieve minisign public key from private key")
 		}
 	}
 	return publicKey, nil
@@ -378,7 +378,7 @@ func (c *command) createReleaseBody(name string, plugins []release.PluginRelease
 	if !privateKey.Equal(minisign.PrivateKey{}) {
 		publicKey, ok := privateKey.Public().(minisign.PublicKey)
 		if !ok {
-			return "", fmt.Errorf("failed to retrieve minisign public key from private key")
+			return "", errors.New("failed to retrieve minisign public key from private key")
 		}
 		sb.WriteString("## Verifying a release\n\n")
 		sb.WriteString("Releases are signed using our [minisign](https://github.com/jedisct1/minisign) public key:\n\n")

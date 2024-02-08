@@ -25,6 +25,9 @@ linters-settings:
     # TODO, OPT, etc. comments are fine to commit. Use FIXME comments for
     # temporary hacks, and use godox to prevent committing them.
     keywords: [FIXME]
+  govet:
+    disable:
+      - loopclosure # not needed in go 1.22
   tagliatelle:
     # Check the struck tag name case.
     case:
@@ -61,6 +64,7 @@ linters:
     - maligned          # readability trumps efficient struct packing
     - nlreturn          # generous whitespace violates house style
     - nosnakecase       # deprecated in https://github.com/golangci/golangci-lint/pull/3065
+    - perfsprint        # waiting for https://github.com/catenacyber/perfsprint/issues/21
     - rowserrcheck      # no SQL code in plugins
     - scopelint         # deprecated by author
     - sqlclosecheck     # no SQL code in plugins
