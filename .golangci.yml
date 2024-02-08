@@ -25,6 +25,9 @@ linters-settings:
     # TODO, OPT, etc. comments are fine to commit. Use FIXME comments for
     # temporary hacks, and use godox to prevent committing them.
     keywords: [FIXME]
+  govet:
+    disable:
+      - loopclosure # not needed in go 1.22
   tagliatelle:
     # Check the struck tag name case.
     case:

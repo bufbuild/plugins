@@ -125,7 +125,7 @@ func TestGeneration(t *testing.T) {
 	}
 
 	plugins := loadFilteredPlugins(t)
-	for _, toTest := range plugins {
+	for _, toTest := range plugins { //nolint:paralleltest // https://github.com/kunwardeep/paralleltest/issues/34
 		t.Run(strings.TrimSuffix(toTest.Relpath, "/buf.plugin.yaml"), func(t *testing.T) {
 			t.Parallel()
 			images := images
