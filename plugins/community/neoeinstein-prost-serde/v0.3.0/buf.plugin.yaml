@@ -1,0 +1,9 @@
+version: v1
+name: buf.build/community/neoeinstein-prost-serde
+plugin_version: v0.3.0
+source_url: https://crates.io/crates/protoc-gen-prost-serde
+description: Generates serde serialization implementations that follow the conventions of protobuf-JSON.
+output_languages:
+  - rust
+spdx_license_id: Apache-2.0
+license_url: https://github.com/neoeinstein/protoc-gen-prost/blob/2023-03-01/LICENSE
