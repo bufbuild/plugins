@@ -7,3 +7,24 @@ output_languages:
   - rust
 spdx_license_id: Apache-2.0
 license_url: https://github.com/neoeinstein/protoc-gen-prost/blob/protoc-gen-prost-v0.3.1/LICENSE
+registry:
+  cargo:
+    # https://github.com/neoeinstein/protoc-gen-prost/blob/protoc-gen-prost-v0.3.1/protoc-gen-prost/Cargo.toml#L21
+    # https://github.com/tokio-rs/prost/blob/v0.12.3/prost-build/Cargo.toml#L15
+    # TODO: Should we actually set this? This is just the rust-version set by
+    # prost-build, which isn't necessarily the rust-version that the *generated
+    # code* requires.
+    rust_version: "1.60"
+    deps:
+      # https://github.com/tokio-rs/prost/blob/v0.12.3/prost-build/Cargo.toml#L30
+      # TODO: What features are required by the generated code?
+      - name: "prost"
+        req: "0.12.3"
+        default_features: false
+      # prost-types is necessary for any module using the WKTs.
+      - name: "prost-types"
+        req: "0.12.3"
+        default_features: false
+  # https://github.com/neoeinstein/protoc-gen-prost/blob/protoc-gen-prost-v0.3.1/protoc-gen-prost/README.md#options
+  # No options set.
+  opts: []

@@ -9,3 +9,20 @@ output_languages:
   - rust
 spdx_license_id: Apache-2.0
 license_url: https://github.com/neoeinstein/protoc-gen-prost/blob/protoc-gen-tonic-v0.4.0/LICENSE
+registry:
+  cargo:
+    # https://github.com/neoeinstein/protoc-gen-prost/blob/protoc-gen-tonic-v0.4.0/protoc-gen-tonic/Cargo.toml#L27
+    # https://github.com/hyperium/tonic/blob/v0.11.0/tonic-build/Cargo.toml
+    # tonic-build@v0.11.0 does not specify a rust-version.
+    # TODO: Maybe remove the above comment(s), as it's not important what
+    # version tonic-build specifies, but what the generated code requires.
+    rust_version: ""
+    deps:
+      - name: "tonic"
+        req: "0.11.0"
+        # https://github.com/hyperium/tonic/blob/v0.11.0/tonic/Cargo.toml#L29
+        # TODO: What features are required by the generated code?
+        default_features: false
+  # https://github.com/neoeinstein/protoc-gen-prost/blob/protoc-gen-tonic-v0.4.0/protoc-gen-tonic/README.md#options
+  opts:
+    - no_include=true
