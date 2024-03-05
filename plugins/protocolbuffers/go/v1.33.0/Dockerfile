@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1.4
-FROM golang:1.22.0-bookworm AS build
+FROM golang:1.22.1-bookworm AS build
 RUN --mount=type=cache,target=/go/pkg/mod \
     CGO_ENABLED=0 \
     go install -ldflags "-s -w" -trimpath google.golang.org/protobuf/cmd/protoc-gen-go@v1.33.0
