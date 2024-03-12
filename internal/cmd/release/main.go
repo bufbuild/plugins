@@ -362,7 +362,7 @@ func (c *command) createReleaseBody(name string, plugins []release.PluginRelease
 
 	if existingPlugins := pluginsByStatus[release.StatusExisting]; len(existingPlugins) > 0 {
 		sb.WriteString("## Previously Released Plugins\n\n")
-		sb.WriteString(fmt.Sprintf("The previously released plugins can be found in the [plugin-releases.json](%s) file.\n", c.pluginReleasesURL(name)))
+		sb.WriteString(fmt.Sprintf("A complete list of previously released plugins can be found in the [plugin-releases.json](%s) file.\n", c.pluginReleasesURL(name)))
 	}
 
 	if !privateKey.Equal(minisign.PrivateKey{}) {
