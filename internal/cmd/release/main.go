@@ -533,7 +533,13 @@ func (c *command) pluginDownloadURL(plugin *plugin.Plugin, releaseName string) s
 }
 
 func (c *command) pluginReleasesURL(releaseName string) string {
-	return fmt.Sprintf("https://github.com/bufbuild/plugins/releases/download/%s/%s", releaseName, release.PluginReleasesFile)
+	return fmt.Sprintf(
+		"https://github.com/%s/%s/releases/download/%s/%s",
+		release.GithubOwnerBufbuild,
+		release.GithubRepoPlugins,
+		releaseName,
+		release.PluginReleasesFile,
+	)
 }
 
 func pluginZipName(plugin *plugin.Plugin) string {
