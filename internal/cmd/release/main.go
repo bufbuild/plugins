@@ -361,18 +361,8 @@ func (c *command) createReleaseBody(name string, plugins []release.PluginRelease
 	}
 
 	if existingPlugins := pluginsByStatus[release.StatusExisting]; len(existingPlugins) > 0 {
-		sb.WriteString(`## Previously Released Plugins
-<details>
-    <summary>Expand</summary>
-
-| Plugin | Version | Release | Link |
-|--------|---------|---------|------|
-`)
-		for _, p := range existingPlugins {
-			sb.WriteString(fmt.Sprintf("| %s | %s | %s | [Download](%s) |\n", p.PluginName, p.PluginVersion, p.ReleaseTag, p.URL))
-		}
-		sb.WriteString("</details>\n")
-		sb.WriteString("\n")
+		sb.WriteString("## Previously Released Plugins\n\n")
+		sb.WriteString(fmt.Sprintf("A complete list of previously released plugins can be found in the [plugin-releases.json](%s) file.\n", c.pluginReleasesURL(name)))
 	}
 
 	if !privateKey.Equal(minisign.PrivateKey{}) {
@@ -540,6 +530,16 @@ func calculateNextRelease(now time.Time, latestRelease *github.RepositoryRelease
 func (c *command) pluginDownloadURL(plugin *plugin.Plugin, releaseName string) string {
 	zipName := pluginZipName(plugin)
 	return fmt.Sprintf("https://github.com/%s/%s/releases/download/%s/%s", c.githubReleaseOwner, release.GithubRepoPlugins, releaseName, zipName)
+}
+
+func (c *command) pluginReleasesURL(releaseName string) string {
+	return fmt.Sprintf(
+		"https://github.com/%s/%s/releases/download/%s/%s",
+		release.GithubOwnerBufbuild,
+		release.GithubRepoPlugins,
+		releaseName,
+		release.PluginReleasesFile,
+	)
 }
 
 func pluginZipName(plugin *plugin.Plugin) string {
