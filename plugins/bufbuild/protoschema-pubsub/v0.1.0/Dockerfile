@@ -5,7 +5,8 @@ ARG TARGETOS TARGETARCH
 ENV CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH 
 
 RUN --mount=type=cache,target=/go/pkg/mod \
-    go install -ldflags="-s -w" -trimpath github.com/bufbuild/protoschema-plugins/cmd/protoc-gen-pubsub@v0.1.0
+    go install -ldflags="-s -w" -trimpath github.com/bufbuild/protoschema-plugins/cmd/protoc-gen-pubsub@v0.1.0 \
+    && mv /go/bin/${GOOS}_${GOARCH}/protoc-gen-pubsub /go/bin/protoc-gen-pubsub || true
 
 FROM scratch
 COPY --from=build --link --chown=root:root /etc/passwd /etc/passwd
