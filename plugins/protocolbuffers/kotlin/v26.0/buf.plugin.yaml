@@ -16,12 +16,12 @@ registry:
       kotlin:
         version: 1.8.22
     deps:
-      - com.google.protobuf:protobuf-kotlin:3.26.0
+      - com.google.protobuf:protobuf-kotlin:4.26.0
       - org.jetbrains.kotlin:kotlin-stdlib:1.8.22
       - org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.8.22
     additional_runtimes:
       - name: lite
         deps:
-          - com.google.protobuf:protobuf-kotlin-lite:3.26.0
+          - com.google.protobuf:protobuf-kotlin-lite:4.26.0
           - org.jetbrains.kotlin:kotlin-stdlib:1.8.22
         opts: [lite]

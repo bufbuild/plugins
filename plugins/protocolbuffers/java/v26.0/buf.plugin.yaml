@@ -10,10 +10,10 @@ license_url: https://github.com/protocolbuffers/protobuf/blob/v26.0/LICENSE
 registry:
   maven:
     deps:
-      - com.google.protobuf:protobuf-java:3.26.0
+      - com.google.protobuf:protobuf-java:4.26.0
     additional_runtimes:
       - name: lite
         deps:
-          - com.google.protobuf:protobuf-javalite:3.26.0
-          - build.buf:protobuf-javalite:3.26.0
+          - com.google.protobuf:protobuf-javalite:4.26.0
+          - build.buf:protobuf-javalite:4.26.0
         opts: [lite]
