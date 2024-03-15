@@ -50,7 +50,7 @@ jobs:
         run: |
           go run ./cmd/download-plugins -since ${{ inputs.since }} downloads
       - name: Upload To Release Bucket
-        run: gsutil rsync -r downloads gs://buf-plugins
+        run: gsutil -m rsync -r downloads gs://buf-plugins
       - uses: dblock/create-a-github-issue@866beb009af3db457e82ca98efe474969a5ebce8
         if: failure()
         env:
