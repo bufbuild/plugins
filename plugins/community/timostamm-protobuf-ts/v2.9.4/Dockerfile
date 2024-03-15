@@ -1,11 +1,14 @@
-# syntax=docker/dockerfile:1.4
+# syntax=docker/dockerfile:1.7
 FROM node:20.11.1-alpine3.19 AS build
 WORKDIR /app
 COPY --link package*.json .
-RUN npm ci
-RUN sed -i -e 's|/usr/bin/env node|/nodejs/bin/node|g' /app/node_modules/@protobuf-ts/plugin/bin/protoc-gen-ts
+RUN npm ci \
+ && find node_modules/typescript ! -name 'typescript.js' ! -name 'package.json' -type f -exec rm -f {} + \
+ && find node_modules/typescript -depth -type d -empty -delete \
+ && ./node_modules/.bin/esbuild ./node_modules/.bin/protoc-gen-ts --bundle --external:typescript --platform=node --outfile=protoc-gen-ts.js
 
 FROM gcr.io/distroless/nodejs20-debian12:latest@sha256:e0edb89411e3f93863e9bd97c15cddcbac968d7a16b7a82af6ae6b264da65de9
-COPY --link --from=build /app /app
+COPY --link --from=build --chmod=0755 /app/protoc-gen-ts.js /app/protoc-gen-ts.js
+COPY --link --from=build /app/node_modules/typescript /app/node_modules/typescript
 USER nobody
-ENTRYPOINT [ "/app/node_modules/.bin/protoc-gen-ts" ]
+CMD [ "/app/protoc-gen-ts.js" ]
