@@ -11,4 +11,4 @@ FROM gcr.io/distroless/nodejs20-debian12:latest@sha256:e0edb89411e3f93863e9bd97c
 COPY --link --from=build --chmod=0755 /app/protoc-gen-connect-es.js /app/protoc-gen-connect-es.js
 COPY --link --from=build /app/node_modules/typescript /app/node_modules/typescript
 USER nobody
-ENTRYPOINT [ "/app/protoc-gen-connect-es.js" ]
+CMD [ "/app/protoc-gen-connect-es.js" ]

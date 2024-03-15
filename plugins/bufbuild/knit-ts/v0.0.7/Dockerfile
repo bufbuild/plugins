@@ -9,6 +9,6 @@ RUN npm ci \
 
 FROM gcr.io/distroless/nodejs20-debian12:latest@sha256:e0edb89411e3f93863e9bd97c15cddcbac968d7a16b7a82af6ae6b264da65de9
 COPY --link --from=build --chmod=0755 /app/protoc-gen-knit-ts.js /app/protoc-gen-knit-ts.js
-COPY --link --from=build /typescript /app/node_modules/typescript
+COPY --link --from=build /app/node_modules/typescript /app/node_modules/typescript
 USER nobody
 CMD [ "/app/protoc-gen-knit-ts.js" ]
