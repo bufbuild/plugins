@@ -1,0 +1,9 @@
+version: v1
+name: buf.build/bufbuild/protoschema-jsonschema
+plugin_version: v0.1.2
+source_url: https://github.com/bufbuild/protoschema-plugins
+description: Generates JSON Schema files from protobuf files. This implementation uses the latest Draft 2020-12.
+registry:
+  archive: {}
+spdx_license_id: Apache-2.0
+license_url: https://github.com/bufbuild/protoschema-plugins/blob/v0.1.2/LICENSE
