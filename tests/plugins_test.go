@@ -136,10 +136,14 @@ func TestGeneration(t *testing.T) {
 			for _, image := range images {
 				testPluginWithImage(t, toTest, image)
 			}
-			if toTest.Name == "buf.build/grpc-ecosystem/gateway" && semver.Compare(toTest.PluginVersion, "v2.16.0") >= 0 {
-				testPluginWithImage(t, toTest, "grpc-gateway")
-			}
-			if toTest.Name == "buf.build/community/mercari-grpc-federation" {
+			switch toTest.Name {
+			case "buf.build/bufbuild/knit-ts":
+				testPluginWithImage(t, toTest, "knit-demo")
+			case "buf.build/grpc-ecosystem/gateway":
+				if semver.Compare(toTest.PluginVersion, "v2.16.0") >= 0 {
+					testPluginWithImage(t, toTest, "grpc-gateway")
+				}
+			case "buf.build/community/mercari-grpc-federation":
 				if semver.Compare(toTest.PluginVersion, "v0.11.0") < 0 {
 					// There was a breaking change in v0.11.0, so we need to test the old version separately
 					// https://github.com/mercari/grpc-federation/commit/baca78bf2421322c97e6977a06931fed29e4058a
