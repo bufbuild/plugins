@@ -52,3 +52,11 @@ Build and commit the resulting image into tests/testdata/images:
 ```
 buf build federation.proto -o grpc-federation.bin.gz
 ```
+
+### knit-demo.bin.gz
+
+This is the https://buf.build/bufbuild/knit-demo/docs/be4cf8aeb5178f64f3004ba49a0eef9722e9bd11 tag of buf.build/bufbuild/knit-demo, exported with:
+
+```shell
+buf build buf.build/bufbuild/knit-demo:be4cf8aeb5178f64f3004ba49a0eef9722e9bd11 -o knit-demo.bin.gz
+```
