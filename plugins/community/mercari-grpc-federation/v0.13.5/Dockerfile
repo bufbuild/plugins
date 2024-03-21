@@ -1,8 +1,12 @@
 # syntax=docker/dockerfile:1.6
-FROM golang:1.22.1-bookworm AS build
+FROM --platform=$BUILDPLATFORM golang:1.22.1-bookworm AS build
+
+ARG TARGETOS TARGETARCH
+ENV CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH
+
 RUN --mount=type=cache,target=/go/pkg/mod \
-    CGO_ENABLED=0 \
-    go install -ldflags="-s -w" -trimpath github.com/mercari/grpc-federation/cmd/protoc-gen-grpc-federation@v0.13.5
+    go install -ldflags="-s -w" -trimpath github.com/mercari/grpc-federation/cmd/protoc-gen-grpc-federation@v0.13.5 \
+ && mv /go/bin/${GOOS}_${GOARCH}/protoc-gen-grpc-federation /go/bin/protoc-gen-grpc-federation || true
 
 FROM scratch
 COPY --from=build --link --chown=root:root /etc/passwd /etc/passwd
