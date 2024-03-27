@@ -3,7 +3,5 @@ name: buf.build/bufbuild/protoschema-bigquery
 plugin_version: v0.1.0
 source_url: https://github.com/bufbuild/protoschema-plugins
 description: Generates a Table schema that can be used to initialize a BigQuery table.
-registry:
-  archive: {}
 spdx_license_id: Apache-2.0
 license_url: https://github.com/bufbuild/protoschema-plugins/blob/v0.1.0/LICENSE
