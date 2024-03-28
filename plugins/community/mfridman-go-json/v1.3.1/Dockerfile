@@ -1,8 +1,12 @@
 # syntax=docker/dockerfile:1.6
-FROM golang:1.22.1-bookworm AS build
+FROM --platform=$BUILDPLATFORM golang:1.22.1-bookworm AS build
+
+ARG TARGETOS TARGETARCH
+ENV CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH
+
 RUN --mount=type=cache,target=/go/pkg/mod \
-    CGO_ENABLED=0 \
-    go install -ldflags="-s -w" -trimpath github.com/mfridman/protoc-gen-go-json@v1.3.1
+    go install -ldflags="-s -w" -trimpath github.com/mfridman/protoc-gen-go-json@v1.3.1 \
+    && mv /go/bin/${GOOS}_${GOARCH}/protoc-gen-go-json /go/bin/protoc-gen-go-json || true
 
 FROM scratch
 COPY --from=build --link --chown=root:root /etc/passwd /etc/passwd
