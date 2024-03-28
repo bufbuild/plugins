@@ -1,3 +1,3 @@
-FROM gcr.io/distroless/nodejs20-debian12:latest@sha256:e0edb89411e3f93863e9bd97c15cddcbac968d7a16b7a82af6ae6b264da65de9
+FROM gcr.io/distroless/nodejs20-debian12:latest@sha256:36a64f13fd57646fd2059f258f759a8d2ccfbca7a397c550b425c63171fc47cb
 
 CMD echo this is a dummy file used to automate dependency upgrades for plugins
