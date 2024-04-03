@@ -1,0 +1,7 @@
+version: v1
+name: buf.build/googlecloudplatform/bq-schema
+plugin_version: v0.0.1
+source_url: https://github.com/GoogleCloudPlatform/protoc-gen-bq-schema
+description: A plugin to convert Protobuf messages into JSON schema files for BigQuery.
+spdx_license_id: Apache-2.0
+license_url: https://github.com/GoogleCloudPlatform/protoc-gen-bq-schema/blob/31a7e43419f7c19d79de0bb506798bc602287e80/LICENSE
