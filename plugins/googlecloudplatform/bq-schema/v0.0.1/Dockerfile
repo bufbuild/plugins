@@ -12,4 +12,4 @@ FROM scratch
 COPY --from=build --link --chown=root:root /etc/passwd /etc/passwd
 COPY --from=build --link /go/bin/protoc-gen-bq-schema /
 USER nobody
-ENTRYPOINT [ "/protoc-gen-bq-schema" ]
+ENTRYPOINT [ "/protoc-gen-bq-schema", "-logtostderr=true" ]
