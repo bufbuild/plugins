@@ -150,7 +150,7 @@ func TestGeneration(t *testing.T) {
 					testPluginWithImage(t, toTest, "grpc-federation")
 				}
 				if semver.Compare(toTest.PluginVersion, "v0.11.0") >= 0 {
-					testPluginWithImage(t, toTest, "grpc-federation-v0.11.0")
+					testPluginWithImage(t, toTest, "grpc-federation-latest")
 				}
 			}
 		})
