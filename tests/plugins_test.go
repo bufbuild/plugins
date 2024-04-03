@@ -149,8 +149,11 @@ func TestGeneration(t *testing.T) {
 					// https://github.com/mercari/grpc-federation/commit/baca78bf2421322c97e6977a06931fed29e4058a
 					testPluginWithImage(t, toTest, "grpc-federation")
 				}
-				if semver.Compare(toTest.PluginVersion, "v0.11.0") >= 0 {
-					testPluginWithImage(t, toTest, "grpc-federation-latest")
+				if semver.Compare(toTest.PluginVersion, "v0.11.0") >= 0 || semver.Compare(toTest.PluginVersion, "v0.13.6") < 0 {
+					testPluginWithImage(t, toTest, "grpc-federation-v0.11.0")
+				}
+				if semver.Compare(toTest.PluginVersion, "v0.13.6") >= 0 {
+					testPluginWithImage(t, toTest, "grpc-federation-v0.13.6")
 				}
 			}
 		})
