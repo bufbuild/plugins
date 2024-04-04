@@ -5,7 +5,7 @@ ARG TARGETOS TARGETARCH
 ENV CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH
 
 RUN --mount=type=cache,target=/go/pkg/mod \
-    go install -ldflags="-s -w" -trimpath github.com/GoogleCloudPlatform/protoc-gen-bq-schema@latest \
+    go install -ldflags="-s -w" -trimpath github.com/GoogleCloudPlatform/protoc-gen-bq-schema@v1.1.0 \
     && mv /go/bin/${GOOS}_${GOARCH}/protoc-gen-bq-schema /go/bin/protoc-gen-bq-schema || true
 
 FROM scratch
