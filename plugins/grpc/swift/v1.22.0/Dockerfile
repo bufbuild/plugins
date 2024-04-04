@@ -1,4 +1,4 @@
-# syntax=docker/dockerfile:1.4
+# syntax=docker/dockerfile:1.7
 FROM swift:5.10.0-jammy AS build
 
 WORKDIR /app
