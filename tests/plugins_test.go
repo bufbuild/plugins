@@ -66,6 +66,7 @@ exec docker run --log-driver=none --rm -i {{.ImageName}}:{{.Version}} "$@"
 		"buf.build/bufbuild/validate-java":            {"eliza": true, "petapis": true},
 		"buf.build/grpc-ecosystem/gateway":            {"eliza": true, "petapis": true},
 		"buf.build/community/mercari-grpc-federation": {"eliza": true, "petapis": true},
+		"buf.build/googlecloudplatform/bq-schema":     {"eliza": true, "petapis": true},
 	}
 )
 
@@ -155,6 +156,8 @@ func TestGeneration(t *testing.T) {
 				if semver.Compare(toTest.PluginVersion, "v0.13.6") >= 0 {
 					testPluginWithImage(t, toTest, "grpc-federation-v0.13.6")
 				}
+			case "buf.build/googlecloudplatform/bq-schema":
+				testPluginWithImage(t, toTest, "bq-schema")
 			}
 		})
 	}

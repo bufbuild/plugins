@@ -60,3 +60,22 @@ This is the https://buf.build/bufbuild/knit-demo/docs/be4cf8aeb5178f64f3004ba49a
 ```shell
 buf build buf.build/bufbuild/knit-demo:be4cf8aeb5178f64f3004ba49a0eef9722e9bd11 -o knit-demo.bin.gz
 ```
+
+### bq-schema.bin.gz
+
+This is the example with policy tags message from:
+
+https://github.com/GoogleCloudPlatform/protoc-gen-bq-schema/tree/31a7e43419f7c19d79de0bb506798bc602287e80?tab=readme-ov-file#example-with-policy-tags
+
+Deps:
+
+```yaml
+deps:
+  - buf.build/unitytestorg/gen-bq-schema
+```
+
+Build and commit the resulting image into tests/testdata/images:
+
+```
+buf build bq-schema.proto -o bq-schema.bin.gz
+```
