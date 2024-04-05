@@ -1,4 +1,6 @@
 source:
+  # Users are encouraged to use https://buf.build/googlecloudplatform/bq-schema
+  disabled: true
   github:
     owner: bufbuild
     repository: protoschema-plugins
