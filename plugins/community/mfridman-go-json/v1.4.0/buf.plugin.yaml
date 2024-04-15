@@ -1,0 +1,10 @@
+version: v1
+name: buf.build/community/mfridman-go-json
+plugin_version: v1.4.0
+source_url: https://github.com/mfridman/protoc-gen-go-json
+integration_guide_url: https://github.com/mfridman/protoc-gen-go-json#usage
+description: Generate marshalling & unmarshalling code using protojson.
+output_languages:
+  - go
+spdx_license_id: MIT
+license_url: https://github.com/mfridman/protoc-gen-go-json/blob/v1.4.0/LICENSE.md
