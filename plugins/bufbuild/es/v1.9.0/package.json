@@ -1,0 +1,10 @@
+{
+  "name": "plugins-bufbuild-protobuf-es",
+  "version": "1.9.0",
+  "dependencies": {
+    "@bufbuild/protoc-gen-es": "1.9.0"
+  },
+  "devDependencies": {
+    "esbuild": "0.20.2"
+  }
+}
