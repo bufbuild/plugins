@@ -1,0 +1,26 @@
+version: v1
+name: buf.build/community/nipunn1313-mypy-grpc
+plugin_version: v3.6.0
+source_url: https://github.com/nipunn1313/mypy-protobuf
+description: Generate mypy stub files for grpcio generated code.
+spdx_license_id: Apache-2.0
+license_url: https://github.com/nipunn1313/mypy-protobuf/blob/v3.6.0/LICENSE
+output_languages:
+  - python
+registry:
+  python:
+    package_type: "stub-only"
+    # https://github.com/nipunn1313/mypy-protobuf/blob/v3.6.0/setup.cfg#L20
+    requires_python: ">=3.8"
+    deps:
+      # https://github.com/nipunn1313/mypy-protobuf/tree/v3.6.0#requirements-to-run-typecheckers-on-stubs-generated-by-mypy-protobuf
+      # > Earlier releases might work, but aren't tested.
+      - "types-protobuf >= 4.24"
+      - "protobuf >= 4.25.3"
+      # https://github.com/nipunn1313/mypy-protobuf/tree/v3.6.0#to-run-typecheckers-on-code-generated-with-grpc-plugin---youll-additionally-need
+      # > Earlier releases might work, but aren't tested
+      - "grpcio >= 1.56.2"
+      # https://pypi.org/project/grpcio-tools/
+      - "grpcio-tools >= 1.56.2"
+      # https://pypi.org/project/grpc-stubs/
+      - "grpc-stubs >= 1.53.0.2"
