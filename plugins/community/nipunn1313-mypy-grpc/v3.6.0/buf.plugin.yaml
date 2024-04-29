@@ -15,8 +15,8 @@ registry:
     deps:
       # https://github.com/nipunn1313/mypy-protobuf/tree/v3.6.0#requirements-to-run-typecheckers-on-stubs-generated-by-mypy-protobuf
       # > Earlier releases might work, but aren't tested.
-      - "types-protobuf >= 4.23.0.2"
-      - "protobuf >= 4.23.4"
+      - "types-protobuf >= 4.24"
+      - "protobuf >= 4.25.3"
       # https://github.com/nipunn1313/mypy-protobuf/tree/v3.6.0#to-run-typecheckers-on-code-generated-with-grpc-plugin---youll-additionally-need
       # > Earlier releases might work, but aren't tested
       - "grpcio >= 1.56.2"
