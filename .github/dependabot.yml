@@ -20,6 +20,8 @@ updates:
     directory: "/.github/docker"
     schedule:
       interval: "daily"
+    registries:
+      - dockerhub
     groups:
       distroless:
         patterns:
