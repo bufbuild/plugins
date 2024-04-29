@@ -65,7 +65,7 @@ jobs:
           body: "New plugin versions found. Please review."
           assignees: mfridman, pkwarren
           token: ${{ steps.generate_token.outputs.token }}
-      - uses: dblock/create-a-github-issue@866beb009af3db457e82ca98efe474969a5ebce8
+      - uses: dblock/create-a-github-issue@c5e54b8762a0c4c2cd9330750e30b81bcc369c38
         if: failure()
         env:
           GITHUB_TOKEN: ${{ github.token }}
