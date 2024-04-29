@@ -1,4 +1,4 @@
-# syntax=docker/dockerfile:1.4
+# syntax=docker/dockerfile:1.7
 FROM python:3.12.3-alpine3.19 AS build
 WORKDIR /app
 RUN python -mvenv /app
