@@ -1,5 +1,9 @@
-# syntax=docker/dockerfile:1.4
-FROM golang:1.20.1-bullseye AS build
+# syntax=docker/dockerfile:1.7
+FROM --platform=$BUILDPLATFORM golang:1.22.2-bookworm AS build
+
+ARG TARGETOS TARGETARCH
+ENV CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH
+
 WORKDIR /tmp
 RUN git clone --depth 1 --branch cmd/protoc-gen-go-grpc/v1.3.0 https://github.com/grpc/grpc-go.git
 WORKDIR /tmp/grpc-go
@@ -69,11 +73,10 @@ index 340eaf3e..7f0fba56 100644
 EOF
 WORKDIR /tmp/grpc-go/cmd/protoc-gen-go-grpc
 RUN --mount=type=cache,target=/go/pkg/mod \
-    CGO_ENABLED=0 \
-    go build -ldflags "-s -w" -trimpath
+    go build -o protoc-gen-go-grpc -ldflags "-s -w" -trimpath
 
 FROM scratch
 COPY --from=build --link /etc/passwd /etc/passwd
-COPY --from=build --link --chown=root:root /tmp/grpc-go/cmd/protoc-gen-go-grpc .
+COPY --from=build --link --chown=root:root /tmp/grpc-go/cmd/protoc-gen-go-grpc/protoc-gen-go-grpc .
 USER nobody
 ENTRYPOINT [ "/protoc-gen-go-grpc" ]
