@@ -1,7 +1,3 @@
-run:
-  exclude-dirs-use-default: false
-  exclude-files:
-    - ".*\\.y\\.go$"
 linters-settings:
   errcheck:
     check-type-assertions: true
@@ -48,6 +44,7 @@ linters:
     - cyclop            # covered by gocyclo
     - deadcode          # deprecated by author
     - depguard          # not needed
+    - execinquery       # deprecated by author
     - exhaustivestruct  # replaced by exhaustruct
     - funlen            # rely on code review to limit function length
     - gochecknoglobals  # sometimes useful to declare constants
@@ -55,13 +52,14 @@ linters:
     - gofumpt           # prefer standard gofmt
     - goimports         # using gci
     - golint            # deprecated by Go team
-    - gomnd             # some unnamed constants are okay
+    - gomnd             # replaced by mnd
     - ifshort           # deprecated by author
     - interfacer        # deprecated by author
     - ireturn           # "accept interfaces, return structs" isn't ironclad
     - lll               # don't want hard limits for line length
     - maintidx          # covered by gocyclo
     - maligned          # readability trumps efficient struct packing
+    - mnd               # some unnamed constants are okay
     - nlreturn          # generous whitespace violates house style
     - nosnakecase       # deprecated in https://github.com/golangci/golangci-lint/pull/3065
     - perfsprint        # waiting for https://github.com/catenacyber/perfsprint/issues/21
@@ -75,11 +73,12 @@ linters:
     - wrapcheck         # don't _always_ need to wrap errors
     - wsl               # generous whitespace violates house style
 issues:
-  exclude:
-    # Don't ban use of fmt.Errorf to create new errors, but the remaining
-    # checks from err113 are useful.
-    - "err113: do not define dynamic errors.*"
+  exclude-dirs-use-default: false
   exclude-rules:
+    - linters:
+        - err113
+        - goerr113
+      text: "do not define dynamic errors"
     # Benchmarks can't be run in parallel
     - path: benchmark_test\.go
       linters:
