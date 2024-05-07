@@ -1,8 +1,69 @@
-diff --git a/internal/descriptor/registry.go b/internal/descriptor/registry.go
-index 1cfc4b02..11e1368d 100644
---- a/internal/descriptor/registry.go
-+++ b/internal/descriptor/registry.go
-@@ -151,6 +151,13 @@ type Registry struct {
+diff --git internal/descriptor/buf_build.go internal/descriptor/buf_build.go
+new file mode 100644
+index 00000000..6348916a
+--- /dev/null
++++ internal/descriptor/buf_build.go
+@@ -0,0 +1,55 @@
++package descriptor
++
++import (
++	"path/filepath"
++	"strings"
++)
++
++// SetSeparatePackage sets separatePackage
++func (r *Registry) SetSeparatePackage(use bool) {
++	r.separatePackage = use
++}
++
++// IncludeAdditionalImports adds additionalImports to the registry on a per-package basis
++func (r *Registry) IncludeAdditionalImports(svc *Service, goPkg GoPackage) {
++	if !r.separatePackage {
++		return
++	}
++	if r.additionalImports == nil {
++		r.additionalImports = make(map[string][]string)
++	}
++	// when generating a separate package for the gateway, we need to generate an import statement
++	// for the gRPC stubs that are no longer in the same package. This is done by adding the grpc
++	// package to the additionalImports list. In order to prepare a valid import statement, we'll replace
++	// the source package name, something like: ../pet/v1/v1petgateway with ../pet/v1/v1petgrpc
++	const (
++		baseTypePackageName    = "protocolbuffers"
++		baseTypePackageSubPath = baseTypePackageName + "/go"
++		grpcPackageName        = "grpc"
++		grpcPackageSubPath     = grpcPackageName + "/go"
++	)
++	packageName := strings.TrimSuffix(goPkg.Name, "gateway") + grpcPackageName
++	svc.GRPCFile = &File{
++		GoPkg: GoPackage{
++			// additionally, as the `go_package` option is passed through from the generator, and can only be
++			// set the one time, without making major changes, we'll use the package name sent through the
++			// options as a basis, and replace the source package name with the grpc package name.
++			Path: strings.Replace(
++				filepath.Join(goPkg.Path, packageName),
++				baseTypePackageSubPath,
++				grpcPackageSubPath,
++				1,
++			),
++			Name: strings.Replace(packageName, baseTypePackageSubPath, grpcPackageSubPath, 1),
++		},
++	}
++	r.additionalImports[goPkg.Path] = append(r.additionalImports[goPkg.Path], svc.GRPCFile.GoPkg.Path)
++}
++
++// GetAdditionalImports returns additionalImports
++func (r *Registry) GetAdditionalImports(goPkg GoPackage) []string {
++	if !r.separatePackage || r.additionalImports == nil {
++		return nil
++	}
++	return r.additionalImports[goPkg.Path]
++}
+diff --git internal/descriptor/registry.go internal/descriptor/registry.go
+index 421c0089..26bed31a 100644
+--- internal/descriptor/registry.go
++++ internal/descriptor/registry.go
+@@ -157,6 +157,13 @@ type Registry struct {
  	// allowPatchFeature determines whether to use PATCH feature involving update masks (using google.protobuf.FieldMask).
  	allowPatchFeature bool
  
@@ -11,109 +72,37 @@ index 1cfc4b02..11e1368d 100644
 +
 +	// additionalImports is a list of additional imports to be added to the generated code.
 +	// N.B. additional imports is not a flag option
-+	additionalImports []string
++	additionalImports map[string][]string
 +
  	// preserveRPCOrder, if true, will ensure the order of paths emitted in openapi swagger files mirror
  	// the order of RPC methods found in proto files. If false, emitted paths will be ordered alphabetically.
  	preserveRPCOrder bool
-@@ -244,7 +251,9 @@ func (r *Registry) loadFile(filePath string, file *protogen.File) {
- 	if r.standalone {
+@@ -252,6 +259,9 @@ func (r *Registry) loadFile(filePath string, file *protogen.File) {
  		pkg.Alias = "ext" + cases.Title(language.AmericanEnglish).String(pkg.Name)
  	}
--
+ 
 +	if r.separatePackage {
 +		pkg.Name += "gateway"
 +	}
  	if err := r.ReserveGoPackageAlias(pkg.Name, pkg.Path); err != nil {
  		for i := 0; ; i++ {
  			alias := fmt.Sprintf("%s_%d", pkg.Name, i)
-@@ -838,6 +847,26 @@ func (r *Registry) GetAllowPatchFeature() bool {
- 	return r.allowPatchFeature
- }
- 
-+// SetSeparatePackage sets separatePackage
-+func (r *Registry) SetSeparatePackage(use bool) {
-+	r.separatePackage = use
-+}
-+
-+// GetSeparatePackage returns separatePackage
-+func (r *Registry) GetSeparatePackage() bool {
-+	return r.separatePackage
-+}
-+
-+// SetAdditionalImports sets additionalImports
-+func (r *Registry) SetAdditionalImports(imports []string) {
-+	r.additionalImports = imports
-+}
-+
-+// GetAdditionalImports returns additionalImports
-+func (r *Registry) GetAdditionalImports() []string {
-+	return r.additionalImports
-+}
-+
- // SetPreserveRPCOrder sets preserveRPCOrder
- func (r *Registry) SetPreserveRPCOrder(preserve bool) {
- 	r.preserveRPCOrder = preserve
-diff --git a/internal/descriptor/services.go b/internal/descriptor/services.go
-index 0ff28d99..f5b409bc 100644
---- a/internal/descriptor/services.go
-+++ b/internal/descriptor/services.go
-@@ -3,6 +3,7 @@ package descriptor
- import (
- 	"errors"
- 	"fmt"
-+	"path/filepath"
- 	"strings"
- 
- 	"github.com/grpc-ecosystem/grpc-gateway/v2/internal/httprule"
-@@ -20,6 +21,7 @@ func (r *Registry) loadServices(file *File) error {
- 		grpclog.Infof("Loading services from %s", file.GetName())
- 	}
- 	var svcs []*Service
-+	var additionalImports []string
- 	for _, sd := range file.GetService() {
- 		if grpclog.V(2) {
- 			grpclog.Infof("Registering %s", sd.GetName())
-@@ -29,6 +31,35 @@ func (r *Registry) loadServices(file *File) error {
+diff --git internal/descriptor/services.go internal/descriptor/services.go
+index ad1764ce..ae58f7e3 100644
+--- internal/descriptor/services.go
++++ internal/descriptor/services.go
+@@ -29,6 +29,7 @@ func (r *Registry) loadServices(file *File) error {
  			ServiceDescriptorProto: sd,
  			ForcePrefixedName:      r.standalone,
  		}
-+		if r.separatePackage {
-+			// when generating a separate package for the gateway, we need to generate an import statement
-+			// for the gRPC stubs that are no longer in the same package. This is done by adding the grpc
-+			// package to the additionalImports list. In order to prepare a valid import statement, we'll replace
-+			// the source package name, something like: ../pet/v1/v1petgateway with ../pet/v1/v1petgrpc
-+			const (
-+				baseTypePackageName    = "protocolbuffers"
-+				baseTypePackageSubPath = baseTypePackageName + "/go"
-+				grpcPackageName        = "grpc"
-+				grpcPackageSubPath     = grpcPackageName + "/go"
-+			)
-+			packageName := strings.TrimSuffix(svc.File.GoPkg.Name, "gateway") + grpcPackageName
-+			svc.GRPCFile = &File{
-+				GoPkg: GoPackage{
-+					// additionally, as the `go_package` option is passed through from the generator, and can only be
-+					// set the one time, without making major changes, we'll use the package name sent through the
-+					// options as a basis, and replace the source package name with the grpc package name.
-+					Path: strings.Replace(
-+						filepath.Join(svc.File.GoPkg.Path, packageName),
-+						baseTypePackageSubPath,
-+						grpcPackageSubPath,
-+						1,
-+					),
-+					Name: strings.Replace(packageName, baseTypePackageSubPath, grpcPackageSubPath, 1),
-+				},
-+			}
-+			additionalImports = append(additionalImports, svc.GRPCFile.GoPkg.Path)
-+		}
-+		r.SetAdditionalImports(additionalImports)
++		r.IncludeAdditionalImports(svc, file.GoPkg)
  		for _, md := range sd.GetMethod() {
  			if grpclog.V(2) {
  				grpclog.Infof("Processing %s.%s", sd.GetName(), md.GetName())
-diff --git a/internal/descriptor/types.go b/internal/descriptor/types.go
+diff --git internal/descriptor/types.go internal/descriptor/types.go
 index 5a43472b..c0c02966 100644
---- a/internal/descriptor/types.go
-+++ b/internal/descriptor/types.go
+--- internal/descriptor/types.go
++++ internal/descriptor/types.go
 @@ -164,6 +164,9 @@ type Service struct {
  	*descriptorpb.ServiceDescriptorProto
  	// File is the file where this service is defined.
@@ -161,20 +150,19 @@ index 5a43472b..c0c02966 100644
  }
  
  // Method wraps descriptorpb.MethodDescriptorProto for richer features.
-diff --git a/protoc-gen-grpc-gateway/internal/gengateway/generator.go b/protoc-gen-grpc-gateway/internal/gengateway/generator.go
-index 62766254..033d1c09 100644
---- a/protoc-gen-grpc-gateway/internal/gengateway/generator.go
-+++ b/protoc-gen-grpc-gateway/internal/gengateway/generator.go
-@@ -5,6 +5,8 @@ import (
+diff --git protoc-gen-grpc-gateway/internal/gengateway/generator.go protoc-gen-grpc-gateway/internal/gengateway/generator.go
+index 62766254..dc14103f 100644
+--- protoc-gen-grpc-gateway/internal/gengateway/generator.go
++++ protoc-gen-grpc-gateway/internal/gengateway/generator.go
+@@ -5,6 +5,7 @@ import (
  	"fmt"
  	"go/format"
  	"path"
-+	"path/filepath"
 +	"strings"
  
  	"github.com/grpc-ecosystem/grpc-gateway/v2/internal/descriptor"
  	gen "github.com/grpc-ecosystem/grpc-gateway/v2/internal/generator"
-@@ -22,11 +24,18 @@ type generator struct {
+@@ -22,11 +23,18 @@ type generator struct {
  	registerFuncSuffix string
  	allowPatchFeature  bool
  	standalone         bool
@@ -195,7 +183,7 @@ index 62766254..033d1c09 100644
  	var imports []descriptor.GoPackage
  	for _, pkgpath := range []string{
  		"context",
-@@ -65,6 +74,7 @@ func New(reg *descriptor.Registry, useRequestContext bool, registerFuncSuffix st
+@@ -65,6 +73,7 @@ func New(reg *descriptor.Registry, useRequestContext bool, registerFuncSuffix st
  		registerFuncSuffix: registerFuncSuffix,
  		allowPatchFeature:  allowPatchFeature,
  		standalone:         standalone,
@@ -203,7 +191,7 @@ index 62766254..033d1c09 100644
  	}
  }
  
-@@ -90,10 +100,19 @@ func (g *generator) Generate(targets []*descriptor.File) ([]*descriptor.Response
+@@ -90,10 +99,23 @@ func (g *generator) Generate(targets []*descriptor.File) ([]*descriptor.Response
  			grpclog.Errorf("%v: %s", err, code)
  			return nil, err
  		}
@@ -211,10 +199,14 @@ index 62766254..033d1c09 100644
 +		fileNamePrefix := file.GeneratedFilenamePrefix
 +		if g.separatePackage {
 +			goPkg = descriptor.GoPackage{
-+				Path: filepath.Join(file.GoPkg.Path, file.GoPkg.Name),
++				Path: path.Join(file.GoPkg.Path, file.GoPkg.Name),
 +				Name: file.GoPkg.Name,
 +			}
-+			fileNamePrefix = path.Join(file.GeneratedFilenamePrefix, file.GoPkg.Name, filepath.Base(file.GeneratedFilenamePrefix))
++			fileNamePrefix = path.Join(
++				path.Dir(file.GeneratedFilenamePrefix),
++				file.GoPkg.Name,
++				path.Base(file.GeneratedFilenamePrefix),
++			)
 +		}
  		files = append(files, &descriptor.ResponseFile{
 -			GoPkg: file.GoPkg,
@@ -225,11 +217,11 @@ index 62766254..033d1c09 100644
  				Content: proto.String(string(formatted)),
  			},
  		})
-@@ -109,6 +128,14 @@ func (g *generator) generate(file *descriptor.File) (string, error) {
+@@ -109,6 +131,14 @@ func (g *generator) generate(file *descriptor.File) (string, error) {
  		imports = append(imports, pkg)
  	}
  
-+	for _, additionalImport := range g.reg.GetAdditionalImports() {
++	for _, additionalImport := range g.reg.GetAdditionalImports(file.GoPkg) {
 +		elems := strings.Split(additionalImport, "/")
 +		imports = append(imports, descriptor.GoPackage{
 +			Path: additionalImport,
@@ -240,10 +232,10 @@ index 62766254..033d1c09 100644
  	if g.standalone {
  		imports = append(imports, file.GoPkg)
  	}
-diff --git a/protoc-gen-grpc-gateway/internal/gengateway/generator_test.go b/protoc-gen-grpc-gateway/internal/gengateway/generator_test.go
-index 2c5fe023..816fbca1 100644
---- a/protoc-gen-grpc-gateway/internal/gengateway/generator_test.go
-+++ b/protoc-gen-grpc-gateway/internal/gengateway/generator_test.go
+diff --git protoc-gen-grpc-gateway/internal/gengateway/generator_test.go protoc-gen-grpc-gateway/internal/gengateway/generator_test.go
+index 2c5fe023..ad01fb8d 100644
+--- protoc-gen-grpc-gateway/internal/gengateway/generator_test.go
++++ protoc-gen-grpc-gateway/internal/gengateway/generator_test.go
 @@ -1,6 +1,8 @@
  package gengateway
  
@@ -253,7 +245,7 @@ index 2c5fe023..816fbca1 100644
  	"testing"
  
  	"github.com/grpc-ecosystem/grpc-gateway/v2/internal/descriptor"
-@@ -96,3 +98,75 @@ func TestGenerator_Generate(t *testing.T) {
+@@ -96,3 +98,73 @@ func TestGenerator_Generate(t *testing.T) {
  		t.Fatalf("invalid name %q, expected %q", gotName, expectedName)
  	}
  }
@@ -281,7 +273,6 @@ index 2c5fe023..816fbca1 100644
 +		for _, enum := range f.Enums {
 +			enum.ForcePrefixedName = true
 +		}
-+		imports := make([]string, 0)
 +		for _, svc := range f.Services {
 +			packageName := strings.TrimSuffix(svc.File.GoPkg.Name, "gateway") + "grpc"
 +			svc.ForcePrefixedName = true
@@ -297,9 +288,8 @@ index 2c5fe023..816fbca1 100644
 +					Name: strings.Replace(packageName, "protocolbuffers/go", "grpc/go", 1),
 +				},
 +			}
-+			imports = append(reg.GetAdditionalImports(), svc.GRPCFile.GoPkg.Path)
++			reg.IncludeAdditionalImports(svc, f.GoPkg)
 +		}
-+		reg.SetAdditionalImports(imports)
 +	}
 +	result, err := g.Generate(targets)
 +	if err != nil {
@@ -329,10 +319,10 @@ index 2c5fe023..816fbca1 100644
 +		}
 +	}
 +}
-diff --git a/protoc-gen-grpc-gateway/main.go b/protoc-gen-grpc-gateway/main.go
+diff --git protoc-gen-grpc-gateway/main.go protoc-gen-grpc-gateway/main.go
 index 5a1e6977..7e89ad1c 100644
---- a/protoc-gen-grpc-gateway/main.go
-+++ b/protoc-gen-grpc-gateway/main.go
+--- protoc-gen-grpc-gateway/main.go
++++ protoc-gen-grpc-gateway/main.go
 @@ -10,6 +10,7 @@
  package main
  
