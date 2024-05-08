@@ -1,8 +1,8 @@
-diff --git internal/descriptor/buf_build.go internal/descriptor/buf_build.go
+diff --git a/internal/descriptor/buf_build.go b/internal/descriptor/buf_build.go
 new file mode 100644
 index 00000000..6348916a
 --- /dev/null
-+++ internal/descriptor/buf_build.go
++++ b/internal/descriptor/buf_build.go
 @@ -0,0 +1,55 @@
 +package descriptor
 +
@@ -59,10 +59,10 @@ index 00000000..6348916a
 +	}
 +	return r.additionalImports[goPkg.Path]
 +}
-diff --git internal/descriptor/registry.go internal/descriptor/registry.go
+diff --git a/internal/descriptor/registry.go b/internal/descriptor/registry.go
 index 421c0089..26bed31a 100644
---- internal/descriptor/registry.go
-+++ internal/descriptor/registry.go
+--- a/internal/descriptor/registry.go
++++ b/internal/descriptor/registry.go
 @@ -157,6 +157,13 @@ type Registry struct {
  	// allowPatchFeature determines whether to use PATCH feature involving update masks (using google.protobuf.FieldMask).
  	allowPatchFeature bool
@@ -87,10 +87,10 @@ index 421c0089..26bed31a 100644
  	if err := r.ReserveGoPackageAlias(pkg.Name, pkg.Path); err != nil {
  		for i := 0; ; i++ {
  			alias := fmt.Sprintf("%s_%d", pkg.Name, i)
-diff --git internal/descriptor/services.go internal/descriptor/services.go
+diff --git a/internal/descriptor/services.go b/internal/descriptor/services.go
 index ad1764ce..ae58f7e3 100644
---- internal/descriptor/services.go
-+++ internal/descriptor/services.go
+--- a/internal/descriptor/services.go
++++ b/internal/descriptor/services.go
 @@ -29,6 +29,7 @@ func (r *Registry) loadServices(file *File) error {
  			ServiceDescriptorProto: sd,
  			ForcePrefixedName:      r.standalone,
@@ -99,10 +99,10 @@ index ad1764ce..ae58f7e3 100644
  		for _, md := range sd.GetMethod() {
  			if grpclog.V(2) {
  				grpclog.Infof("Processing %s.%s", sd.GetName(), md.GetName())
-diff --git internal/descriptor/types.go internal/descriptor/types.go
+diff --git a/internal/descriptor/types.go b/internal/descriptor/types.go
 index 5a43472b..c0c02966 100644
---- internal/descriptor/types.go
-+++ internal/descriptor/types.go
+--- a/internal/descriptor/types.go
++++ b/internal/descriptor/types.go
 @@ -164,6 +164,9 @@ type Service struct {
  	*descriptorpb.ServiceDescriptorProto
  	// File is the file where this service is defined.
@@ -150,10 +150,10 @@ index 5a43472b..c0c02966 100644
  }
  
  // Method wraps descriptorpb.MethodDescriptorProto for richer features.
-diff --git protoc-gen-grpc-gateway/internal/gengateway/generator.go protoc-gen-grpc-gateway/internal/gengateway/generator.go
+diff --git a/protoc-gen-grpc-gateway/internal/gengateway/generator.go b/protoc-gen-grpc-gateway/internal/gengateway/generator.go
 index 62766254..dc14103f 100644
---- protoc-gen-grpc-gateway/internal/gengateway/generator.go
-+++ protoc-gen-grpc-gateway/internal/gengateway/generator.go
+--- a/protoc-gen-grpc-gateway/internal/gengateway/generator.go
++++ b/protoc-gen-grpc-gateway/internal/gengateway/generator.go
 @@ -5,6 +5,7 @@ import (
  	"fmt"
  	"go/format"
@@ -232,10 +232,10 @@ index 62766254..dc14103f 100644
  	if g.standalone {
  		imports = append(imports, file.GoPkg)
  	}
-diff --git protoc-gen-grpc-gateway/internal/gengateway/generator_test.go protoc-gen-grpc-gateway/internal/gengateway/generator_test.go
+diff --git a/protoc-gen-grpc-gateway/internal/gengateway/generator_test.go b/protoc-gen-grpc-gateway/internal/gengateway/generator_test.go
 index 2c5fe023..ad01fb8d 100644
---- protoc-gen-grpc-gateway/internal/gengateway/generator_test.go
-+++ protoc-gen-grpc-gateway/internal/gengateway/generator_test.go
+--- a/protoc-gen-grpc-gateway/internal/gengateway/generator_test.go
++++ b/protoc-gen-grpc-gateway/internal/gengateway/generator_test.go
 @@ -1,6 +1,8 @@
  package gengateway
  
@@ -319,10 +319,10 @@ index 2c5fe023..ad01fb8d 100644
 +		}
 +	}
 +}
-diff --git protoc-gen-grpc-gateway/main.go protoc-gen-grpc-gateway/main.go
+diff --git a/protoc-gen-grpc-gateway/main.go b/protoc-gen-grpc-gateway/main.go
 index 5a1e6977..7e89ad1c 100644
---- protoc-gen-grpc-gateway/main.go
-+++ protoc-gen-grpc-gateway/main.go
+--- a/protoc-gen-grpc-gateway/main.go
++++ b/protoc-gen-grpc-gateway/main.go
 @@ -10,6 +10,7 @@
  package main
  
