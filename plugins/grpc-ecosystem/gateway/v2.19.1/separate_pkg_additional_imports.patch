@@ -151,7 +151,7 @@ index 5a43472b..c0c02966 100644
  
  // Method wraps descriptorpb.MethodDescriptorProto for richer features.
 diff --git a/protoc-gen-grpc-gateway/internal/gengateway/generator.go b/protoc-gen-grpc-gateway/internal/gengateway/generator.go
-index 62766254..dc14103f 100644
+index 62766254..a1530112 100644
 --- a/protoc-gen-grpc-gateway/internal/gengateway/generator.go
 +++ b/protoc-gen-grpc-gateway/internal/gengateway/generator.go
 @@ -5,6 +5,7 @@ import (
@@ -202,11 +202,11 @@ index 62766254..dc14103f 100644
 +				Path: path.Join(file.GoPkg.Path, file.GoPkg.Name),
 +				Name: file.GoPkg.Name,
 +			}
-+			fileNamePrefix = path.Join(
-+				path.Dir(file.GeneratedFilenamePrefix),
-+				file.GoPkg.Name,
-+				path.Base(file.GeneratedFilenamePrefix),
-+			)
++			// TODO(mf): this is a bug, where we include an extra path element (the filename),
++			// resulting in a stuttering import path. If gateway has a new major version, we should
++			// fix this by removing the last path element from the GeneratedFilenamePrefix.
++			// fileNamePrefix = path.Join(path.Dir(file.GeneratedFilenamePrefix), file.GoPkg.Name, path.Base(file.GeneratedFilenamePrefix))
++			fileNamePrefix = path.Join(file.GeneratedFilenamePrefix, file.GoPkg.Name, path.Base(file.GeneratedFilenamePrefix))
 +		}
  		files = append(files, &descriptor.ResponseFile{
 -			GoPkg: file.GoPkg,
