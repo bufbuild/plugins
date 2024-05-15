@@ -7,7 +7,7 @@ require (
 	github.com/bufbuild/buf v1.31.1-0.20240508184409-79f9211ad6f0
 	github.com/google/go-containerregistry v0.19.1
 	github.com/google/go-github/v58 v58.0.0
-	github.com/hashicorp/go-retryablehttp v0.7.5
+	github.com/hashicorp/go-retryablehttp v0.7.6
 	github.com/sethvargo/go-envconfig v1.0.1
 	github.com/stretchr/testify v1.9.0
 	go.uber.org/multierr v1.11.0
