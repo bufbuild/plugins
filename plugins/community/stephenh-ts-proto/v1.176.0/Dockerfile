@@ -16,4 +16,4 @@ COPY --link --from=node --chmod=0755 /nodejs/bin/node /nodejs/bin/node
 COPY --link --from=build /app /app
 USER nobody
 ENTRYPOINT ["/nodejs/bin/node"]
-ENTRYPOINT [ "/app/node_modules/.bin/protoc-gen-ts_proto" ]
+CMD [ "/app/node_modules/.bin/protoc-gen-ts_proto" ]
