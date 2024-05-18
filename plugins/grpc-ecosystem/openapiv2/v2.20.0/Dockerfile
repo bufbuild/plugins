@@ -1,8 +1,14 @@
-# syntax=docker/dockerfile:1.4
+# syntax=docker/dockerfile:1.7
+FROM --platform=$BUILDPLATFORM golang:1.22.3-bookworm AS build
+
+ARG TARGETOS TARGETARCH
+ENV CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH
+
 FROM golang:1.22.3-bookworm AS build
 RUN --mount=type=cache,target=/go/pkg/mod \
     CGO_ENABLED=0 \
     go install -ldflags="-s -w" -trimpath github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-openapiv2@v2.20.0
+ && mv /go/bin/${GOOS}_${GOARCH}/protoc-gen-openapiv2 /go/bin/protoc-gen-openapiv2 || true
 
 FROM scratch
 COPY --from=build --link --chown=root:root /etc/passwd /etc/passwd
