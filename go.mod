@@ -3,7 +3,7 @@ module github.com/bufbuild/plugins
 go 1.22.0
 
 require (
-	aead.dev/minisign v0.2.1
+	aead.dev/minisign v0.3.0
 	github.com/bufbuild/buf v1.31.1-0.20240508184409-79f9211ad6f0
 	github.com/google/go-containerregistry v0.19.1
 	github.com/google/go-github/v58 v58.0.0
