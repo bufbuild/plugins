@@ -18,7 +18,10 @@ RUN bazel build '//:protoc_lib'
 COPY --link BUILD php.cc plugins/
 RUN bazel build '//plugins:protoc-gen-php.stripped'
 
-FROM gcr.io/distroless/cc-debian12:latest@sha256:e1065a1d58800a7294f74e67c32ec4146d09d6cbe471c1fa7ed456b2d2bf06e0
+FROM gcr.io/distroless/cc-debian12:latest@sha256:e1065a1d58800a7294f74e67c32ec4146d09d6cbe471c1fa7ed456b2d2bf06e0 AS base
+
+FROM scratch
+COPY --from=base / /
 COPY --from=build --link --chmod=0755 /build/bazel-bin/plugins/protoc-gen-php .
 USER nobody
 ENTRYPOINT ["/protoc-gen-php"]
