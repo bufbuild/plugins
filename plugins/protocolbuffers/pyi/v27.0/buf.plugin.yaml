@@ -14,5 +14,5 @@ registry:
     requires_python: ">=3.8"
     deps:
       # https://pypi.org/project/protobuf/
-      - "protobuf~=5.26"
+      - "protobuf~=5.27"
       - "types-protobuf"
