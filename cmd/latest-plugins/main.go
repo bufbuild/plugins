@@ -13,26 +13,49 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log"
-	"os"
 	"strings"
 
 	"aead.dev/minisign"
-	"github.com/bufbuild/buf/private/pkg/interrupt"
+	"github.com/bufbuild/buf/private/pkg/app/appcmd"
+	"github.com/bufbuild/buf/private/pkg/app/appext"
+	"github.com/bufbuild/buf/private/pkg/slicesext"
+	"github.com/spf13/pflag"
 	"golang.org/x/mod/semver"
 
 	"github.com/bufbuild/plugins/internal/release"
 )
 
 func main() {
-	if err := run(); err != nil {
-		log.Fatalf("failed to run: %v", err)
+	appcmd.Main(context.Background(), newRootCommand("latest-plugins"))
+}
+
+type flags struct {
+	includedPlugins []string
+}
+
+func (f *flags) Bind(flagSet *pflag.FlagSet) {
+	flagSet.StringSliceVar(&f.includedPlugins,
+		"include",
+		nil,
+		"Additional plugins to include",
+	)
+}
+
+func newRootCommand(name string) *appcmd.Command {
+	builder := appext.NewBuilder(name)
+	flags := &flags{}
+	return &appcmd.Command{
+		Use:   name,
+		Short: "Outputs the latest plugins in JSON format to stdout.",
+		Run: builder.NewRunFunc(func(ctx context.Context, container appext.Container) error {
+			return run(ctx, container, flags)
+		}),
+		BindFlags:           flags.Bind,
+		BindPersistentFlags: builder.BindRoot,
 	}
 }
 
-func run() error {
-	ctx, cancel := interrupt.WithCancel(context.Background())
-	defer cancel()
+func run(ctx context.Context, container appext.Container, flags *flags) error {
 	client := release.NewClient(ctx)
 	latestRelease, err := client.GetLatestRelease(ctx, release.GithubOwnerBufbuild, release.GithubRepoPlugins)
 	if err != nil {
@@ -57,7 +80,7 @@ func run() error {
 	if err := json.NewDecoder(bytes.NewReader(releasesBytes)).Decode(&pluginReleases); err != nil {
 		return err
 	}
-	latestPlugins, err := getLatestPluginsAndDependencies(&pluginReleases)
+	latestPlugins, err := getLatestPluginsAndDependencies(&pluginReleases, flags.includedPlugins)
 	if err != nil {
 		return fmt.Errorf("failed to determine latest plugins and dependencies: %w", err)
 	}
@@ -66,10 +89,14 @@ func run() error {
 	if err != nil {
 		return fmt.Errorf("failed to sort plugins in dependency order: %w", err)
 	}
-	return json.NewEncoder(os.Stdout).Encode(&release.PluginReleases{Releases: sortedPlugins})
+	return json.NewEncoder(container.Stdout()).Encode(&release.PluginReleases{Releases: sortedPlugins})
 }
 
-func getLatestPluginsAndDependencies(releases *release.PluginReleases) ([]release.PluginRelease, error) {
+func getLatestPluginsAndDependencies(
+	releases *release.PluginReleases,
+	additionalPlugins []string,
+) ([]release.PluginRelease, error) {
+	additionalPluginsSet := slicesext.ToStructMap(additionalPlugins)
 	versionToPlugin := make(map[string]release.PluginRelease, len(releases.Releases))
 	latestVersions := make(map[string]release.PluginRelease)
 	for _, pluginRelease := range releases.Releases {
@@ -77,19 +104,21 @@ func getLatestPluginsAndDependencies(releases *release.PluginReleases) ([]releas
 		if !found {
 			return nil, errors.New("failed to split plugin pluginName into owner/pluginName")
 		}
-		switch owner {
-		case "community": // Disable community plugins by default
-			continue
-		case "bufbuild": // Don't include deprecated plugins.
-			switch pluginName {
-			case "connect-es",
-				"connect-go",
-				"connect-kotlin",
-				"connect-query",
-				"connect-swift",
-				"connect-swift-mocks",
-				"connect-web":
+		if _, ok := additionalPluginsSet[pluginRelease.PluginName]; !ok {
+			switch owner {
+			case "community": // Disable community plugins by default
 				continue
+			case "bufbuild": // Don't include deprecated plugins.
+				switch pluginName {
+				case "connect-es",
+					"connect-go",
+					"connect-kotlin",
+					"connect-query",
+					"connect-swift",
+					"connect-swift-mocks",
+					"connect-web":
+					continue
+				}
 			}
 		}
 		versionToPlugin[pluginRelease.PluginName+":"+pluginRelease.PluginVersion] = pluginRelease
