@@ -13,7 +13,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"os"
 	"strings"
 
 	"aead.dev/minisign"
@@ -90,7 +89,7 @@ func run(ctx context.Context, container appext.Container, flags *flags) error {
 	if err != nil {
 		return fmt.Errorf("failed to sort plugins in dependency order: %w", err)
 	}
-	return json.NewEncoder(os.Stdout).Encode(&release.PluginReleases{Releases: sortedPlugins})
+	return json.NewEncoder(container.Stdout()).Encode(&release.PluginReleases{Releases: sortedPlugins})
 }
 
 func getLatestPluginsAndDependencies(
