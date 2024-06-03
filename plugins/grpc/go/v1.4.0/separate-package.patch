@@ -1,13 +1,3 @@
-From 954221f9d189adcbc6edbae8df92e2040a6b9fcb Mon Sep 17 00:00:00 2001
-From: "Philip K. Warren" <pwarren@buf.build>
-Date: Mon, 3 Jun 2024 10:22:42 -0500
-Subject: [PATCH] Apply plugin patch to v1.4.0
-
----
- cmd/protoc-gen-go-grpc/grpc.go | 24 ++++++++++++++++++++++--
- cmd/protoc-gen-go-grpc/main.go |  2 ++
- 2 files changed, 24 insertions(+), 2 deletions(-)
-
 diff --git a/cmd/protoc-gen-go-grpc/grpc.go b/cmd/protoc-gen-go-grpc/grpc.go
 index 9088bc2a..290d012e 100644
 --- a/cmd/protoc-gen-go-grpc/grpc.go
@@ -70,6 +60,3 @@ index 0cb6a021..69055d3e 100644
  
  	protogen.Options{
  		ParamFunc: flags.Set,
--- 
-2.45.2
-
