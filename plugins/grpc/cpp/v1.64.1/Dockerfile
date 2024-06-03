@@ -17,7 +17,10 @@ WORKDIR /build/grpc
 RUN bazel build //src/compiler:grpc_plugin_support
 RUN bazel build //src/compiler:grpc_cpp_plugin.stripped
 
-FROM gcr.io/distroless/cc-debian12:latest@sha256:e1065a1d58800a7294f74e67c32ec4146d09d6cbe471c1fa7ed456b2d2bf06e0
-COPY --from=build --link --chmod=0755 /build/grpc/bazel-bin/src/compiler/grpc_cpp_plugin .
+FROM gcr.io/distroless/cc-debian12:latest@sha256:e1065a1d58800a7294f74e67c32ec4146d09d6cbe471c1fa7ed456b2d2bf06e0 AS base
+
+FROM scratch
+COPY --link --from=base / /
+COPY --link --from=build --chmod=0755 /build/grpc/bazel-bin/src/compiler/grpc_cpp_plugin .
 USER nobody
 ENTRYPOINT ["/grpc_cpp_plugin"]
