@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"time"
 
 	"github.com/bufbuild/plugins/internal/plugin"
@@ -74,6 +75,13 @@ func Build(
 	defer func() {
 		retErr = errors.Join(retErr, f.Close())
 	}()
-	cmd := exec.CommandContext(ctx, "docker", append(commonArgs, "-t", imageName, filepath.Dir(plugin.Path))...) //nolint:gosec
+	buildArgs := slices.Concat(commonArgs, []string{
+		// Workaround: https://github.com/moby/buildkit/issues/1368
+		"-f", "-",
+		"-t", imageName,
+		filepath.Dir(plugin.Path),
+	})
+	cmd := exec.CommandContext(ctx, "docker", buildArgs...)
+	cmd.Stdin = f
 	return cmd.CombinedOutput()
 }
