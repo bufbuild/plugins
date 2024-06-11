@@ -87,3 +87,11 @@ jobs:
         password: ${{ secrets.GITHUB_TOKEN }}
     - name: Test
       run: make test
+    - name: Archive plugin generated code
+      uses: actions/upload-artifact@v4
+      if: ${{ failure() }}
+      with:
+        name: plugin-generated-code
+        path: |
+          tests/testdata/**/gen/**
+        retention-days: 3
