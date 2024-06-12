@@ -3,5 +3,8 @@
   "version": "1.7.2",
   "dependencies": {
     "@bufbuild/protoc-gen-es": "1.7.2"
+  },
+  "devDependencies": {
+    "esbuild": "^0.21.5"
   }
 }

@@ -2,11 +2,12 @@ package docker
 
 import (
 	"context"
-	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"time"
 
 	"github.com/bufbuild/plugins/internal/plugin"
@@ -21,7 +22,7 @@ func Build(
 	imageName string,
 	cachePath string,
 	args []string,
-) (_ []byte, retErr error) {
+) ([]byte, error) {
 	identity := plugin.Identity
 	commonArgs := []string{
 		"buildx",
@@ -67,13 +68,24 @@ func Build(
 		}...)
 	}
 	commonArgs = append(commonArgs, args...)
-	f, err := os.Open(filepath.Join(filepath.Dir(plugin.Path), "Dockerfile"))
-	if err != nil {
-		return nil, err
+	buildArgs := slices.Concat(commonArgs, []string{
+		"-t", imageName,
+		filepath.Dir(plugin.Path),
+	})
+	cmd := exec.CommandContext(ctx, "docker", buildArgs...)
+	// Set file modification times to bust Docker cache for local files
+	if err := filepath.WalkDir(filepath.Dir(plugin.Path), func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if !d.IsDir() {
+			if err := os.Chtimes(path, time.Time{}, time.Now().UTC()); err != nil {
+				return fmt.Errorf("failed to set mtime for %q: %w", path, err)
+			}
+		}
+		return nil
+	}); err != nil {
+		return nil, fmt.Errorf("failed to change times: %w", err)
 	}
-	defer func() {
-		retErr = errors.Join(retErr, f.Close())
-	}()
-	cmd := exec.CommandContext(ctx, "docker", append(commonArgs, "-t", imageName, filepath.Dir(plugin.Path))...) //nolint:gosec
 	return cmd.CombinedOutput()
 }
