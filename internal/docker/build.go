@@ -2,8 +2,8 @@ package docker
 
 import (
 	"context"
-	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -68,20 +68,21 @@ func Build(
 		}...)
 	}
 	commonArgs = append(commonArgs, args...)
-	f, err := os.Open(filepath.Join(filepath.Dir(plugin.Path), "Dockerfile"))
-	if err != nil {
-		return nil, err
-	}
-	defer func() {
-		retErr = errors.Join(retErr, f.Close())
-	}()
 	buildArgs := slices.Concat(commonArgs, []string{
-		// Workaround: https://github.com/moby/buildkit/issues/1368
-		"-f", "-",
 		"-t", imageName,
 		filepath.Dir(plugin.Path),
 	})
 	cmd := exec.CommandContext(ctx, "docker", buildArgs...)
-	cmd.Stdin = f
+	// Set file modification times to bust Docker cache for local files
+	if err := filepath.WalkDir(filepath.Dir(plugin.Path), func(path string, d fs.DirEntry, err error) error {
+		if !d.IsDir() {
+			if err := os.Chtimes(path, time.Time{}, time.Now().UTC()); err != nil {
+				return fmt.Errorf("failed to set mtime for %q: %w", path, err)
+			}
+		}
+		return nil
+	}); err != nil {
+		return nil, fmt.Errorf("failed to change times: %w", err)
+	}
 	return cmd.CombinedOutput()
 }
