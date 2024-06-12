@@ -75,6 +75,9 @@ func Build(
 	cmd := exec.CommandContext(ctx, "docker", buildArgs...)
 	// Set file modification times to bust Docker cache for local files
 	if err := filepath.WalkDir(filepath.Dir(plugin.Path), func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
 		if !d.IsDir() {
 			if err := os.Chtimes(path, time.Time{}, time.Now().UTC()); err != nil {
 				return fmt.Errorf("failed to set mtime for %q: %w", path, err)
