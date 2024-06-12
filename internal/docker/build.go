@@ -22,7 +22,7 @@ func Build(
 	imageName string,
 	cachePath string,
 	args []string,
-) (_ []byte, retErr error) {
+) ([]byte, error) {
 	identity := plugin.Identity
 	commonArgs := []string{
 		"buildx",
