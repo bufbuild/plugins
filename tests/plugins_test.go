@@ -11,7 +11,7 @@ import (
 	"testing"
 	"text/template"
 
-	"github.com/bufbuild/buf/private/bufpkg/bufplugin/bufpluginconfig"
+	"github.com/bufbuild/buf/private/bufpkg/bufremoteplugin/bufremotepluginconfig"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/mod/semver"
@@ -186,7 +186,7 @@ func TestBufPluginConfig(t *testing.T) {
 	for _, p := range plugins {
 		yamlBytes, err := os.ReadFile(p.Path)
 		require.NoError(t, err)
-		config, err := bufpluginconfig.GetConfigForData(context.Background(), yamlBytes)
+		config, err := bufremotepluginconfig.GetConfigForData(context.Background(), yamlBytes)
 		require.NoErrorf(t, err, "invalid plugin config: %q", p.Path)
 		assert.NotEmpty(t, config.Name)
 		assert.NotEmpty(t, config.PluginVersion)

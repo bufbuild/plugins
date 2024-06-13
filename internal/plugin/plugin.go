@@ -16,8 +16,8 @@ import (
 	"sync"
 	"unicode"
 
-	"github.com/bufbuild/buf/private/bufpkg/bufplugin/bufpluginconfig"
-	"github.com/bufbuild/buf/private/bufpkg/bufplugin/bufpluginref"
+	"github.com/bufbuild/buf/private/bufpkg/bufremoteplugin/bufremotepluginconfig"
+	"github.com/bufbuild/buf/private/bufpkg/bufremoteplugin/bufremotepluginref"
 	"github.com/bufbuild/buf/private/pkg/encoding"
 	"github.com/sethvargo/go-envconfig"
 	"golang.org/x/mod/semver"
@@ -28,9 +28,9 @@ type Plugin struct {
 	Path    string `yaml:"-"`
 	Relpath string `yaml:"-"`
 	// Parsed external yaml config
-	bufpluginconfig.ExternalConfig `yaml:"-"`
+	bufremotepluginconfig.ExternalConfig `yaml:"-"`
 	// Plugin identity (parsed from ExternalConfig.Name).
-	Identity bufpluginref.PluginIdentity `yaml:"-"`
+	Identity bufremotepluginref.PluginIdentity `yaml:"-"`
 	// For callers that need git commit info - ensure we only calculate it once.
 	gitCommitOnce sync.Once `yaml:"-"`
 	gitCommit     string    `yaml:"-"`
@@ -163,7 +163,7 @@ func Load(path string, basedir string) (*Plugin, error) {
 	if err := encoding.UnmarshalJSONOrYAMLStrict(contents, &plugin.ExternalConfig); err != nil {
 		return nil, err
 	}
-	plugin.Identity, err = bufpluginref.PluginIdentityForString(plugin.Name)
+	plugin.Identity, err = bufremotepluginref.PluginIdentityForString(plugin.Name)
 	if err != nil {
 		return nil, err
 	}
