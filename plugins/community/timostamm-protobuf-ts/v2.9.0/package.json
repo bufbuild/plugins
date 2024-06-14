@@ -3,5 +3,8 @@
     "version": "1.0.0",
     "dependencies": {
         "@protobuf-ts/plugin": "2.9.0"
+    },
+    "devDependencies": {
+        "esbuild": "^0.21.5"
     }
 }
