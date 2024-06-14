@@ -1,8 +1,11 @@
 package tests
 
 import (
+	"cmp"
 	"context"
 	"fmt"
+	"io"
+	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -14,11 +17,14 @@ import (
 	"github.com/bufbuild/buf/private/bufpkg/bufremoteplugin/bufremotepluginconfig"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/mod/modfile"
 	"golang.org/x/mod/semver"
 	"golang.org/x/mod/sumdb/dirhash"
 
 	"github.com/bufbuild/plugins/internal/plugin"
 )
+
+const defaultGoModVersion = "1.16"
 
 var (
 	bufGenYamlTemplate = template.Must(template.New("buf.gen.yaml").Parse(`version: v1
@@ -195,6 +201,67 @@ func TestBufPluginConfig(t *testing.T) {
 		// Don't allow underscore in plugin names - this would cause issues in remote packages
 		assert.NotContains(t, config.Name.IdentityString(), "_")
 	}
+}
+
+func TestGoMinVersion(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	client := &http.Client{}
+	plugins := loadFilteredPlugins(t)
+	for _, p := range plugins {
+		if p.Registry.Go == nil {
+			continue
+		}
+		if len(p.Registry.Go.Deps) == 0 {
+			continue
+		}
+		minVersion := cmp.Or(p.Registry.Go.MinVersion, defaultGoModVersion)
+		minVersionMajorMinor := semver.MajorMinor("v" + minVersion)
+		// Verify that we only store major.minor versions in buf.plugin.yaml.
+		require.Equal(t, "v"+minVersion, minVersionMajorMinor)
+		require.NotEmptyf(t, minVersionMajorMinor, "invalid min go version: %q", minVersion)
+		t.Run(fmt.Sprintf("%s/%s@%s", p.Identity.Owner(), p.Identity.Plugin(), p.PluginVersion), func(t *testing.T) {
+			t.Parallel()
+			maxMajorMinor := minVersionMajorMinor
+			maxDep := ""
+			for _, dep := range p.Registry.Go.Deps {
+				depGoModVersion := getGoModVersion(ctx, t, client, dep.Module, dep.Version)
+				depGoModMajorMinor := semver.MajorMinor("v" + depGoModVersion)
+				require.NotEmptyf(t, depGoModMajorMinor, "invalid dep go version: %q", depGoModMajorMinor)
+				if semver.Compare(maxMajorMinor, depGoModMajorMinor) < 0 {
+					maxMajorMinor = depGoModMajorMinor
+					maxDep = fmt.Sprintf("%s@%s", dep.Module, dep.Version)
+				}
+			}
+			assert.Equalf(
+				t,
+				minVersion,
+				strings.TrimPrefix(maxMajorMinor, "v"),
+				"expected go plugin registry.go.min_version to be equal to the max version of its dependencies %q (%s)",
+				minVersion,
+				strings.TrimPrefix(maxMajorMinor, "v"),
+				maxDep,
+			)
+		})
+	}
+}
+
+func getGoModVersion(ctx context.Context, t *testing.T, client *http.Client, module string, version string) string {
+	t.Helper()
+	goModURL := fmt.Sprintf("https://proxy.golang.org/%s/@v/%s.mod", module, version)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, goModURL, nil)
+	require.NoError(t, err)
+	resp, err := client.Do(req)
+	require.NoError(t, err)
+	defer resp.Body.Close()
+	modFileContents, err := io.ReadAll(resp.Body)
+	require.NoError(t, err)
+	modFile, err := modfile.ParseLax("go.mod", modFileContents, nil)
+	require.NoError(t, err)
+	if modFile.Go == nil {
+		return defaultGoModVersion
+	}
+	return cmp.Or(modFile.Go.Version, defaultGoModVersion)
 }
 
 func createBufGenYaml(t *testing.T, basedir string, plugin *plugin.Plugin) error {
