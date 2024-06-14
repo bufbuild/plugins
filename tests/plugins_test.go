@@ -216,30 +216,28 @@ func TestGoMinVersion(t *testing.T) {
 			continue
 		}
 		minVersion := cmp.Or(p.Registry.Go.MinVersion, defaultGoModVersion)
-		minVersionMajorMinor := semver.MajorMinor("v" + minVersion)
 		// Verify that we only store major.minor versions in buf.plugin.yaml.
-		require.Equal(t, "v"+minVersion, minVersionMajorMinor)
-		require.NotEmptyf(t, minVersionMajorMinor, "invalid min go version: %q", minVersion)
+		require.Equal(t, minVersion, strings.TrimPrefix(semver.MajorMinor("v"+minVersion), "v"))
 		t.Run(fmt.Sprintf("%s/%s@%s", p.Identity.Owner(), p.Identity.Plugin(), p.PluginVersion), func(t *testing.T) {
 			t.Parallel()
-			maxMajorMinor := minVersionMajorMinor
+			maxMajorMinor := minVersion
 			maxDep := ""
 			for _, dep := range p.Registry.Go.Deps {
 				depGoModVersion := getGoModVersion(ctx, t, client, dep.Module, dep.Version)
-				depGoModMajorMinor := semver.MajorMinor("v" + depGoModVersion)
+				depGoModMajorMinor := strings.TrimPrefix(semver.MajorMinor("v"+depGoModVersion), "v")
 				require.NotEmptyf(t, depGoModMajorMinor, "invalid dep go version: %q", depGoModMajorMinor)
-				if semver.Compare(maxMajorMinor, depGoModMajorMinor) < 0 {
+				if semver.Compare("v"+maxMajorMinor, "v"+depGoModMajorMinor) < 0 {
 					maxMajorMinor = depGoModMajorMinor
 					maxDep = fmt.Sprintf("%s@%s", dep.Module, dep.Version)
 				}
 			}
 			assert.Equalf(
 				t,
-				strings.TrimPrefix(maxMajorMinor, "v"),
+				maxMajorMinor,
 				minVersion,
-				"expected go plugin registry.go.min_version %q to be equal to the max version of its dependencies %q (%s)",
+				"expected go plugin registry.go.min_version %q to be greater or equal to the max version of its dependencies %q (%s)",
 				minVersion,
-				strings.TrimPrefix(maxMajorMinor, "v"),
+				maxMajorMinor,
 				maxDep,
 			)
 		})
