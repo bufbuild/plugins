@@ -235,8 +235,8 @@ func TestGoMinVersion(t *testing.T) {
 			}
 			assert.Equalf(
 				t,
-				minVersion,
 				strings.TrimPrefix(maxMajorMinor, "v"),
+				minVersion,
 				"expected go plugin registry.go.min_version %q to be equal to the max version of its dependencies %q (%s)",
 				minVersion,
 				strings.TrimPrefix(maxMajorMinor, "v"),
