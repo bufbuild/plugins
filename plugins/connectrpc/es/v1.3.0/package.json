@@ -3,5 +3,8 @@
   "version": "1.3.0",
   "dependencies": {
     "@connectrpc/protoc-gen-connect-es": "1.3.0"
+  },
+  "devDependencies": {
+    "esbuild": "^0.21.5"
   }
 }
