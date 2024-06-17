@@ -1,4 +1,5 @@
 *
 !BUILD
+!disable_objc_editions.patch
 !Dockerfile
 !objectivec.cc

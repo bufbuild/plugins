@@ -16,7 +16,9 @@ RUN curl -fsSL -o protoc.tar.gz https://github.com/protocolbuffers/protobuf/rele
  && rm protoc.tar.gz
 RUN bazel build '//:protoc_lib'
 COPY --link BUILD objectivec.cc plugins/
-RUN bazel build '//plugins:protoc-gen-objectivec.stripped'
+COPY --link BUILD disable_objc_editions.patch .
+RUN git apply < disable_objc_editions.patch \
+ && bazel build '//plugins:protoc-gen-objectivec.stripped'
 
 FROM gcr.io/distroless/cc-debian12:latest@sha256:e1065a1d58800a7294f74e67c32ec4146d09d6cbe471c1fa7ed456b2d2bf06e0 AS base
 
