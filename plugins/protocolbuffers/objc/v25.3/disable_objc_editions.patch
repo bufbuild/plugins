@@ -1,0 +1,16 @@
+diff --git a/src/google/protobuf/compiler/objectivec/generator.h b/src/google/protobuf/compiler/objectivec/generator.h
+index be5a6a448..4da2dba0d 100644
+--- a/src/google/protobuf/compiler/objectivec/generator.h
++++ b/src/google/protobuf/compiler/objectivec/generator.h
+@@ -47,10 +47,8 @@ class PROTOC_EXPORT ObjectiveCGenerator : public CodeGenerator {
+                    std::string* error) const override;
+ 
+   uint64_t GetSupportedFeatures() const override {
+-    return (FEATURE_PROTO3_OPTIONAL | FEATURE_SUPPORTS_EDITIONS);
++    return FEATURE_PROTO3_OPTIONAL;
+   }
+-  Edition GetMinimumEdition() const override { return Edition::EDITION_PROTO2; }
+-  Edition GetMaximumEdition() const override { return Edition::EDITION_2023; }
+ };
+ 
+ }  // namespace objectivec
