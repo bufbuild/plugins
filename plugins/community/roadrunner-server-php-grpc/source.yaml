@@ -1,4 +1,8 @@
 source:
+  # Temporarily disabled until someone requests a new version or until
+  # we add the feature to update versions on a less frequent basis, see:
+  # https://github.com/bufbuild/plugins/issues/1039
+  disabled: false
   github:
     owner: roadrunner-server
     repository: grpc
