@@ -1,5 +1,5 @@
-# syntax=docker/dockerfile:1.7
-FROM debian:bookworm-20240311 AS build
+# syntax=docker/dockerfile:1.8
+FROM debian:bookworm-20240612 AS build
 
 ARG TARGETARCH
 
@@ -18,7 +18,10 @@ RUN bazel build '//:protoc_lib'
 COPY BUILD pyi.cc plugins/
 RUN bazel build '//plugins:protoc-gen-pyi.stripped'
 
-FROM gcr.io/distroless/cc-debian12:latest@sha256:e6ae66a5a343d7112167f9117c4e630cfffcd80db44e44302759ec13ddd2d22b
+FROM gcr.io/distroless/cc-debian12:latest@sha256:e1065a1d58800a7294f74e67c32ec4146d09d6cbe471c1fa7ed456b2d2bf06e0 AS base
+
+FROM scratch
+COPY --from=base / /
 COPY --from=build --link --chmod=0755 /build/bazel-bin/plugins/protoc-gen-pyi .
 USER nobody
 ENTRYPOINT ["/protoc-gen-pyi"]
