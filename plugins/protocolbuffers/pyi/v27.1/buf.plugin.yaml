@@ -15,4 +15,5 @@ registry:
     deps:
       # https://pypi.org/project/protobuf/
       - "protobuf~=5.27.1"
-      - "types-protobuf"
+      # https://pypi.org/project/types-protobuf/
+      - "types-protobuf~=5.27"
