@@ -108,8 +108,7 @@ func getLatestPluginsAndDependencies(
 			// Don't include deprecated plugins.
 			switch owner {
 			case "community":
-				switch pluginName {
-				case "mitchellh-go-json":
+				if pluginName == "mitchellh-go-json" {
 					continue
 				}
 			case "bufbuild":
