@@ -1,5 +1,5 @@
 /*
-latest-plugins outputs the latest non-community plugins (and their dependencies) in JSON format to stdout.
+latest-plugins outputs the latest plugins (and their dependencies) in JSON format to stdout.
 To determine available plugins, it downloads the plugin-releases.json file from the latest bufbuild/plugins release.
 Additionally, it verifies the contents of the file against the minisign signature.
 
@@ -105,10 +105,13 @@ func getLatestPluginsAndDependencies(
 			return nil, errors.New("failed to split plugin pluginName into owner/pluginName")
 		}
 		if _, ok := additionalPluginsSet[pluginRelease.PluginName]; !ok {
+			// Don't include deprecated plugins.
 			switch owner {
-			case "community": // Disable community plugins by default
-				continue
-			case "bufbuild": // Don't include deprecated plugins.
+			case "community":
+				if pluginName == "mitchellh-go-json" {
+					continue
+				}
+			case "bufbuild":
 				switch pluginName {
 				case "connect-es",
 					"connect-go",
@@ -116,7 +119,8 @@ func getLatestPluginsAndDependencies(
 					"connect-query",
 					"connect-swift",
 					"connect-swift-mocks",
-					"connect-web":
+					"connect-web",
+					"protoschema-bigquery":
 					continue
 				}
 			}
