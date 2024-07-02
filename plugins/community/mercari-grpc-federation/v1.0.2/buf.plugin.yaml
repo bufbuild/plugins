@@ -1,0 +1,10 @@
+version: v1
+name: buf.build/community/mercari-grpc-federation
+plugin_version: v1.0.2
+source_url: https://github.com/mercari/grpc-federation
+integration_guide_url: https://github.com/mercari/grpc-federation/blob/main/docs/getting_started.md
+description: Generates a gRPC server by writing a custom option in Protocol Buffers
+output_languages:
+  - go
+spdx_license_id: MIT
+license_url: https://github.com/mercari/grpc-federation/blob/v1.0.2/LICENSE
