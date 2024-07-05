@@ -151,7 +151,7 @@ index 5a43472b..c0c02966 100644
  
  // Method wraps descriptorpb.MethodDescriptorProto for richer features.
 diff --git a/protoc-gen-grpc-gateway/internal/gengateway/generator.go b/protoc-gen-grpc-gateway/internal/gengateway/generator.go
-index 62766254..75750735 100644
+index 62766254..8084ff74 100644
 --- a/protoc-gen-grpc-gateway/internal/gengateway/generator.go
 +++ b/protoc-gen-grpc-gateway/internal/gengateway/generator.go
 @@ -5,6 +5,7 @@ import (
@@ -239,7 +239,7 @@ index 62766254..75750735 100644
 +		aliasedPackage := &descriptor.GoPackage{
 +			Path:  goPkg.Path,
 +			Name:  goPkg.Name,
-+			Alias: "aliased", // what's a good name here?
++			Alias: "gateway",
 +		}
 +		code, err = g.generate(file, aliasedPackage)
 +		if errors.Is(err, errNoTargetService) {
@@ -298,7 +298,7 @@ index 62766254..75750735 100644
  		Imports:            imports,
  		UseRequestContext:  g.useRequestContext,
 diff --git a/protoc-gen-grpc-gateway/internal/gengateway/generator_test.go b/protoc-gen-grpc-gateway/internal/gengateway/generator_test.go
-index 2c5fe023..cbd9e613 100644
+index 2c5fe023..ad23c03c 100644
 --- a/protoc-gen-grpc-gateway/internal/gengateway/generator_test.go
 +++ b/protoc-gen-grpc-gateway/internal/gengateway/generator_test.go
 @@ -1,6 +1,9 @@
@@ -427,7 +427,7 @@ index 2c5fe023..cbd9e613 100644
 +	}
 +	aliasFileContent := aliasFile.GetContent()
 +	// Require the two dependencies to be declared as imported packages
-+	expectedImport := `aliased "example.com/mymodule/foo/bar/v1/v1gateway"`
++	expectedImport := `gateway "example.com/mymodule/foo/bar/v1/v1gateway"`
 +	if !strings.Contains(aliasFileContent, expectedImport) {
 +		t.Errorf("expected to find import %q in the generated file: %s...", expectedImport, aliasFileContent[:500])
 +	}
@@ -438,7 +438,7 @@ index 2c5fe023..cbd9e613 100644
 +		"RegisterExampleServiceHandler",
 +	}
 +	for _, aliasedFunction := range aliasedFunctions {
-+		aliasDefinition := fmt.Sprintf("%[1]s = aliased.%[1]s", aliasedFunction)
++		aliasDefinition := fmt.Sprintf("%[1]s = gateway.%[1]s", aliasedFunction)
 +		if !strings.Contains(aliasFileContent, aliasDefinition) {
 +			t.Fatalf("expected %q in the alias file: %s", aliasDefinition, aliasFileContent)
 +		}
