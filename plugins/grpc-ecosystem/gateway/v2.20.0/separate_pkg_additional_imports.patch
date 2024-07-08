@@ -151,7 +151,7 @@ index 5a43472b..c0c02966 100644
  
  // Method wraps descriptorpb.MethodDescriptorProto for richer features.
 diff --git a/protoc-gen-grpc-gateway/internal/gengateway/generator.go b/protoc-gen-grpc-gateway/internal/gengateway/generator.go
-index 62766254..a1530112 100644
+index 62766254..8084ff74 100644
 --- a/protoc-gen-grpc-gateway/internal/gengateway/generator.go
 +++ b/protoc-gen-grpc-gateway/internal/gengateway/generator.go
 @@ -5,6 +5,7 @@ import (
@@ -191,33 +191,90 @@ index 62766254..a1530112 100644
  	}
  }
  
-@@ -90,10 +99,23 @@ func (g *generator) Generate(targets []*descriptor.File) ([]*descriptor.Response
+@@ -75,7 +84,7 @@ func (g *generator) Generate(targets []*descriptor.File) ([]*descriptor.Response
+ 			grpclog.Infof("Processing %s", file.GetName())
+ 		}
+ 
+-		code, err := g.generate(file)
++		code, err := g.generate(file, nil)
+ 		if errors.Is(err, errNoTargetService) {
+ 			if grpclog.V(1) {
+ 				grpclog.Infof("%s: %v", file.GetName(), err)
+@@ -90,10 +99,62 @@ func (g *generator) Generate(targets []*descriptor.File) ([]*descriptor.Response
  			grpclog.Errorf("%v: %s", err, code)
  			return nil, err
  		}
-+		goPkg := file.GoPkg
-+		fileNamePrefix := file.GeneratedFilenamePrefix
-+		if g.separatePackage {
-+			goPkg = descriptor.GoPackage{
-+				Path: path.Join(file.GoPkg.Path, file.GoPkg.Name),
-+				Name: file.GoPkg.Name,
-+			}
-+			// TODO(mf): this is a bug, where we include an extra path element (the filename),
-+			// resulting in a stuttering import path. If gateway has a new major version, we should
-+			// fix this by removing the last path element from the GeneratedFilenamePrefix.
-+			// fileNamePrefix = path.Join(path.Dir(file.GeneratedFilenamePrefix), file.GoPkg.Name, path.Base(file.GeneratedFilenamePrefix))
-+			fileNamePrefix = path.Join(file.GeneratedFilenamePrefix, file.GoPkg.Name, path.Base(file.GeneratedFilenamePrefix))
++		if !g.separatePackage {
++			files = append(files, &descriptor.ResponseFile{
++				GoPkg: file.GoPkg,
++				CodeGeneratorResponse_File: &pluginpb.CodeGeneratorResponse_File{
++					Name:    proto.String(file.GeneratedFilenamePrefix + ".pb.gw.go"),
++					Content: proto.String(string(formatted)),
++				},
++			})
++			continue
 +		}
++		goPkg := descriptor.GoPackage{
++			Path: path.Join(file.GoPkg.Path, file.GoPkg.Name),
++			Name: file.GoPkg.Name,
++		}
++		fileNamePrefix := path.Join(path.Dir(file.GeneratedFilenamePrefix), file.GoPkg.Name, path.Base(file.GeneratedFilenamePrefix))
  		files = append(files, &descriptor.ResponseFile{
 -			GoPkg: file.GoPkg,
 +			GoPkg: goPkg,
  			CodeGeneratorResponse_File: &pluginpb.CodeGeneratorResponse_File{
 -				Name:    proto.String(file.GeneratedFilenamePrefix + ".pb.gw.go"),
 +				Name:    proto.String(fileNamePrefix + ".pb.gw.go"),
++				Content: proto.String(string(formatted)),
++			},
++		})
++		// There was a bug where we include an extra path element (the filename), resulting
++		// in a stuttering import path. Fixing this bug cannot involve removing the Go file
++		// generated at the wrong path, because that would be a breaking change.
++		//
++		// Instead, we generate the same file both at the right path and at the wrong path,
++		// marking the file (its package) at the wrong path as deprecated.
++		//
++		// If gateway has a new major version, we should then stop generating at the wrong path.
++		aliasedPackage := &descriptor.GoPackage{
++			Path:  goPkg.Path,
++			Name:  goPkg.Name,
++			Alias: "gateway",
++		}
++		code, err = g.generate(file, aliasedPackage)
++		if errors.Is(err, errNoTargetService) {
++			if grpclog.V(1) {
++				grpclog.Infof("%s: %v", file.GetName(), err)
++			}
++			continue
++		}
++		if err != nil {
++			return nil, err
++		}
++		formatted, err = format.Source([]byte(code))
++		if err != nil {
++			grpclog.Errorf("%v: %s", err, code)
++			return nil, err
++		}
++		// The prefix is incorrect, but we are still generating it for backwards compatibility.
++		fileNamePrefix = path.Join(file.GeneratedFilenamePrefix, file.GoPkg.Name, path.Base(file.GeneratedFilenamePrefix))
++		files = append(files, &descriptor.ResponseFile{
++			GoPkg: goPkg,
++			CodeGeneratorResponse_File: &pluginpb.CodeGeneratorResponse_File{
++				Name:    proto.String(fileNamePrefix + ".pb.gw.go"),
  				Content: proto.String(string(formatted)),
  			},
  		})
-@@ -109,6 +131,14 @@ func (g *generator) generate(file *descriptor.File) (string, error) {
+@@ -101,7 +162,7 @@ func (g *generator) Generate(targets []*descriptor.File) ([]*descriptor.Response
+ 	return files, nil
+ }
+ 
+-func (g *generator) generate(file *descriptor.File) (string, error) {
++func (g *generator) generate(file *descriptor.File, aliasedPkg *descriptor.GoPackage) (string, error) {
+ 	pkgSeen := make(map[string]bool)
+ 	var imports []descriptor.GoPackage
+ 	for _, pkg := range g.baseImports {
+@@ -109,6 +170,14 @@ func (g *generator) generate(file *descriptor.File) (string, error) {
  		imports = append(imports, pkg)
  	}
  
@@ -232,20 +289,48 @@ index 62766254..a1530112 100644
  	if g.standalone {
  		imports = append(imports, file.GoPkg)
  	}
+@@ -126,6 +195,7 @@ func (g *generator) generate(file *descriptor.File) (string, error) {
+ 		}
+ 	}
+ 	params := param{
++		AliasedPkg:         aliasedPkg,
+ 		File:               file,
+ 		Imports:            imports,
+ 		UseRequestContext:  g.useRequestContext,
 diff --git a/protoc-gen-grpc-gateway/internal/gengateway/generator_test.go b/protoc-gen-grpc-gateway/internal/gengateway/generator_test.go
-index 2c5fe023..ad01fb8d 100644
+index 2c5fe023..ad23c03c 100644
 --- a/protoc-gen-grpc-gateway/internal/gengateway/generator_test.go
 +++ b/protoc-gen-grpc-gateway/internal/gengateway/generator_test.go
-@@ -1,6 +1,8 @@
+@@ -1,6 +1,9 @@
  package gengateway
  
  import (
++	"fmt"
 +	"path/filepath"
 +	"strings"
  	"testing"
  
  	"github.com/grpc-ecosystem/grpc-gateway/v2/internal/descriptor"
-@@ -96,3 +98,73 @@ func TestGenerator_Generate(t *testing.T) {
+@@ -75,6 +78,18 @@ func newExampleFileDescriptorWithGoPkg(gp *descriptor.GoPackage, filenamePrefix
+ 	}
+ }
+ 
++func newExampleFileDescriptorWithGoPkgWithoutBinding(gp *descriptor.GoPackage, filenamePrefix string) *descriptor.File {
++	file := newExampleFileDescriptorWithGoPkg(gp, filenamePrefix)
++	for _, service := range file.Services {
++		for _, method := range service.Methods {
++			if method != nil {
++				method.Bindings = nil
++			}
++		}
++	}
++	return file
++}
++
+ func TestGenerator_Generate(t *testing.T) {
+ 	g := new(generator)
+ 	g.reg = descriptor.NewRegistry()
+@@ -96,3 +111,198 @@ func TestGenerator_Generate(t *testing.T) {
  		t.Fatalf("invalid name %q, expected %q", gotName, expectedName)
  	}
  }
@@ -257,10 +342,10 @@ index 2c5fe023..ad01fb8d 100644
 +	g := New(reg, true, "Handler", true, true, true)
 +	targets := []*descriptor.File{
 +		crossLinkFixture(newExampleFileDescriptorWithGoPkg(&descriptor.GoPackage{
-+			Path:  "example.com/path/to/example",
-+			Name:  "example" + "gateway",
-+			Alias: "extexample",
-+		}, "path/to/example")),
++			Path:  "example.com/mymodule/foo/bar/v1",
++			Name:  "v1" + "gateway", // Name is appended with "gateway" with standalone set to true.
++			Alias: "extalias",
++		}, "foo/bar/v1/example")),
 +	}
 +	// Set ForcePrefixedName (usually set when standalone=true).
 +	for _, f := range targets {
@@ -295,30 +380,303 @@ index 2c5fe023..ad01fb8d 100644
 +	if err != nil {
 +		t.Fatalf("failed to generate stubs: %v", err)
 +	}
-+	if len(result) != 1 {
-+		t.Fatalf("expected to generate one file, got: %d", len(result))
++	if len(result) != 2 {
++		t.Fatalf("expected to generate 2 files, got: %d", len(result))
 +	}
-+	expectedName := "path/to/example/examplegateway/example.pb.gw.go"
-+	gotName := result[0].GetName()
-+	if gotName != expectedName {
-+		t.Fatalf("invalid name %q, expected %q", gotName, expectedName)
++	expectedName := "foo/bar/v1/v1gateway/example.pb.gw.go"
++	expectedGoPkgPath := "example.com/mymodule/foo/bar/v1/v1gateway"
++	expectedGoPkgName := "v1gateway"
++	correctFile := result[0]
++	if correctFile == nil {
++		t.Fatal("result is nil")
 +	}
-+	if result[0].GoPkg.Path != "example.com/path/to/example/examplegateway" {
-+		t.Fatalf("invalid path %q, expected %q", result[0].GoPkg.Path, "example.com/path/to/example/examplegateway")
++	if correctFile.GetName() != expectedName {
++		t.Errorf("invalid name %q, expected %q", correctFile.GetName(), expectedName)
 +	}
-+	if result[0].GoPkg.Name != "examplegateway" {
-+		t.Fatalf("invalid name %q, expected %q", result[0].GoPkg.Name, "examplegateway")
++	if correctFile.GoPkg.Path != expectedGoPkgPath {
++		t.Errorf("invalid path %q, expected %q", result[0].GoPkg.Path, expectedGoPkgPath)
++	}
++	if correctFile.GoPkg.Name != expectedGoPkgName {
++		t.Errorf("invalid name %q, expected %q", result[0].GoPkg.Name, expectedGoPkgName)
 +	}
 +	// Require the two dependencies to be declared as imported packages
++	correctFileContent := correctFile.GetContent()
 +	for _, expectedImport := range []string{
-+		`extexample "example.com/path/to/example"`,
-+		`"example.com/path/to/example/examplegrpc"`,
++		`extalias "example.com/mymodule/foo/bar/v1"`,
++		`"example.com/mymodule/foo/bar/v1/v1grpc"`,
 +	} {
-+		if !strings.Contains(result[0].GetContent(), expectedImport) {
-+			t.Fatalf("expected to find import %q in the generated file", expectedImport)
++		if !strings.Contains(correctFileContent, expectedImport) {
++			t.Errorf("expected to find import %q in the generated file: %s", expectedImport, correctFileContent[:400])
++		}
++	}
++
++	expectedName = "foo/bar/v1/example/v1gateway/example.pb.gw.go"
++	// wrong path but correct go package
++	aliasFile := result[1]
++	if aliasFile == nil {
++		t.Fatal("result is nil")
++	}
++	if aliasFile.GetName() != expectedName {
++		t.Errorf("invalid name %q, expected %q", aliasFile.GetName(), expectedName)
++	}
++	if aliasFile.GoPkg.Path != expectedGoPkgPath {
++		t.Errorf("invalid path %q, expected %q", aliasFile.GoPkg.Path, expectedGoPkgPath)
++	}
++	if aliasFile.GoPkg.Name != expectedGoPkgName {
++		t.Errorf("invalid name %q, expected %q", aliasFile.GoPkg.Name, expectedGoPkgName)
++	}
++	aliasFileContent := aliasFile.GetContent()
++	// Require the two dependencies to be declared as imported packages
++	expectedImport := `gateway "example.com/mymodule/foo/bar/v1/v1gateway"`
++	if !strings.Contains(aliasFileContent, expectedImport) {
++		t.Errorf("expected to find import %q in the generated file: %s...", expectedImport, aliasFileContent[:500])
++	}
++	aliasedFunctions := []string{
++		"RegisterExampleServiceHandlerServer",
++		"RegisterExampleServiceHandlerClient",
++		"RegisterExampleServiceHandlerFromEndpoint",
++		"RegisterExampleServiceHandler",
++	}
++	for _, aliasedFunction := range aliasedFunctions {
++		aliasDefinition := fmt.Sprintf("%[1]s = gateway.%[1]s", aliasedFunction)
++		if !strings.Contains(aliasFileContent, aliasDefinition) {
++			t.Fatalf("expected %q in the alias file: %s", aliasDefinition, aliasFileContent)
++		}
++		if strings.Contains(correctFileContent, aliasDefinition) {
++			t.Fatalf("unexpected alias %q in the correct file: %s", aliasDefinition, correctFileContent)
 +		}
 +	}
 +}
++
++func TestGenerator_GenerateSeparatePackage_WithoutBinding(t *testing.T) {
++	reg := descriptor.NewRegistry()
++	reg.SetSeparatePackage(true)
++	reg.SetStandalone(true)
++	g := New(reg, true, "Handler", true, true, true)
++	targets := []*descriptor.File{
++		crossLinkFixture(newExampleFileDescriptorWithGoPkgWithoutBinding(&descriptor.GoPackage{
++			Path:  "example.com/mymodule/foo/bar/v1",
++			Name:  "v1" + "gateway",
++			Alias: "extalias",
++		}, "foo/bar/v1/example")),
++	}
++	result, err := g.Generate(targets)
++	if err != nil {
++		t.Fatalf("failed to generate stubs: %v", err)
++	}
++	if len(result) != 0 {
++		t.Fatalf("expected to generate 0 file, got: %d", len(result))
++	}
++}
++
++func TestGenerator_GenerateSeparatePackage_WithOmitPackageDoc(t *testing.T) {
++	reg := descriptor.NewRegistry()
++	reg.SetSeparatePackage(true)
++	reg.SetStandalone(true)
++	reg.SetOmitPackageDoc(true)
++	g := New(reg, true, "Handler", true, true, true)
++	targets := []*descriptor.File{
++		crossLinkFixture(newExampleFileDescriptorWithGoPkg(&descriptor.GoPackage{
++			Path:  "example.com/mymodule/foo/bar/v1",
++			Name:  "v1" + "gateway",
++			Alias: "extalias",
++		}, "foo/bar/v1/example")),
++	}
++	result, err := g.Generate(targets)
++	if err != nil {
++		t.Fatalf("failed to generate stubs: %v", err)
++	}
++	if len(result) != 2 {
++		t.Fatalf("expected to generate 2 files, got: %d", len(result))
++	}
++	correctFileContent := result[0].GetContent()
++	if strings.Contains(correctFileContent, "Deprecated:") {
++		t.Errorf("the correct file should not be deprecated: %s...", correctFileContent[:500])
++	}
++	deprecationDoc := `/*
++Deprecated: This package has moved to "example.com/mymodule/foo/bar/v1/v1gateway". Use that import path instead.
++*/`
++	aliasFileContent := result[1].GetContent()
++	// Even though omit_package_doc is set, we still need to deprecate the package.
++	if !strings.Contains(aliasFileContent, deprecationDoc) {
++		t.Errorf("expected to find deprecation doc in the alias file: %s...", aliasFileContent[:500])
++	}
++}
++
++func TestGenerator_GenerateSeparatePackage_WithoutService(t *testing.T) {
++	reg := descriptor.NewRegistry()
++	reg.SetSeparatePackage(true)
++	reg.SetStandalone(true)
++	g := New(reg, true, "Handler", true, true, true)
++	targets := []*descriptor.File{
++		{
++			FileDescriptorProto: &descriptorpb.FileDescriptorProto{
++				Name:    proto.String("example.proto"),
++				Package: proto.String("example"),
++			},
++			GoPkg: descriptor.GoPackage{
++				Path: "foo/bar/baz/gen/v1",
++				Name: "v1",
++			},
++			GeneratedFilenamePrefix: "gen/v1/example",
++		},
++	}
++	result, err := g.Generate(targets)
++	if err != nil {
++		t.Fatalf("failed to generate stubs: %v", err)
++	}
++	if len(result) != 0 {
++		t.Fatalf("expected to generate 0 file, got: %d", len(result))
++	}
++}
+diff --git a/protoc-gen-grpc-gateway/internal/gengateway/template.go b/protoc-gen-grpc-gateway/internal/gengateway/template.go
+index ffe4d413..fdd9bc5b 100644
+--- a/protoc-gen-grpc-gateway/internal/gengateway/template.go
++++ b/protoc-gen-grpc-gateway/internal/gengateway/template.go
+@@ -15,6 +15,7 @@ import (
+ 
+ type param struct {
+ 	*descriptor.File
++	AliasedPkg         *descriptor.GoPackage
+ 	Imports            []descriptor.GoPackage
+ 	UseRequestContext  bool
+ 	RegisterFuncSuffix string
+@@ -143,6 +144,7 @@ func (f queryParamFilter) String() string {
+ }
+ 
+ type trailerParams struct {
++	AliasedPkg         *descriptor.GoPackage
+ 	Services           []*descriptor.Service
+ 	UseRequestContext  bool
+ 	RegisterFuncSuffix string
+@@ -172,11 +174,14 @@ func applyTemplate(p param, reg *descriptor.Registry) (string, error) {
+ 			methName := casing.Camel(*meth.Name)
+ 			meth.Name = &methName
+ 			for _, b := range meth.Bindings {
++				methodWithBindingsSeen = true
++				if p.AliasedPkg != nil {
++					break
++				}
+ 				if err := reg.CheckDuplicateAnnotation(b.HTTPMethod, b.PathTmpl.Template, svc); err != nil {
+ 					return "", err
+ 				}
+ 
+-				methodWithBindingsSeen = true
+ 				if err := handlerTemplate.Execute(w, binding{
+ 					Binding:           b,
+ 					Registry:          reg,
+@@ -204,6 +209,7 @@ func applyTemplate(p param, reg *descriptor.Registry) (string, error) {
+ 	}
+ 
+ 	tp := trailerParams{
++		AliasedPkg:         p.AliasedPkg,
+ 		Services:           targetServices,
+ 		UseRequestContext:  p.UseRequestContext,
+ 		RegisterFuncSuffix: p.RegisterFuncSuffix,
+@@ -228,8 +234,19 @@ var (
+ Package {{.GoPkg.Name}} is a reverse proxy.
+ 
+ It translates gRPC into RESTful JSON APIs.
+-*/{{end}}
++{{if $.AliasedPkg}}
++Deprecated: This package has moved to "{{$.AliasedPkg.Path}}". Use that import path instead.
++{{- end}}
++*/
++{{- else if $.AliasedPkg}}
++/*
++Deprecated: This package has moved to "{{$.AliasedPkg.Path}}". Use that import path instead.
++*/
++{{- end}}
+ package {{.GoPkg.Name}}
++{{- if $.AliasedPkg}}
++import {{$.AliasedPkg}}
++{{- else}}
+ import (
+ 	{{range $i := .Imports}}{{if $i.Standard}}{{$i | printf "%s\n"}}{{end}}{{end}}
+ 
+@@ -243,6 +260,7 @@ var _ status.Status
+ var _ = runtime.String
+ var _ = utilities.NewDoubleArray
+ var _ = metadata.Join
++{{- end}}
+ `))
+ 
+ 	handlerTemplate = template.Must(template.New("handler").Parse(`
+@@ -606,12 +624,18 @@ func local_request_{{.Method.Service.GetName}}_{{.Method.GetName}}_{{.Index}}(ct
+ }`))
+ 
+ 	localTrailerTemplate = template.Must(template.New("local-trailer").Parse(`
++{{- if $.AliasedPkg }}
++var (
++{{- end }}
+ {{$UseRequestContext := .UseRequestContext}}
+ {{range $svc := .Services}}
+ // Register{{$svc.GetName}}{{$.RegisterFuncSuffix}}Server registers the http handlers for service {{$svc.GetName}} to "mux".
+ // UnaryRPC     :call {{$svc.GetName}}Server directly.
+ // StreamingRPC :currently unsupported pending https://github.com/grpc/grpc-go/issues/906.
+ // Note that using this registration option will cause many gRPC library features to stop working. Consider using Register{{$svc.GetName}}{{$.RegisterFuncSuffix}}FromEndpoint instead.
++{{- if $.AliasedPkg}}
++	Register{{$svc.GetName}}{{$.RegisterFuncSuffix}}Server = {{$.AliasedPkg.Alias}}.Register{{$svc.GetName}}{{$.RegisterFuncSuffix}}Server
++{{- else}}
+ func Register{{$svc.GetName}}{{$.RegisterFuncSuffix}}Server(ctx context.Context, mux *runtime.ServeMux, server {{$svc.InstanceName}}Server) error {
+ 	{{range $m := $svc.Methods}}
+ 	{{range $b := $m.Bindings}}
+@@ -663,6 +687,7 @@ func Register{{$svc.GetName}}{{$.RegisterFuncSuffix}}Server(ctx context.Context,
+ 	{{end}}
+ 	return nil
+ }
++{{end}}
+ {{end}}`))
+ 
+ 	trailerTemplate = template.Must(template.New("trailer").Parse(`
+@@ -670,6 +695,9 @@ func Register{{$svc.GetName}}{{$.RegisterFuncSuffix}}Server(ctx context.Context,
+ {{range $svc := .Services}}
+ // Register{{$svc.GetName}}{{$.RegisterFuncSuffix}}FromEndpoint is same as Register{{$svc.GetName}}{{$.RegisterFuncSuffix}} but
+ // automatically dials to "endpoint" and closes the connection when "ctx" gets done.
++{{- if $.AliasedPkg}}
++	Register{{$svc.GetName}}{{$.RegisterFuncSuffix}}FromEndpoint = {{$.AliasedPkg.Alias}}.Register{{$svc.GetName}}{{$.RegisterFuncSuffix}}FromEndpoint
++{{- else}}
+ func Register{{$svc.GetName}}{{$.RegisterFuncSuffix}}FromEndpoint(ctx context.Context, mux *runtime.ServeMux, endpoint string, opts []grpc.DialOption) (err error) {
+ 	conn, err := grpc.NewClient(endpoint, opts...)
+ 	if err != nil {
+@@ -692,18 +720,26 @@ func Register{{$svc.GetName}}{{$.RegisterFuncSuffix}}FromEndpoint(ctx context.Co
+ 
+ 	return Register{{$svc.GetName}}{{$.RegisterFuncSuffix}}(ctx, mux, conn)
+ }
++{{- end}}
+ 
+ // Register{{$svc.GetName}}{{$.RegisterFuncSuffix}} registers the http handlers for service {{$svc.GetName}} to "mux".
+ // The handlers forward requests to the grpc endpoint over "conn".
++{{- if $.AliasedPkg}}
++	Register{{$svc.GetName}}{{$.RegisterFuncSuffix}} = {{$.AliasedPkg.Alias}}.Register{{$svc.GetName}}{{$.RegisterFuncSuffix}}
++{{- else}}
+ func Register{{$svc.GetName}}{{$.RegisterFuncSuffix}}(ctx context.Context, mux *runtime.ServeMux, conn *grpc.ClientConn) error {
+ 	return Register{{$svc.GetName}}{{$.RegisterFuncSuffix}}Client(ctx, mux, {{$svc.ClientConstructorName}}(conn))
+ }
++{{- end}}
+ 
+ // Register{{$svc.GetName}}{{$.RegisterFuncSuffix}}Client registers the http handlers for service {{$svc.GetName}}
+ // to "mux". The handlers forward requests to the grpc endpoint over the given implementation of "{{$svc.InstanceName}}Client".
+ // Note: the gRPC framework executes interceptors within the gRPC handler. If the passed in "{{$svc.InstanceName}}Client"
+ // doesn't go through the normal gRPC flow (creating a gRPC client etc.) then it will be up to the passed in
+ // "{{$svc.InstanceName}}Client" to call the correct interceptors.
++{{- if $.AliasedPkg}}
++	Register{{$svc.GetName}}{{$.RegisterFuncSuffix}}Client = {{$.AliasedPkg.Alias}}.Register{{$svc.GetName}}{{$.RegisterFuncSuffix}}Client
++{{- else}}
+ func Register{{$svc.GetName}}{{$.RegisterFuncSuffix}}Client(ctx context.Context, mux *runtime.ServeMux, client {{$svc.InstanceName}}Client) error {
+ 	{{range $m := $svc.Methods}}
+ 	{{range $b := $m.Bindings}}
+@@ -784,5 +820,9 @@ var (
+ 	{{end}}
+ 	{{end}}
+ )
+-{{end}}`))
++{{end}}
++{{end}}
++{{- if $.AliasedPkg}}
++)
++{{- end}}`))
+ )
 diff --git a/protoc-gen-grpc-gateway/main.go b/protoc-gen-grpc-gateway/main.go
 index 5a1e6977..7e89ad1c 100644
 --- a/protoc-gen-grpc-gateway/main.go
