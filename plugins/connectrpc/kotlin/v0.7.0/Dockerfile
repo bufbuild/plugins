@@ -1,4 +1,4 @@
-# syntax=docker/dockerfile:1.7
+# syntax=docker/dockerfile:1.8
 FROM debian:bookworm-20240701 AS build
 RUN apt-get update \
  && apt-get install -y curl
