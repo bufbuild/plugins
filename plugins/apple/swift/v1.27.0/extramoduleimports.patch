@@ -1,0 +1,60 @@
+diff --git a/Sources/protoc-gen-swift/FileGenerator.swift b/Sources/protoc-gen-swift/FileGenerator.swift
+index ebbbdca6..0e21fa95 100644
+--- a/Sources/protoc-gen-swift/FileGenerator.swift
++++ b/Sources/protoc-gen-swift/FileGenerator.swift
+@@ -113,6 +113,14 @@ class FileGenerator {
+             p.print(neededImports)
+         }
+ 
++        let neededCustomImports = generatorOptions.extraModuleImports
++        if !neededCustomImports.isEmpty {
++            p.print()
++            for i in neededCustomImports {
++                p.print("import \(i)\n")
++            }
++        }
++
+         p.print()
+         generateVersionCheck(printer: &p)
+ 
+diff --git a/Sources/protoc-gen-swift/GeneratorOptions.swift b/Sources/protoc-gen-swift/GeneratorOptions.swift
+index 2635cb8d..58a75681 100644
+--- a/Sources/protoc-gen-swift/GeneratorOptions.swift
++++ b/Sources/protoc-gen-swift/GeneratorOptions.swift
+@@ -49,6 +49,7 @@ class GeneratorOptions {
+     }
+   }
+ 
++  let extraModuleImports: [String]
+   let outputNaming: OutputNaming
+   let protoToModuleMappings: ProtoFileToModuleMappings
+   let visibility: Visibility
+@@ -59,6 +60,7 @@ class GeneratorOptions {
+   let visibilitySourceSnippet: String
+ 
+   init(parameter: any CodeGeneratorParameter) throws {
++    var externalModuleImports: [String] = []
+     var outputNaming: OutputNaming = .fullPath
+     var moduleMapPath: String?
+     var visibility: Visibility = .internal
+@@ -111,6 +113,12 @@ class GeneratorOptions {
+           throw GenerationError.invalidParameterValue(name: pair.key,
+                                                       value: pair.value)
+         }
++      case "ExtraModuleImports":
++        if !pair.value.isEmpty {
++            externalModuleImports.append(pair.value)
++        } else {
++          throw GenerationError.invalidParameterValue(name: pair.key, value: pair.value)
++        }
+       default:
+         throw GenerationError.unknownParameter(name: pair.key)
+       }
+@@ -140,6 +148,7 @@ class GeneratorOptions {
+       visibilitySourceSnippet = "package "
+     }
+ 
++    self.extraModuleImports = externalModuleImports
+     self.implementationOnlyImports = implementationOnlyImports
+     self.experimentalStripNonfunctionalCodegen = experimentalStripNonfunctionalCodegen
+ 
