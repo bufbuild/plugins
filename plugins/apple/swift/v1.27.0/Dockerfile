@@ -1,4 +1,4 @@
-# syntax=docker/dockerfile:1.7
+# syntax=docker/dockerfile:1.8
 FROM swift:5.10.1-bookworm AS build
 
 RUN apt-get update \
