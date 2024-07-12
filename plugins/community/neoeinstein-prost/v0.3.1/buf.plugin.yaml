@@ -16,6 +16,7 @@ registry:
       - name: "prost"
         req: "0.12.3"
         default_features: false
+        features: ["std"]
       # prost-types is necessary for any module using the WKTs.
       - name: "prost-types"
         req: "0.12.3"
