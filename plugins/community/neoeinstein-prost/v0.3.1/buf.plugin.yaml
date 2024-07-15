@@ -15,11 +15,13 @@ registry:
       # https://github.com/neoeinstein/protoc-gen-prost/blob/protoc-gen-prost-v0.3.1/protoc-gen-prost/Cargo.toml#L21-L23
       - name: "prost"
         req: "0.12.3"
-        default_features: false
+        # https://docs.rs/crate/prost/0.12.3/features
+        default_features: true
       # prost-types is necessary for any module using the WKTs.
       - name: "prost-types"
         req: "0.12.3"
-        default_features: false
+        # https://docs.rs/crate/prost-types/0.12.3/features
+        default_features: true
   # https://github.com/neoeinstein/protoc-gen-prost/blob/protoc-gen-prost-v0.3.1/protoc-gen-prost/README.md#options
   # No options set.
   opts: []
