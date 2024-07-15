@@ -7,3 +7,11 @@ output_languages:
   - csharp
 spdx_license_id: BSD-3-Clause
 license_url: https://github.com/protocolbuffers/protobuf/blob/v27.2/LICENSE
+registry:
+  nuget:
+    target_frameworks:
+      - netstandard1.1
+    deps:
+      - name: Google.Protobuf
+        version: 3.27.2
+

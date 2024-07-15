@@ -70,10 +70,17 @@ jobs:
         if [[ -n "${val}" && -z "${PLUGINS}" ]]; then
           echo "PLUGINS=${val}" >> $GITHUB_ENV
         fi
+    - name: Get buf version
+      shell: bash
+      run: |
+        BUF_VERSION=$(go mod edit -json | jq -r ".Require[] | select(.Path == \"github.com/bufbuild/buf\") | .Version")
+        echo "BUF_VERSION=$BUF_VERSION" >> $GITHUB_ENV
     - name: Install buf cli
-      uses: bufbuild/buf-setup-action@v1
-      with:
-        github_token: ${{ github.token }}
+      run: |
+        go install github.com/bufbuild/buf/cmd/buf@${BUF_VERSION}
+#     uses: bufbuild/buf-setup-action@v1
+#     with:
+#       github_token: ${{ github.token }}
     - name: Login to Docker Hub
       uses: docker/login-action@0d4c9c5ea7693da7b068278f7b52bda2a190a446
       with:

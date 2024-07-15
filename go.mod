@@ -4,7 +4,7 @@ go 1.22.0
 
 require (
 	aead.dev/minisign v0.3.0
-	github.com/bufbuild/buf v1.34.0
+	github.com/bufbuild/buf v1.34.1-0.20240712145558-2f39a052323c
 	github.com/google/go-containerregistry v0.20.0
 	github.com/google/go-github/v58 v58.0.0
 	github.com/hashicorp/go-retryablehttp v0.7.7
@@ -30,7 +30,7 @@ require (
 	github.com/go-logr/logr v1.4.2 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/google/go-querystring v1.1.0 // indirect
-	github.com/google/pprof v0.0.0-20240618054019-d3b898a103f8 // indirect
+	github.com/google/pprof v0.0.0-20240622144329-c177fd99eaa9 // indirect
 	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/klauspost/compress v1.17.9 // indirect

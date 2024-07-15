@@ -9,3 +9,11 @@ output_languages:
   - csharp
 spdx_license_id: Apache-2.0
 license_url: https://github.com/grpc/grpc/blob/v1.65.0/LICENSE
+registry:
+  nuget:
+    target_frameworks:
+      - netstandard2.0
+    deps:
+      - name: Grpc.Net.Common
+        version: 2.63.0
+
