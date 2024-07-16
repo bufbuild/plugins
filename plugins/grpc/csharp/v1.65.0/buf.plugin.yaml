@@ -10,8 +10,6 @@ output_languages:
 spdx_license_id: Apache-2.0
 license_url: https://github.com/grpc/grpc/blob/v1.65.0/LICENSE
 registry:
-  opts:
-    - base_namespace=
   nuget:
     target_frameworks:
       - netstandard2.0
