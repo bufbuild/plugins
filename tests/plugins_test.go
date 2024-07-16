@@ -271,7 +271,7 @@ func createBufGenYaml(t *testing.T, basedir string, plugin *plugin.Plugin) error
 	defer func() {
 		require.NoError(t, bufGenYaml.Close())
 	}()
-	opts := plugin.ExternalConfig.Registry.Opts
+	opts := plugin.Registry.Opts
 	opts = append(opts, testOverrideOptions[plugin.Name]...)
 	return bufGenYamlTemplate.Execute(bufGenYaml, map[string]any{
 		"Name": filepath.Base(plugin.Name),
