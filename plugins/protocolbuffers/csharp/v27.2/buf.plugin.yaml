@@ -8,6 +8,8 @@ output_languages:
 spdx_license_id: BSD-3-Clause
 license_url: https://github.com/protocolbuffers/protobuf/blob/v27.2/LICENSE
 registry:
+  opts:
+    - base_namespace=
   nuget:
     target_frameworks:
       - netstandard1.1
