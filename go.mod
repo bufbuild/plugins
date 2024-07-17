@@ -4,7 +4,7 @@ go 1.22.0
 
 require (
 	aead.dev/minisign v0.3.0
-	github.com/bufbuild/buf v1.34.1-0.20240712145558-2f39a052323c
+	github.com/bufbuild/buf v1.34.1-0.20240717200208-8996858e1193
 	github.com/google/go-containerregistry v0.20.0
 	github.com/google/go-github/v58 v58.0.0
 	github.com/hashicorp/go-retryablehttp v0.7.7
