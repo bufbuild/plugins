@@ -9,3 +9,5 @@ output_languages:
   - cpp
 spdx_license_id: Apache-2.0
 license_url: https://github.com/grpc/grpc/blob/v1.64.1/LICENSE
+registry:
+  cmake: {}
