@@ -1,4 +1,4 @@
-# syntax=docker/dockerfile:1.8
+# syntax=docker/dockerfile:1.9
 FROM debian:bookworm-20240701 AS build
 
 ARG TARGETARCH

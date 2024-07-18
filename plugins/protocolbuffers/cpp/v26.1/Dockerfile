@@ -1,4 +1,4 @@
-# syntax=docker/dockerfile:1.7
+# syntax=docker/dockerfile:1.9
 FROM debian:bookworm-20240311 AS build
 
 ARG TARGETARCH
@@ -18,7 +18,10 @@ RUN bazel build '//:protoc_lib'
 COPY --link BUILD cpp.cc plugins/
 RUN bazel build '//plugins:protoc-gen-cpp.stripped'
 
-FROM gcr.io/distroless/cc-debian12:latest@sha256:e6ae66a5a343d7112167f9117c4e630cfffcd80db44e44302759ec13ddd2d22b
-COPY --from=build --link --chmod=0755 /build/bazel-bin/plugins/protoc-gen-cpp .
+FROM gcr.io/distroless/cc-debian12:latest@sha256:3b75fdd33932d16e53a461277becf57c4f815c6cee5f6bc8f52457c095e004c8 AS base
+
+FROM scratch
+COPY --link --from=base / /
+COPY --link --from=build --chmod=0755 /build/bazel-bin/plugins/protoc-gen-cpp .
 USER nobody
 ENTRYPOINT ["/protoc-gen-cpp"]

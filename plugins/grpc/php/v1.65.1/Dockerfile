@@ -1,4 +1,4 @@
-# syntax=docker/dockerfile:1.8
+# syntax=docker/dockerfile:1.9
 FROM debian:bookworm-20240701 AS build
 
 ARG TARGETARCH
@@ -21,6 +21,6 @@ FROM gcr.io/distroless/cc-debian12:latest@sha256:3b75fdd33932d16e53a461277becf57
 
 FROM scratch
 COPY --link --from=base / /
-COPY --from=build --link --chmod=0755 /build/grpc/bazel-bin/src/compiler/grpc_php_plugin .
+COPY --link --from=build --chmod=0755 /build/grpc/bazel-bin/src/compiler/grpc_php_plugin .
 USER nobody
 ENTRYPOINT ["/grpc_php_plugin"]
