@@ -1,12 +1,12 @@
-# syntax=docker/dockerfile:1.7
-FROM rust:1.76.0-alpine3.19 as builder
+# syntax=docker/dockerfile:1.9
+FROM rust:1.79.0-alpine3.20 AS builder
 RUN apk add --no-cache musl-dev
 WORKDIR /app
 ENV CARGO_REGISTRIES_CRATES_IO_PROTOCOL=sparse
 RUN --mount=type=cache,target=/usr/local/cargo/registry,sharing=locked --mount=type=cache,target=/root/target \
     cargo install protoc-gen-prost --version 0.3.1 --locked --root /app
 
-FROM gcr.io/distroless/static-debian12:latest@sha256:41972110a1c1a5c0b6adb283e8aa092c43c31f7c5d79b8656fbffff2c3e61f05 AS base
+FROM gcr.io/distroless/static-debian12:latest@sha256:ce46866b3a5170db3b49364900fb3168dc0833dfb46c26da5c77f22abb01d8c3 AS base
 
 FROM scratch
 COPY --link --from=base / /
