@@ -15,5 +15,5 @@ registry:
       - netstandard1.1
     deps:
       - name: Google.Protobuf
-        version: 3.27.2
+        version: "[3.27.2,4)"
 
