@@ -1,4 +1,4 @@
-# syntax=docker/dockerfile:1.8
+# syntax=docker/dockerfile:1.9
 FROM --platform=$BUILDPLATFORM golang:1.22.5-bookworm AS build
 
 ARG TARGETOS TARGETARCH
