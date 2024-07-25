@@ -1,10 +1,12 @@
 package tests
 
 import (
+	"bufio"
 	"cmp"
 	"context"
 	"fmt"
 	"io"
+	"io/fs"
 	"net/http"
 	"os"
 	"os/exec"
@@ -24,14 +26,17 @@ import (
 	"github.com/bufbuild/plugins/internal/plugin"
 )
 
-const defaultGoModVersion = "1.16"
+const (
+	defaultGoModVersion = "1.16"
+	defaultGoPkgPrefix  = "github.com/bufbuild/plugins/internal/gen"
+)
 
 var (
 	bufGenYamlTemplate = template.Must(template.New("buf.gen.yaml").Parse(`version: v1
 managed:
   enabled: true
   go_package_prefix:
-    default: github.com/bufbuild/plugins/internal/gen
+    default: {{.GoPkgPrefix}}
 plugins:
   - name: {{.Name}}
     out: gen
@@ -85,33 +90,11 @@ func TestGeneration(t *testing.T) {
 	allowEmpty, _ := strconv.ParseBool(os.Getenv("ALLOW_EMPTY_PLUGIN_SUM"))
 	testPluginWithImage := func(t *testing.T, pluginMeta *plugin.Plugin, image string) {
 		t.Helper()
-		imageDir, err := filepath.Abs(filepath.Join("testdata", "images"))
-		require.NoError(t, err)
 		t.Run(image, func(t *testing.T) {
 			t.Parallel()
 			pluginDir := filepath.Join("testdata", pluginMeta.Name, pluginMeta.PluginVersion, image)
-			pluginGenDir := filepath.Join(pluginDir, "gen")
-			require.NoError(t, os.RemoveAll(pluginGenDir))
-			require.NoError(t, os.MkdirAll(pluginDir, 0o755))
-			require.NoError(t, createBufGenYaml(t, pluginDir, pluginMeta))
-			require.NoError(t, createProtocGenPlugin(t, pluginDir, pluginMeta))
-			bufCmd := exec.CommandContext(ctx, "buf", "generate", filepath.Join(imageDir, image+".bin.gz"))
-			bufCmd.Dir = pluginDir
-			output, err := bufCmd.CombinedOutput()
-			require.NoErrorf(t, err, "buf generate failed - output: %s", string(output))
-			// Ensure the gen directory is not empty, otherwise we'll get a sum of an empty directory.
-			// This is either a problem with the plugin itself, or the input. Some plugins require
-			// input protos that contain custom options to generate code. We should craft a test proto
-			// for these plugins. See grpc-ecosystem/gateway for an example.
-			genDirFiles, err := os.ReadDir(pluginGenDir)
-			require.NoError(t, err, "failed to read generated code directory")
-			if len(genDirFiles) == 0 {
-				allowedEmptyImages, ok := allowedEmptyPluginSums[pluginMeta.Name]
-				if !ok || !allowedEmptyImages[image] {
-					t.Fatalf("generated code directory is empty for %s", pluginMeta)
-				}
-			}
-			genDirHash, err := dirhash.HashDir(pluginGenDir, "", dirhash.Hash1)
+			genDir := runPluginWithImage(ctx, t, pluginDir, pluginMeta, image, defaultGoPkgPrefix)
+			genDirHash, err := dirhash.HashDir(genDir, "", dirhash.Hash1)
 			require.NoError(t, err, "failed to calculate directory hash of generated code")
 			pluginImageSumFile := filepath.Join(pluginDir, "plugin.sum")
 			existingPluginSumBytes, err := os.ReadFile(pluginImageSumFile)
@@ -134,7 +117,8 @@ func TestGeneration(t *testing.T) {
 
 	plugins := loadFilteredPlugins(t)
 	for _, toTest := range plugins {
-		t.Run(strings.TrimSuffix(toTest.Relpath, "/buf.plugin.yaml"), func(t *testing.T) {
+		testName := strings.TrimSuffix(toTest.Relpath, "/buf.plugin.yaml")
+		t.Run(testName, func(t *testing.T) {
 			t.Parallel()
 			images := images
 			if imageOverrides, ok := imageOverrides[toTest.Name]; ok {
@@ -244,6 +228,70 @@ func TestGoMinVersion(t *testing.T) {
 	}
 }
 
+func TestGrpcGatewayDeprecationMessage(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	genSDKGoPkg := "buf.build/gen/go/someorg/somemodule/protocolbuffers/go"
+	plugins := loadFilteredPlugins(t)
+	for _, p := range plugins {
+		if p.Identity.IdentityString() != "buf.build/grpc-ecosystem/gateway" {
+			continue
+		}
+		if semver.Compare(p.PluginVersion, "v2.16.0") < 0 {
+			continue
+		}
+		genDir := runPluginWithImage(ctx, t, t.TempDir(), p, "grpc-gateway", genSDKGoPkg)
+		err := filepath.WalkDir(genDir, func(path string, d fs.DirEntry, err error) error {
+			if err != nil {
+				return err
+			}
+			if d.IsDir() {
+				return nil
+			}
+			f, err := os.Open(path)
+			if err != nil {
+				return err
+			}
+			defer f.Close()
+			scanner := bufio.NewScanner(f)
+			for scanner.Scan() {
+				line := strings.TrimSpace(scanner.Text())
+				if strings.Contains(line, "Deprecated:") && strings.Contains(line, genSDKGoPkg) {
+					return fmt.Errorf("line %q should not contain %q", line, genSDKGoPkg)
+				}
+			}
+			return scanner.Err()
+		})
+		require.NoError(t, err)
+	}
+}
+
+func runPluginWithImage(ctx context.Context, t *testing.T, basedir string, pluginMeta *plugin.Plugin, image string, goPkgPrefix string) string {
+	t.Helper()
+	gendir := filepath.Join(basedir, "gen")
+	require.NoError(t, createBufGenYaml(t, basedir, pluginMeta, goPkgPrefix))
+	require.NoError(t, createProtocGenPlugin(t, basedir, pluginMeta))
+	imageDir, err := filepath.Abs(filepath.Join("testdata", "images"))
+	require.NoError(t, err)
+	bufCmd := exec.CommandContext(ctx, "buf", "generate", filepath.Join(imageDir, image+".bin.gz"))
+	bufCmd.Dir = basedir
+	output, err := bufCmd.CombinedOutput()
+	require.NoErrorf(t, err, "buf generate failed - output: %s", string(output))
+	// Ensure the gen directory is not empty, otherwise we'll get a sum of an empty directory.
+	// This is either a problem with the plugin itself, or the input. Some plugins require
+	// input protos that contain custom options to generate code. We should craft a test proto
+	// for these plugins. See grpc-ecosystem/gateway for an example.
+	genDirFiles, err := os.ReadDir(gendir)
+	require.NoError(t, err, "failed to read generated code directory")
+	if len(genDirFiles) == 0 {
+		allowedEmptyImages, ok := allowedEmptyPluginSums[pluginMeta.Name]
+		if !ok || !allowedEmptyImages[image] {
+			t.Fatalf("generated code directory is empty for %s", pluginMeta)
+		}
+	}
+	return gendir
+}
+
 func getGoModVersion(ctx context.Context, t *testing.T, client *http.Client, module string, version string) string {
 	t.Helper()
 	goModURL := fmt.Sprintf("https://proxy.golang.org/%s/@v/%s.mod", module, version)
@@ -262,7 +310,7 @@ func getGoModVersion(ctx context.Context, t *testing.T, client *http.Client, mod
 	return cmp.Or(modFile.Go.Version, defaultGoModVersion)
 }
 
-func createBufGenYaml(t *testing.T, basedir string, plugin *plugin.Plugin) error {
+func createBufGenYaml(t *testing.T, basedir string, plugin *plugin.Plugin, goPkgPrefix string) error {
 	t.Helper()
 	bufGenYaml, err := os.Create(filepath.Join(basedir, "buf.gen.yaml"))
 	if err != nil {
@@ -274,8 +322,9 @@ func createBufGenYaml(t *testing.T, basedir string, plugin *plugin.Plugin) error
 	opts := plugin.Registry.Opts
 	opts = append(opts, testOverrideOptions[plugin.Name]...)
 	return bufGenYamlTemplate.Execute(bufGenYaml, map[string]any{
-		"Name": filepath.Base(plugin.Name),
-		"Opts": opts,
+		"GoPkgPrefix": goPkgPrefix,
+		"Name":        filepath.Base(plugin.Name),
+		"Opts":        opts,
 	})
 }
 
