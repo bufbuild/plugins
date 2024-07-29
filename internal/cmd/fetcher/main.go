@@ -336,7 +336,8 @@ func copyFile(
 					line = strings.Join(fields, " ")
 				}
 			}
-		} else if isDockerfile && strings.HasPrefix(line, dockerSyntaxPrefix) {
+		}
+		if isDockerfile && strings.HasPrefix(line, dockerSyntaxPrefix) {
 			line = dockerSyntaxPrefix + preferredDockerSyntax
 		}
 		if _, err := fmt.Fprintln(destFile, line); err != nil {
