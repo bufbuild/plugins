@@ -312,10 +312,10 @@ func getGoModVersion(ctx context.Context, t *testing.T, client *http.Client, mod
 
 func createBufGenYaml(t *testing.T, basedir string, plugin *plugin.Plugin, goPkgPrefix string) error {
 	t.Helper()
-	bufGenYaml, err := os.Create(filepath.Join(basedir, "buf.gen.yaml"))
-	if err != nil {
-		return err
-	}
+	require.NoError(t, os.MkdirAll(basedir, 0755))
+	bufGenYAMLPath := filepath.Join(basedir, "buf.gen.yaml")
+	bufGenYaml, err := os.Create(bufGenYAMLPath)
+	require.NoErrorf(t, err, "failed to create %s: %s", bufGenYAMLPath, err)
 	defer func() {
 		require.NoError(t, bufGenYaml.Close())
 	}()
