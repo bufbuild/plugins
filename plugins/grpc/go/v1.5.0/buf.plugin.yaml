@@ -10,7 +10,7 @@ deps:
   - plugin: buf.build/protocolbuffers/go:v1.34.2
 registry:
   go:
-    min_version: "1.19"
+    min_version: "1.21"
     deps:
       - module: google.golang.org/grpc
         version: v1.62.2
