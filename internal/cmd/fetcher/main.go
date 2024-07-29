@@ -25,9 +25,11 @@ import (
 )
 
 var (
-	bazelDownloadRegexp = regexp.MustCompile(`bazelbuild/bazel/releases/download/[^/]+/bazel-[^-]+-linux`)
-	bazelImageName      = "gcr.io/bazel-public/bazel"
-	errNoVersions       = errors.New("no versions found")
+	bazelDownloadRegexp   = regexp.MustCompile(`bazelbuild/bazel/releases/download/[^/]+/bazel-[^-]+-linux`)
+	bazelImageName        = "gcr.io/bazel-public/bazel"
+	errNoVersions         = errors.New("no versions found")
+	dockerSyntaxPrefix    = "# syntax=docker/dockerfile:"
+	preferredDockerSyntax = "1.9"
 )
 
 func main() {
@@ -334,6 +336,8 @@ func copyFile(
 					line = strings.Join(fields, " ")
 				}
 			}
+		} else if isDockerfile && strings.HasPrefix(line, dockerSyntaxPrefix) {
+			line = dockerSyntaxPrefix + preferredDockerSyntax
 		}
 		if _, err := fmt.Fprintln(destFile, line); err != nil {
 			return err
