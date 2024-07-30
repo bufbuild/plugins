@@ -13,7 +13,7 @@ registry:
     min_version: "1.19"
     deps:
       - module: google.golang.org/grpc
-        version: v1.62.2
+        version: v1.64.1
   opts:
     - paths=source_relative
     - require_unimplemented_servers=false
