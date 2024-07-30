@@ -25,9 +25,11 @@ import (
 )
 
 var (
-	bazelDownloadRegexp = regexp.MustCompile(`bazelbuild/bazel/releases/download/[^/]+/bazel-[^-]+-linux`)
-	bazelImageName      = "gcr.io/bazel-public/bazel"
-	errNoVersions       = errors.New("no versions found")
+	bazelDownloadRegexp    = regexp.MustCompile(`bazelbuild/bazel/releases/download/[^/]+/bazel-[^-]+-linux`)
+	bazelImageName         = "gcr.io/bazel-public/bazel"
+	dockerfileImageName    = "docker/dockerfile"
+	dockerfileSyntaxPrefix = "# syntax=docker/dockerfile:"
+	errNoVersions          = errors.New("no versions found")
 )
 
 func main() {
@@ -306,6 +308,10 @@ func copyFile(
 	if latestBazelVersion == "" {
 		return fmt.Errorf("failed to find latest version for bazel image %q", bazelImageName)
 	}
+	latestDockerfileVersion := latestBaseImages.ImageVersion(dockerfileImageName)
+	if latestDockerfileVersion == "" {
+		return fmt.Errorf("failed to find latest version for dockerfile image %q", bazelImageName)
+	}
 	s := bufio.NewScanner(srcFile)
 	for s.Scan() {
 		line := strings.ReplaceAll(s.Text(), prevVersion, newVersion)
@@ -334,6 +340,9 @@ func copyFile(
 					line = strings.Join(fields, " ")
 				}
 			}
+		}
+		if isDockerfile && strings.HasPrefix(line, dockerfileSyntaxPrefix) {
+			line = dockerfileSyntaxPrefix + latestDockerfileVersion
 		}
 		if _, err := fmt.Fprintln(destFile, line); err != nil {
 			return err
