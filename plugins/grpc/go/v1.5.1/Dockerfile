@@ -5,7 +5,7 @@ ARG TARGETOS TARGETARCH
 ENV CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH
 
 WORKDIR /tmp
-RUN git clone --depth 1 --branch cmd/protoc-gen-go-grpc/v1.5.0 https://github.com/grpc/grpc-go.git
+RUN git clone --depth 1 --branch cmd/protoc-gen-go-grpc/v1.5.1 https://github.com/grpc/grpc-go.git
 WORKDIR /tmp/grpc-go
 COPY separate-package.patch /tmp/grpc-go
 RUN git apply separate-package.patch
