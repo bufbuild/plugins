@@ -1,8 +1,4 @@
 source:
-  # Temporarily disabled until we can fix both the patch and tests.
-  # 
-  # See https://github.com/bufbuild/plugins/issues/1382 for more details.
-  disabled: true
   github:
     owner: grpc-ecosystem
     repository: grpc-gateway
