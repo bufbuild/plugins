@@ -16,8 +16,7 @@ registry:
       - name: "tonic"
         req: "0.11.0"
         # https://github.com/hyperium/tonic/blob/v0.11.0/tonic/Cargo.toml#L29
-        # The generated code does not require any of the default features of tonic.
-        default_features: false
+        default_features: true
   # https://github.com/neoeinstein/protoc-gen-prost/blob/protoc-gen-tonic-v0.4.0/protoc-gen-tonic/README.md#options
   opts:
     - no_include=true
