@@ -5,7 +5,7 @@ go 1.22.0
 require (
 	aead.dev/minisign v0.3.0
 	github.com/bufbuild/buf v1.35.1
-	github.com/google/go-containerregistry v0.20.1
+	github.com/google/go-containerregistry v0.20.2
 	github.com/google/go-github/v63 v63.0.0
 	github.com/hashicorp/go-retryablehttp v0.7.7
 	github.com/sethvargo/go-envconfig v1.1.0
@@ -22,7 +22,7 @@ require (
 	github.com/containerd/stargz-snapshotter/estargz v0.15.1 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.4 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
-	github.com/docker/cli v27.1.0+incompatible // indirect
+	github.com/docker/cli v27.1.1+incompatible // indirect
 	github.com/docker/distribution v2.8.3+incompatible // indirect
 	github.com/docker/docker-credential-helpers v0.8.2 // indirect
 	github.com/felixge/fgprof v0.9.4 // indirect
