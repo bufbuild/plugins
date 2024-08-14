@@ -314,9 +314,9 @@ func TestNugetDependencies(t *testing.T) {
 		TargetFrameworks string   `xml:"TargetFrameworks,omitempty"`
 	}
 	type csharpProject struct {
-		XMLName           xml.Name `xml:"Project"`
-		SDK               string   `xml:"Sdk,attr"`
-		PropertyGroup     propertyGroup
+		XMLName           xml.Name           `xml:"Project"`
+		SDK               string             `xml:"Sdk,attr"`
+		PropertyGroup     propertyGroup      `xml:"PropertyGroup"`
 		PackageReferences []packageReference `xml:"ItemGroup>PackageReference"`
 	}
 
