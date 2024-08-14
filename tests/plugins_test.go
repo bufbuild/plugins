@@ -266,6 +266,38 @@ func TestGrpcGatewayDeprecationMessage(t *testing.T) {
 	}
 }
 
+func TestMavenDependencies(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	client := &http.Client{}
+	plugins := loadFilteredPlugins(t)
+	for _, p := range plugins {
+		if p.Registry.Maven == nil || len(p.Registry.Maven.Deps) == 0 {
+			continue
+		}
+		t.Run(fmt.Sprintf("%s/%s@%s", p.Identity.Owner(), p.Identity.Plugin(), p.PluginVersion), func(t *testing.T) {
+			t.Parallel()
+			for _, dep := range p.Registry.Maven.Deps {
+				fields := strings.Split(dep, ":")
+				require.Len(t, fields, 3)
+				groupID, artifactID, version := fields[0], fields[1], fields[2]
+				url := fmt.Sprintf(
+					"https://repo.maven.apache.org/maven2/%[1]s/%[2]s/%[3]s/%[2]s-%[3]s.pom",
+					strings.ReplaceAll(groupID, ".", "/"),
+					artifactID,
+					version,
+				)
+				req, err := http.NewRequestWithContext(ctx, http.MethodHead, url, nil)
+				require.NoError(t, err)
+				resp, err := client.Do(req)
+				require.NoError(t, err)
+				require.NoError(t, resp.Body.Close())
+				assert.Equalf(t, http.StatusOK, resp.StatusCode, "failed to find maven dependency %s", dep)
+			}
+		})
+	}
+}
+
 func runPluginWithImage(ctx context.Context, t *testing.T, basedir string, pluginMeta *plugin.Plugin, image string, goPkgPrefix string) string {
 	t.Helper()
 	gendir := filepath.Join(basedir, "gen")
