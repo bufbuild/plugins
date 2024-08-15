@@ -20,7 +20,7 @@ RUN bazel build '//plugins:protoc-gen-csharp.stripped'
 
 FROM mcr.microsoft.com/dotnet/sdk:6.0.424-bookworm-slim@sha256:39f73995c6d4f64f1a81f4ec42617cb71a797a23da93a5b0109ab06e5094fdae AS dotnetrestore
 WORKDIR /build
-COPY --link ./build.csproj /build
+COPY --link ./build.csproj /build/build.csproj
 RUN mkdir /nuget && dotnet restore --packages /nuget
 
 FROM gcr.io/distroless/cc-debian12:latest@sha256:3b75fdd33932d16e53a461277becf57c4f815c6cee5f6bc8f52457c095e004c8 AS base
