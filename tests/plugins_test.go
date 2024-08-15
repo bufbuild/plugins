@@ -329,10 +329,7 @@ func TestNugetDependencies(t *testing.T) {
 		t.Run(p.String(), func(t *testing.T) {
 			t.Parallel()
 			// We require all NuGet-enabled plugins to have a build.csproj file to load plugin dependencies.
-			buildCsproj, err := os.Open(filepath.Join(filepath.Dir(p.Path), "build.csproj"))
-			require.NoError(t, err)
-			t.Cleanup(func() { require.NoError(t, buildCsproj.Close()) })
-			buildCsprojBytes, err := io.ReadAll(buildCsproj)
+			buildCsprojBytes, err := os.ReadFile(filepath.Join(filepath.Dir(p.Path), "build.csproj"))
 			require.NoError(t, err)
 			var project csharpProject
 			require.NoError(t, xml.Unmarshal(buildCsprojBytes, &project))
