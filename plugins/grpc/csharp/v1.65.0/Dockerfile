@@ -17,16 +17,10 @@ WORKDIR /build/grpc
 RUN bazel build //src/compiler:grpc_plugin_support
 RUN bazel build //src/compiler:grpc_csharp_plugin.stripped
 
-FROM mcr.microsoft.com/dotnet/sdk:6.0.424-bookworm-slim@sha256:39f73995c6d4f64f1a81f4ec42617cb71a797a23da93a5b0109ab06e5094fdae AS dotnetrestore
-WORKDIR /build
-COPY --link ./build.csproj /build/build.csproj
-RUN mkdir /nuget && dotnet restore --packages /nuget
-
 FROM gcr.io/distroless/cc-debian12:latest@sha256:e1065a1d58800a7294f74e67c32ec4146d09d6cbe471c1fa7ed456b2d2bf06e0 AS base
 
 FROM scratch
 COPY --link --from=base / /
-COPY --link --from=dotnetrestore --chmod=0755 /nuget /nuget
 COPY --link --from=build --chmod=0755 /build/grpc/bazel-bin/src/compiler/grpc_csharp_plugin .
 USER nobody
 ENTRYPOINT ["/grpc_csharp_plugin"]
