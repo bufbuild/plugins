@@ -26,7 +26,7 @@ FROM gcr.io/distroless/cc-debian12:latest@sha256:e1065a1d58800a7294f74e67c32ec41
 
 FROM scratch
 COPY --link --from=base / /
-COPY --link --from=dotnetrestore --chmod=0755 /nuget /nuget
+COPY --link --from=dotnetrestore /nuget /nuget
 COPY --link --from=build --chmod=0755 /build/grpc/bazel-bin/src/compiler/grpc_csharp_plugin .
 USER nobody
 ENTRYPOINT ["/grpc_csharp_plugin"]
