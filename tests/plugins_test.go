@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"cmp"
 	"context"
+	"encoding/xml"
 	"fmt"
 	"io"
 	"io/fs"
@@ -298,6 +299,68 @@ func TestMavenDependencies(t *testing.T) {
 	}
 }
 
+func TestNugetDependencies(t *testing.T) {
+	t.Parallel()
+
+	type packageReference struct {
+		XMLName   xml.Name `xml:"PackageReference"`
+		Include   string   `xml:"Include,attr"`
+		Version   string   `xml:"Version,attr"`
+		Condition string   `xml:"Condition,attr,omitempty"`
+	}
+	type propertyGroup struct {
+		XMLName          xml.Name `xml:"PropertyGroup"`
+		TargetFramework  string   `xml:"TargetFramework,omitempty"`
+		TargetFrameworks string   `xml:"TargetFrameworks,omitempty"`
+	}
+	type csharpProject struct {
+		XMLName           xml.Name           `xml:"Project"`
+		SDK               string             `xml:"Sdk,attr"`
+		PropertyGroup     propertyGroup      `xml:"PropertyGroup"`
+		PackageReferences []packageReference `xml:"ItemGroup>PackageReference"`
+	}
+
+	allPlugins := loadAllPlugins(t)
+	plugins := loadFilteredPlugins(t)
+	for _, p := range plugins {
+		if p.Registry.Nuget == nil {
+			continue
+		}
+		t.Run(p.String(), func(t *testing.T) {
+			t.Parallel()
+			// We require all NuGet-enabled plugins to have a build.csproj file to load plugin dependencies.
+			buildCsprojBytes, err := os.ReadFile(filepath.Join(filepath.Dir(p.Path), "build.csproj"))
+			require.NoError(t, err)
+			var project csharpProject
+			require.NoError(t, xml.Unmarshal(buildCsprojBytes, &project))
+
+			nugetConfig := p.Registry.Nuget
+			if len(nugetConfig.TargetFrameworks) == 1 {
+				require.Equal(t, project.PropertyGroup.TargetFramework, nugetConfig.TargetFrameworks[0])
+			} else {
+				require.EqualValues(t, strings.Split(project.PropertyGroup.TargetFrameworks, ";"), nugetConfig.TargetFrameworks)
+			}
+
+			// name -> version
+			allDependencies := map[string]string{}
+			populateNugetDeps(t, allDependencies, p, allPlugins)
+
+			// Include -> Version
+			packageReferences := map[string]string{}
+			for _, packageReference := range project.PackageReferences {
+				// TODO: Support conditions in this test.
+				require.Empty(t, packageReference.Condition)
+				_, exists := packageReferences[packageReference.Include]
+				// Should not have duplicate Include values in the build.csproj.
+				require.False(t, exists)
+				packageReferences[packageReference.Include] = packageReference.Version
+			}
+
+			require.Equal(t, allDependencies, packageReferences)
+		})
+	}
+}
+
 func runPluginWithImage(ctx context.Context, t *testing.T, basedir string, pluginMeta *plugin.Plugin, image string, goPkgPrefix string) string {
 	t.Helper()
 	gendir := filepath.Join(basedir, "gen")
@@ -396,4 +459,31 @@ func createProtocGenPlugin(t *testing.T, basedir string, plugin *plugin.Plugin) 
 		"ImageName": fmt.Sprintf("%s/plugins-%s-%s", dockerOrg, fields[1], fields[2]),
 		"Version":   plugin.PluginVersion,
 	})
+}
+
+func populateNugetDeps(t *testing.T, dependencies map[string]string, nugetPlugin *plugin.Plugin, plugins []*plugin.Plugin) {
+	t.Helper()
+	for _, pluginDependency := range nugetPlugin.Deps {
+		var pluginDep *plugin.Plugin
+		for _, otherPlugin := range plugins {
+			if otherPlugin.String() == pluginDependency.Plugin {
+				pluginDep = otherPlugin
+				break
+			}
+		}
+		require.NotNil(t, pluginDep)
+		// Recurse into deps.
+		populateNugetDeps(t, dependencies, pluginDep, plugins)
+	}
+
+	for _, nugetDependency := range nugetPlugin.Registry.Nuget.Deps {
+		// TODO: Handle target frameworks in dependencies.
+		require.Empty(t, nugetDependency.TargetFrameworks)
+
+		if existingVersion, exists := dependencies[nugetDependency.Name]; exists {
+			// Versions cannot conflict amongst deps.
+			require.Equal(t, existingVersion, nugetDependency.Version)
+		}
+		dependencies[nugetDependency.Name] = nugetDependency.Version
+	}
 }
