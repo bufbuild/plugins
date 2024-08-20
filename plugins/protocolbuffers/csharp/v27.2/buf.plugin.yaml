@@ -16,4 +16,3 @@ registry:
     deps:
       - name: Google.Protobuf
         version: 3.27.2
-
