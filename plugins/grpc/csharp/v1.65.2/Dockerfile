@@ -17,7 +17,7 @@ WORKDIR /build/grpc
 RUN bazel build //src/compiler:grpc_plugin_support
 RUN bazel build //src/compiler:grpc_csharp_plugin.stripped
 
-FROM mcr.microsoft.com/dotnet/sdk:6.0.424-bookworm-slim@sha256:39f73995c6d4f64f1a81f4ec42617cb71a797a23da93a5b0109ab06e5094fdae AS dotnetrestore
+FROM mcr.microsoft.com/dotnet/sdk:8.0.401-bookworm-slim@sha256:8c6beed050a602970c3d275756ed3c19065e42ce6ca0809f5a6fcbf5d36fd305 AS dotnetrestore
 WORKDIR /build
 COPY --link ./build.csproj /build/build.csproj
 RUN mkdir /nuget && dotnet restore --packages /nuget
