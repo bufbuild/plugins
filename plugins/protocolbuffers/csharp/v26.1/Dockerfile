@@ -18,10 +18,16 @@ RUN bazel build '//:protoc_lib'
 COPY --link BUILD csharp.cc plugins/
 RUN bazel build '//plugins:protoc-gen-csharp.stripped'
 
+FROM mcr.microsoft.com/dotnet/sdk:8.0.401-bookworm-slim@sha256:8c6beed050a602970c3d275756ed3c19065e42ce6ca0809f5a6fcbf5d36fd305 AS dotnetrestore
+WORKDIR /build
+COPY --link ./build.csproj /build/build.csproj
+RUN mkdir /nuget && dotnet restore --packages /nuget
+
 FROM gcr.io/distroless/cc-debian12:latest@sha256:e1065a1d58800a7294f74e67c32ec4146d09d6cbe471c1fa7ed456b2d2bf06e0 AS base
 
 FROM scratch
 COPY --from=base --link / /
+COPY --from=dotnetrestore --link /nuget /nuget
 COPY --from=build --link --chmod=0755 /build/bazel-bin/plugins/protoc-gen-csharp .
 USER nobody
 ENTRYPOINT ["/protoc-gen-csharp"]
