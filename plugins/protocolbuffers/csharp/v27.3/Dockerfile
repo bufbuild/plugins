@@ -27,7 +27,7 @@ FROM gcr.io/distroless/cc-debian12:latest@sha256:3b75fdd33932d16e53a461277becf57
 
 FROM scratch
 COPY --from=base --link / /
-COPY --link --from=dotnetrestore --chmod=0755 /nuget /nuget
+COPY --link --from=dotnetrestore /nuget /nuget
 COPY --from=build --link --chmod=0755 /build/bazel-bin/plugins/protoc-gen-csharp .
 USER nobody
 ENTRYPOINT ["/protoc-gen-csharp"]
