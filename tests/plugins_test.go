@@ -128,26 +128,27 @@ func TestGeneration(t *testing.T) {
 			for _, image := range images {
 				testPluginWithImage(t, toTest, image)
 			}
-			switch toTest.Name {
-			case "buf.build/bufbuild/knit-ts":
+			switch strings.TrimPrefix(toTest.Name, "buf.build/") {
+			case "bufbuild/knit-ts":
 				testPluginWithImage(t, toTest, "knit-demo")
-			case "buf.build/grpc-ecosystem/gateway":
+			case "grpc-ecosystem/gateway":
 				if semver.Compare(toTest.PluginVersion, "v2.16.0") >= 0 {
 					testPluginWithImage(t, toTest, "grpc-gateway")
 				}
-			case "buf.build/community/mercari-grpc-federation":
-				if semver.Compare(toTest.PluginVersion, "v0.11.0") < 0 {
+			case "community/mercari-grpc-federation":
+				switch {
+				case semver.Compare(toTest.PluginVersion, "v1.4.1") >= 0:
+					testPluginWithImage(t, toTest, "grpc-federation-v1.4.1")
+				case semver.Compare(toTest.PluginVersion, "v0.13.6") >= 0:
+					testPluginWithImage(t, toTest, "grpc-federation-v0.13.6")
+				case semver.Compare(toTest.PluginVersion, "v0.11.0") >= 0:
+					testPluginWithImage(t, toTest, "grpc-federation-v0.11.0")
+				default:
 					// There was a breaking change in v0.11.0, so we need to test the old version separately
 					// https://github.com/mercari/grpc-federation/commit/baca78bf2421322c97e6977a06931fed29e4058a
 					testPluginWithImage(t, toTest, "grpc-federation")
 				}
-				if semver.Compare(toTest.PluginVersion, "v0.11.0") >= 0 && semver.Compare(toTest.PluginVersion, "v0.13.6") < 0 {
-					testPluginWithImage(t, toTest, "grpc-federation-v0.11.0")
-				}
-				if semver.Compare(toTest.PluginVersion, "v0.13.6") >= 0 {
-					testPluginWithImage(t, toTest, "grpc-federation-v0.13.6")
-				}
-			case "buf.build/googlecloudplatform/bq-schema":
+			case "googlecloudplatform/bq-schema":
 				testPluginWithImage(t, toTest, "bq-schema")
 			}
 		})
