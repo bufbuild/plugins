@@ -143,7 +143,7 @@ Note, although some fields are optional, it is suggested to include as many as p
     * `rewrite_import_path_suffix`: The suffix used in the generated files and their imported dependencies (supported by [@bufbuild/protoplugin] plugins).
     * `deps`: NPM package dependencies for the Generated SDK.
       * `package`: The name of the NPM package dependency.
-      * `version`: The version of the NPM package dependency (see [npm semantic versioning] for more details). 
+      * `version`: The version of the NPM package dependency (see [npm semantic versioning] for more details).
     * `import_style` (required): One of either `module` or `commonjs`.
   * `maven`:
     * `compiler`:
@@ -179,6 +179,20 @@ Note, although some fields are optional, it is suggested to include as many as p
         * `tvos`: Version of the tvOS platform.
         * `watchos`: Version of the watchOS platform.
       * `swift_versions`: Versions of Swift the package supports.
+  * `cargo`:
+    * `rust_version`: Minimum Supported Rust Version (MSRV) of the generated crate.
+    * `deps`: Runtime dependencies of the generated code.
+      * `name`: Name of the dependency.
+      * `req`: Version Requirement of the dependency.
+      * `default_features`: If [default features][cargo default features] of the dependency are enabled.
+      * `features`: List of enabled features.
+  * `nuget`:
+    * `target_frameworks`: Target Frameworks to build.
+    * `deps`: Runtime dependencies of the generated code.
+      * `name`: Name of the dependency.
+      * `version`: Version of the dependency.
+      * `target_frameworks`: Optional list of Target Frameworks this dependency applies to.
+  * `cmake`: no current options, but enables the plugin for the CMake registry
 
 ## Generated SDK Plugins
 
@@ -246,3 +260,4 @@ To specify a different architecture (i.e. x86_64), specify the `DOCKER_BUILD_EXT
 [npm semantic versioning]: https://docs.npmjs.com/about-semantic-versioning#using-semantic-versioning-to-specify-update-types-your-package-can-accept
 [require directive]: https://go.dev/ref/mod#go-mod-file-require
 [Generated SDKs]: https://buf.build/docs/bsr/generated-sdks/overview
+[cargo default features]: https://doc.rust-lang.org/cargo/reference/features.html#the-default-feature
