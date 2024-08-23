@@ -12,15 +12,15 @@ registry:
     rust_version: ""
     deps:
       # Matching the versions of the prost crates used in this version of the plugin.
-      # https://github.com/neoeinstein/protoc-gen-prost/blob/protoc-gen-prost-v0.4.0/protoc-gen-prost/Cargo.toml#L21-L23
+      # https://github.com/neoeinstein/protoc-gen-prost/blob/protoc-gen-prost-v0.4.0/Cargo.toml#L15
       - name: "prost"
-        req: "0.12.3"
-        # https://docs.rs/crate/prost/0.12.3/features
+        req: "0.13.1"
+        # https://docs.rs/crate/prost/0.13.1/features
         default_features: true
       # prost-types is necessary for any module using the WKTs.
       - name: "prost-types"
-        req: "0.12.3"
-        # https://docs.rs/crate/prost-types/0.12.3/features
+        req: "0.13.1"
+        # https://docs.rs/crate/prost-types/0.13.1/features
         default_features: true
   # https://github.com/neoeinstein/protoc-gen-prost/blob/protoc-gen-prost-v0.4.0/protoc-gen-prost/README.md#options
   opts:
@@ -28,5 +28,5 @@ registry:
     - file_descriptor_set
     # Change generation of bytes type fields into Rust `bytes::Bytes` types.
     # Dependency on `bytes` crate is added as a result of `default_features: true` on `prost` dependency.
-    # https://crates.io/crates/prost/0.12.6/dependencies
+    # https://crates.io/crates/prost/0.13.1/dependencies
     - bytes=.
