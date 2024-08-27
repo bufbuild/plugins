@@ -18,3 +18,5 @@ registry:
     deps:
       - name: Grpc.Net.Common
         version: 2.65.0
+      - name: Grpc.Net.Client
+        version: 2.65.0
