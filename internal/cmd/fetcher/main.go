@@ -292,7 +292,7 @@ func copyFile(
 	}()
 	filename := filepath.Base(dest)
 	switch filename {
-	case "Dockerfile", "Dockerfile.wasm", "buf.plugin.yaml", "package.json":
+	case "Dockerfile", "Dockerfile.wasm", "buf.plugin.yaml", "build.csproj", "package.json":
 		// We want to update these with the new version
 	default:
 		// Everything else just copy as-is
