@@ -279,7 +279,12 @@ func TestMavenDependencies(t *testing.T) {
 		}
 		t.Run(fmt.Sprintf("%s/%s@%s", p.Identity.Owner(), p.Identity.Plugin(), p.PluginVersion), func(t *testing.T) {
 			t.Parallel()
-			for _, dep := range p.Registry.Maven.Deps {
+			var alldeps []string
+			alldeps = append(alldeps, p.Registry.Maven.Deps...)
+			for _, runtime := range p.Registry.Maven.AdditionalRuntimes {
+				alldeps = append(alldeps, runtime.Deps...)
+			}
+			for _, dep := range alldeps {
 				fields := strings.Split(dep, ":")
 				require.Len(t, fields, 3)
 				groupID, artifactID, version := fields[0], fields[1], fields[2]
