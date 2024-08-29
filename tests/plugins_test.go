@@ -280,13 +280,9 @@ func TestMavenDependencies(t *testing.T) {
 		t.Run(fmt.Sprintf("%s/%s@%s", p.Identity.Owner(), p.Identity.Plugin(), p.PluginVersion), func(t *testing.T) {
 			t.Parallel()
 			var alldeps []string
-			for _, dep := range p.Registry.Maven.Deps {
-				alldeps = append(alldeps, dep)
-			}
+			alldeps = append(alldeps, p.Registry.Maven.Deps...)
 			for _, runtime := range p.Registry.Maven.AdditionalRuntimes {
-				for _, dep := range runtime.Deps {
-					alldeps = append(alldeps, dep)
-				}
+				alldeps = append(alldeps, runtime.Deps...)
 			}
 			for _, dep := range alldeps {
 				fields := strings.Split(dep, ":")
