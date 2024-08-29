@@ -61,6 +61,8 @@ exec docker run --log-driver=none --rm -i {{.ImageName}}:{{.Version}} "$@"
 	imageOverrides = map[string][]string{
 		// betterproto (at least at v1.2.5) doesn't support eliza since it uses client streaming
 		"buf.build/community/danielgtaylor-betterproto": {"petapis"},
+		// pluginrpc-go doesn't support eliza since it has streaming RPCs
+		"buf.build/pluginrpc/pluginrpc-go": {"petapis"},
 	}
 	// Options to pass to the plugin during tests. The prost plugins depend on insertion points by default, which
 	// breaks our current test strategy which is to run each plugin in isolation. Override the test options for
