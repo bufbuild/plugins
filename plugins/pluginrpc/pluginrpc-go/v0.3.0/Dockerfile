@@ -5,7 +5,7 @@ ARG TARGETOS TARGETARCH
 ENV CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH
 
 RUN --mount=type=cache,target=/go/pkg/mod \
-    go install -ldflags="-s -w" -trimpath pluginrpc.com/pluginrpc/cmd/protoc-gen-pluginrpc-go@v0.1.0 \
+    go install -ldflags="-s -w" -trimpath pluginrpc.com/pluginrpc/cmd/protoc-gen-pluginrpc-go@v0.3.0 \
     && mv /go/bin/${GOOS}_${GOARCH}/protoc-gen-pluginrpc-go /go/bin/protoc-gen-pluginrpc-go || true
 
 FROM scratch
