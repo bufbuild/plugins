@@ -9,10 +9,12 @@ package main
 
 import (
 	"bytes"
+	"cmp"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 
 	"aead.dev/minisign"
@@ -84,12 +86,21 @@ func run(ctx context.Context, container appext.Container, flags *flags) error {
 	if err != nil {
 		return fmt.Errorf("failed to determine latest plugins and dependencies: %w", err)
 	}
+	// sort first by plugin name + version
+	slices.SortFunc(latestPlugins, func(a, b release.PluginRelease) int {
+		if c := cmp.Compare(a.PluginName, b.PluginName); c != 0 {
+			return c
+		}
+		return semver.Compare(a.PluginVersion, b.PluginVersion)
+	})
 	// sort by dependency order
 	sortedPlugins, err := release.SortReleasesInDependencyOrder(latestPlugins)
 	if err != nil {
 		return fmt.Errorf("failed to sort plugins in dependency order: %w", err)
 	}
-	return json.NewEncoder(container.Stdout()).Encode(&release.PluginReleases{Releases: sortedPlugins})
+	enc := json.NewEncoder(container.Stdout())
+	enc.SetIndent("", "  ")
+	return enc.Encode(&release.PluginReleases{Releases: sortedPlugins})
 }
 
 func getLatestPluginsAndDependencies(
