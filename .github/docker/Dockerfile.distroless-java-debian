@@ -1,3 +1,3 @@
-FROM gcr.io/distroless/java17-debian12:latest@sha256:60fbaf0aca19233e378b48316ea589503dcbd13b0df909110ffead4398c934f5
+FROM gcr.io/distroless/java17-debian12:latest@sha256:59c17d928da6cb40da03b02f27fee7a03cd5b6dc72effd55e49707548d80bca3
 
 CMD echo this is a dummy file used to automate dependency upgrades for plugins
