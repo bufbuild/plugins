@@ -1,0 +1,9 @@
+version: v1
+name: buf.build/community/nanopb
+plugin_version: v0.4.9
+source_url: https://github.com/nanopb/nanopb
+description: Nanopb is a small code-size Protocol Buffers implementation in ansi C. It is especially suitable for use in microcontrollers, but fits any memory restricted system.
+output_languages:
+  - c
+spdx_license_id: Zlib
+license_url: https://github.com/nanopb/nanopb/blob/0.4.9/LICENSE.txt
