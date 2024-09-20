@@ -120,10 +120,7 @@ func getLatestPluginsAndDependencies(
 		nameVersionToRelease[nameVersion{name: plugin.PluginName, version: plugin.PluginVersion}] = plugin
 	}
 	toInclude := make(map[nameVersion]struct{})
-	latestVersions, err := latestNonDeprecatedPlugins(releases)
-	if err != nil {
-		return nil, err
-	}
+	latestVersions := latestNonDeprecatedPlugins(releases)
 	deps := make(map[nameVersion]struct{})
 	addDeps := func(pluginRelease release.PluginRelease) {
 		for _, depNameVersion := range pluginRelease.Dependencies {
@@ -167,7 +164,7 @@ func getLatestPluginsAndDependencies(
 	return latestPluginsAndDeps, nil
 }
 
-func latestNonDeprecatedPlugins(releases *release.PluginReleases) ([]release.PluginRelease, error) {
+func latestNonDeprecatedPlugins(releases *release.PluginReleases) []release.PluginRelease {
 	latestPluginNameToRelease := make(map[string]release.PluginRelease)
 	for _, pluginRelease := range releases.Releases {
 		if isDeprecated(pluginRelease.PluginName) {
@@ -182,7 +179,7 @@ func latestNonDeprecatedPlugins(releases *release.PluginReleases) ([]release.Plu
 	slices.SortFunc(latestPlugins, func(a, b release.PluginRelease) int {
 		return cmp.Compare(a.PluginName, b.PluginName)
 	})
-	return latestPlugins, nil
+	return latestPlugins
 }
 
 func isDeprecated(pluginName string) bool {
@@ -221,7 +218,7 @@ func pluginsFromFile(filename string) (_ []nameVersion, retErr error) {
 	if err := json.NewDecoder(f).Decode(&pluginReleases); err != nil {
 		return nil, err
 	}
-	var plugins []nameVersion
+	plugins := make([]nameVersion, 0, len(pluginReleases.Releases))
 	for _, pluginRelease := range pluginReleases.Releases {
 		plugins = append(plugins, nameVersion{name: pluginRelease.PluginName, version: pluginRelease.PluginVersion})
 	}
