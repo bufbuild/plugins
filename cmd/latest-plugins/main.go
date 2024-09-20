@@ -14,13 +14,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
+	"os"
 	"slices"
 	"strings"
 
 	"aead.dev/minisign"
 	"github.com/bufbuild/buf/private/pkg/app/appcmd"
 	"github.com/bufbuild/buf/private/pkg/app/appext"
-	"github.com/bufbuild/buf/private/pkg/slicesext"
 	"github.com/spf13/pflag"
 	"golang.org/x/mod/semver"
 
@@ -32,14 +33,14 @@ func main() {
 }
 
 type flags struct {
-	includedPlugins []string
+	includedPluginsFile string
 }
 
 func (f *flags) Bind(flagSet *pflag.FlagSet) {
-	flagSet.StringSliceVar(&f.includedPlugins,
-		"include",
-		nil,
-		"Additional plugins to include",
+	flagSet.StringVar(&f.includedPluginsFile,
+		"include-file",
+		"",
+		"JSON file containing previous plugins to include",
 	)
 }
 
@@ -82,7 +83,14 @@ func run(ctx context.Context, container appext.Container, flags *flags) error {
 	if err := json.NewDecoder(bytes.NewReader(releasesBytes)).Decode(&pluginReleases); err != nil {
 		return err
 	}
-	latestPlugins, err := getLatestPluginsAndDependencies(&pluginReleases, flags.includedPlugins)
+	var includedPlugins []nameVersion
+	if flags.includedPluginsFile != "" {
+		includedPlugins, err = pluginsFromFile(flags.includedPluginsFile)
+		if err != nil {
+			return err
+		}
+	}
+	latestPlugins, err := getLatestPluginsAndDependencies(&pluginReleases, includedPlugins)
 	if err != nil {
 		return fmt.Errorf("failed to determine latest plugins and dependencies: %w", err)
 	}
@@ -105,69 +113,126 @@ func run(ctx context.Context, container appext.Container, flags *flags) error {
 
 func getLatestPluginsAndDependencies(
 	releases *release.PluginReleases,
-	additionalPlugins []string,
+	additionalPlugins []nameVersion,
 ) ([]release.PluginRelease, error) {
-	additionalPluginsSet := slicesext.ToStructMap(additionalPlugins)
-	versionToPlugin := make(map[string]release.PluginRelease, len(releases.Releases))
-	latestVersions := make(map[string]release.PluginRelease)
-	for _, pluginRelease := range releases.Releases {
-		owner, pluginName, found := strings.Cut(pluginRelease.PluginName, "/")
-		if !found {
-			return nil, errors.New("failed to split plugin pluginName into owner/pluginName")
-		}
-		if _, ok := additionalPluginsSet[pluginRelease.PluginName]; !ok {
-			// Don't include deprecated plugins.
-			switch owner {
-			case "community":
-				if pluginName == "mitchellh-go-json" {
-					continue
-				}
-			case "bufbuild":
-				switch pluginName {
-				case "connect-es",
-					"connect-go",
-					"connect-kotlin",
-					"connect-query",
-					"connect-swift",
-					"connect-swift-mocks",
-					"connect-web",
-					"protoschema-bigquery":
-					continue
-				}
-			}
-		}
-		versionToPlugin[pluginRelease.PluginName+":"+pluginRelease.PluginVersion] = pluginRelease
-		latestVersion, ok := latestVersions[pluginRelease.PluginName]
-		if !ok || semver.Compare(latestVersion.PluginVersion, pluginRelease.PluginVersion) < 0 {
-			latestVersions[pluginRelease.PluginName] = pluginRelease
+	nameVersionToRelease := make(map[nameVersion]release.PluginRelease, len(releases.Releases))
+	for _, plugin := range releases.Releases {
+		nameVersionToRelease[nameVersion{name: plugin.PluginName, version: plugin.PluginVersion}] = plugin
+	}
+	toInclude := make(map[nameVersion]struct{})
+	latestVersions, err := latestNonDeprecatedPlugins(releases)
+	if err != nil {
+		return nil, err
+	}
+	deps := make(map[nameVersion]struct{})
+	addDeps := func(pluginRelease release.PluginRelease) {
+		for _, depNameVersion := range pluginRelease.Dependencies {
+			depName, depVersion, _ := strings.Cut(strings.TrimPrefix(depNameVersion, "buf.build/"), ":")
+			deps[nameVersion{name: depName, version: depVersion}] = struct{}{}
 		}
 	}
-	toInclude := make(map[string]struct{})
-	deps := make(map[string]struct{})
 	for _, pluginRelease := range latestVersions {
-		toInclude[pluginRelease.PluginName+":"+pluginRelease.PluginVersion] = struct{}{}
-		for _, d := range pluginRelease.Dependencies {
-			deps[strings.TrimPrefix(d, "buf.build/")] = struct{}{}
+		toInclude[nameVersion{name: pluginRelease.PluginName, version: pluginRelease.PluginVersion}] = struct{}{}
+		addDeps(pluginRelease)
+	}
+	for _, additionalPlugin := range additionalPlugins {
+		toInclude[additionalPlugin] = struct{}{}
+		pluginRelease, ok := nameVersionToRelease[additionalPlugin]
+		if !ok {
+			return nil, fmt.Errorf("no plugin found for %s", additionalPlugin)
 		}
+		addDeps(pluginRelease)
 	}
 	for len(deps) > 0 {
-		nextDeps := make(map[string]struct{})
+		nextDeps := make(map[nameVersion]struct{})
 		for dep := range deps {
 			if _, ok := toInclude[dep]; ok {
 				continue
 			}
 			toInclude[dep] = struct{}{}
-			for _, nextDep := range versionToPlugin[dep].Dependencies {
-				nextDeps[strings.TrimPrefix(nextDep, "buf.build/")] = struct{}{}
+			for _, nextDep := range nameVersionToRelease[dep].Dependencies {
+				depName, depVersion, _ := strings.Cut(strings.TrimPrefix(nextDep, "buf.build/"), ":")
+				nextDeps[nameVersion{name: depName, version: depVersion}] = struct{}{}
 			}
 		}
 		deps = nextDeps
 	}
 	var latestPluginsAndDeps []release.PluginRelease
 	for _, pluginRelease := range releases.Releases {
-		if _, ok := toInclude[pluginRelease.PluginName+":"+pluginRelease.PluginVersion]; ok {
+		nameVersion := nameVersion{name: pluginRelease.PluginName, version: pluginRelease.PluginVersion}
+		if _, ok := toInclude[nameVersion]; ok {
 			latestPluginsAndDeps = append(latestPluginsAndDeps, pluginRelease)
 		}
 	}
 	return latestPluginsAndDeps, nil
+}
+
+func latestNonDeprecatedPlugins(releases *release.PluginReleases) ([]release.PluginRelease, error) {
+	latestPluginNameToRelease := make(map[string]release.PluginRelease)
+	for _, pluginRelease := range releases.Releases {
+		if isDeprecated(pluginRelease.PluginName) {
+			continue
+		}
+		latestVersion, ok := latestPluginNameToRelease[pluginRelease.PluginName]
+		if !ok || semver.Compare(latestVersion.PluginVersion, pluginRelease.PluginVersion) < 0 {
+			latestPluginNameToRelease[pluginRelease.PluginName] = pluginRelease
+		}
+	}
+	latestPlugins := slices.Collect(maps.Values(latestPluginNameToRelease))
+	slices.SortFunc(latestPlugins, func(a, b release.PluginRelease) int {
+		return cmp.Compare(a.PluginName, b.PluginName)
+	})
+	return latestPlugins, nil
+}
+
+func isDeprecated(pluginName string) bool {
+	owner, pluginName, _ := strings.Cut(pluginName, "/")
+	// Don't include deprecated plugins.
+	switch owner {
+	case "community":
+		if pluginName == "mitchellh-go-json" {
+			return true
+		}
+	case "bufbuild":
+		switch pluginName {
+		case "connect-es",
+			"connect-go",
+			"connect-kotlin",
+			"connect-query",
+			"connect-swift",
+			"connect-swift-mocks",
+			"connect-web",
+			"protoschema-bigquery":
+			return true
+		}
+	}
+	return false
+}
+
+func pluginsFromFile(filename string) (_ []nameVersion, retErr error) {
+	var pluginReleases release.PluginReleases
+	f, err := os.Open(filename)
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		retErr = errors.Join(retErr, f.Close())
+	}()
+	if err := json.NewDecoder(f).Decode(&pluginReleases); err != nil {
+		return nil, err
+	}
+	var plugins []nameVersion
+	for _, pluginRelease := range pluginReleases.Releases {
+		plugins = append(plugins, nameVersion{name: pluginRelease.PluginName, version: pluginRelease.PluginVersion})
+	}
+	return plugins, nil
+}
+
+type nameVersion struct {
+	name    string
+	version string
+}
+
+func (p nameVersion) String() string {
+	return fmt.Sprintf("%s:%s", p.name, p.version)
 }
