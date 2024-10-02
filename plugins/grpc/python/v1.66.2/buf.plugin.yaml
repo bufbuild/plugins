@@ -12,7 +12,7 @@ license_url: https://github.com/grpc/grpc/blob/v1.66.2/LICENSE
 registry:
   python:
     package_type: "runtime"
-    # https://github.com/grpc/grpc/tree/v1.66.2/src/python/grpcio#supported-python-versions
+    # https://github.com/grpc/grpc/blob/v1.66.2/src/python/grpcio/python_version.py#L19
     requires_python: ">=3.8"
     deps:
       # https://pypi.org/project/grpcio/
