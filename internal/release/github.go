@@ -14,7 +14,7 @@ import (
 	"time"
 
 	"aead.dev/minisign"
-	"github.com/google/go-github/v63/github"
+	"github.com/google/go-github/v66/github"
 	"github.com/hashicorp/go-retryablehttp"
 	"golang.org/x/oauth2"
 )

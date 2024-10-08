@@ -6,12 +6,11 @@ require (
 	aead.dev/minisign v0.3.0
 	github.com/bufbuild/buf v1.44.0
 	github.com/google/go-containerregistry v0.20.2
-	github.com/google/go-github/v63 v63.0.0
+	github.com/google/go-github/v66 v66.0.0
 	github.com/hashicorp/go-retryablehttp v0.7.7
 	github.com/sethvargo/go-envconfig v1.1.0
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.9.0
-	go.uber.org/multierr v1.11.0
 	golang.org/x/mod v0.21.0
 	golang.org/x/oauth2 v0.23.0
 	golang.org/x/sync v0.8.0
@@ -51,6 +50,7 @@ require (
 	go.opentelemetry.io/otel/sdk v1.30.0 // indirect
 	go.opentelemetry.io/otel/trace v1.30.0 // indirect
 	go.uber.org/atomic v1.11.0 // indirect
+	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.27.0 // indirect
 	golang.org/x/crypto v0.27.0 // indirect
 	golang.org/x/sys v0.25.0 // indirect

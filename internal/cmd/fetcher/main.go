@@ -16,7 +16,6 @@ import (
 	"time"
 
 	"github.com/bufbuild/buf/private/pkg/interrupt"
-	"go.uber.org/multierr"
 	"golang.org/x/mod/semver"
 
 	"github.com/bufbuild/plugins/internal/docker"
@@ -226,7 +225,7 @@ func copyDirectory(
 	}
 	defer func() {
 		if retErr != nil {
-			retErr = multierr.Append(retErr, os.RemoveAll(target))
+			retErr = errors.Join(retErr, os.RemoveAll(target))
 		}
 	}()
 	for _, file := range entries {
@@ -257,7 +256,7 @@ func createPluginDir(
 	}
 	defer func() {
 		if retErr != nil {
-			retErr = multierr.Append(retErr, os.RemoveAll(filepath.Join(dir, newVersion)))
+			retErr = errors.Join(retErr, os.RemoveAll(filepath.Join(dir, newVersion)))
 		}
 	}()
 	return copyDirectory(
