@@ -11,12 +11,12 @@ import (
 	"os"
 	"strings"
 
+	"github.com/bufbuild/buf/private/pkg/slicesext"
 	"github.com/google/go-github/v66/github"
 	"github.com/hashicorp/go-retryablehttp"
 	"golang.org/x/mod/semver"
 	"golang.org/x/oauth2"
 
-	"github.com/bufbuild/buf/private/pkg/slicesext"
 	"github.com/bufbuild/plugins/internal/source"
 )
 
