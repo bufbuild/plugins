@@ -45,6 +45,8 @@ type Source struct {
 	NPMRegistry *NPMRegistryConfig `yaml:"npm_registry"`
 	Maven       *MavenConfig       `yaml:"maven"`
 	Crates      *CratesConfig      `yaml:"crates"`
+	// IgnoreVersions is a list of versions to ignore when fetching.
+	IgnoreVersions []string `yaml:"ignore_versions"`
 }
 
 var _ Cacheable = (*Source)(nil)

@@ -2,3 +2,5 @@ source:
   maven:
     group: io.grpc
     name: protoc-gen-grpc-java
+  ignore_versions:
+    - v1.68.0
