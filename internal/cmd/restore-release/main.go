@@ -51,7 +51,7 @@ type command struct {
 }
 
 func (c *command) run() error {
-	ctx, cancel := interrupt.WithCancel(context.Background())
+	ctx, cancel := interrupt.NotifyContext(context.Background())
 	defer cancel()
 	client := release.NewClient(ctx)
 	githubRelease, err := client.GetReleaseByTag(ctx, release.GithubOwnerBufbuild, release.GithubRepoPlugins, c.release)

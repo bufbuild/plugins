@@ -37,7 +37,7 @@ func main() {
 		os.Exit(2)
 	}
 	root := os.Args[1]
-	ctx, _ := interrupt.WithCancel(context.Background())
+	ctx, _ := interrupt.NotifyContext(context.Background())
 	created, err := run(ctx, root)
 	if err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "failed to fetch versions: %v\n", err)
