@@ -26,7 +26,7 @@ func main() {
 }
 
 func run(basedir string, dockerOrg string) error {
-	ctx, cancel := interrupt.WithCancel(context.Background())
+	ctx, cancel := interrupt.NotifyContext(context.Background())
 	defer cancel()
 	plugins, err := plugin.FindAll(basedir)
 	if err != nil {
