@@ -8,7 +8,7 @@ Plugins are uniquely identified by the combination of the `name` and `plugin_ver
 
 If you'd like a Protobuf plugin to be added to the Buf Schema Registry, open an issue using the 'Plugin Request for Buf Schema Registry' issue template and our team will follow up. Please note that we are more likely to accept plugins that are widely adopted, stable, well-documented, and well-maintained with clear owners.
 
-If you have a plugin that you'd like to use but that we don't include here, you can upload [custom plugins](https://buf.build/docs/bsr/remote-plugins/custom-plugins) if you are on a Teams, Pro, or Enterprise plan.
+If you have a plugin that you'd like to use but that we don't include here, you can upload [custom plugins](https://buf.build/docs/bsr/remote-plugins/custom-plugins) if you are on Pro or Enterprise plan.
 
 ## Community
 
