@@ -1,0 +1,18 @@
+version: v1
+name: buf.build/protocolbuffers/pyi
+plugin_version: v28.3
+source_url: https://github.com/protocolbuffers/protobuf
+description: Base types for Python Stubs. Generates stub files for message and enum types.
+output_languages:
+  - python
+spdx_license_id: BSD-3-Clause
+license_url: https://github.com/protocolbuffers/protobuf/blob/v28.3/LICENSE
+registry:
+  python:
+    package_type: "stub-only"
+    # https://github.com/protocolbuffers/protobuf/blob/v28.3/python/dist/setup.py#L78
+    requires_python: ">=3.8"
+    deps:
+      # https://pypi.org/project/protobuf/
+      - "protobuf~=5.28.3"
+      - "types-protobuf~=5.28"
