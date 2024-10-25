@@ -81,8 +81,7 @@ type command struct {
 }
 
 func (c *command) run() error {
-	ctx, cancel := interrupt.NotifyContext(context.Background())
-	defer cancel()
+	ctx := interrupt.Handle(context.Background())
 	// Create temporary directory
 	tmpDir, err := os.MkdirTemp("", "plugins-release")
 	if err != nil {

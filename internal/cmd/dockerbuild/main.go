@@ -67,8 +67,7 @@ type command struct {
 
 func (c *command) run() error {
 	// Catch ctrl+c to kill the build process
-	ctx, cancel := interrupt.NotifyContext(context.Background())
-	defer cancel()
+	ctx := interrupt.Handle(context.Background())
 	allPlugins, err := plugin.FindAll(c.pluginsDir)
 	if err != nil {
 		return err
