@@ -26,3 +26,4 @@ registry:
           - build.buf:connect-kotlin:0.1.10
           - build.buf:connect-kotlin-google-javalite-ext:0.1.10
           - build.buf:connect-kotlin-okhttp:0.1.10
+deprecated: true

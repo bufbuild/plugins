@@ -17,3 +17,4 @@ registry:
         version: ^0.8.6
 spdx_license_id: Apache-2.0
 license_url: https://github.com/bufbuild/connect-es/blob/v0.8.6/LICENSE
+deprecated: true

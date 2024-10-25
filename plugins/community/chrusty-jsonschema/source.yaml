@@ -1,4 +1,5 @@
 source:
+  disabled: true
   github:
     owner: chrusty
     repository: protoc-gen-jsonschema

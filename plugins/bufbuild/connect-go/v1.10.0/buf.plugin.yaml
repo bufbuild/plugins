@@ -17,3 +17,4 @@ registry:
     - paths=source_relative
 spdx_license_id: Apache-2.0
 license_url: https://github.com/bufbuild/connect-go/blob/v1.10.0/LICENSE
+deprecated: true

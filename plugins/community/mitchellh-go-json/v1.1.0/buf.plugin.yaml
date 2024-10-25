@@ -8,3 +8,4 @@ output_languages:
   - go
 spdx_license_id: MIT
 license_url: https://github.com/mitchellh/protoc-gen-go-json/blob/v1.1.0/LICENSE.md
+deprecated: true
