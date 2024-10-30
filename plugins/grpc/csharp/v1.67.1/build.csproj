@@ -4,6 +4,6 @@
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Grpc.Net.Common" Version="2.66.0" />
-    <PackageReference Include="Google.Protobuf" Version="3.28.2" />
+    <PackageReference Include="Google.Protobuf" Version="3.28.3" />
   </ItemGroup>
 </Project>
