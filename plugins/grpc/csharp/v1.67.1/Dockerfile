@@ -2,6 +2,7 @@
 FROM debian:bookworm-20241016 AS build
 
 ARG TARGETARCH
+ARG BAZEL_OPTS="--host_jvm_args=-Djava.net.preferIPv4Stack=true"
 
 RUN apt-get update \
  && apt-get install -y curl git cmake build-essential autoconf clang libc++-dev libtool pkg-config unzip zip
@@ -16,8 +17,8 @@ WORKDIR /build
 
 RUN git clone --depth 1 --branch v1.67.1 https://github.com/grpc/grpc
 WORKDIR /build/grpc
-RUN bazelisk build //src/compiler:grpc_plugin_support
-RUN bazelisk build //src/compiler:grpc_csharp_plugin.stripped
+RUN bazelisk ${BAZEL_OPTS} build //src/compiler:grpc_plugin_support
+RUN bazelisk ${BAZEL_OPTS} build //src/compiler:grpc_csharp_plugin.stripped
 
 FROM mcr.microsoft.com/dotnet/sdk:8.0.403-bookworm-slim@sha256:cab0284cce7bc26d41055d0ac5859a69a8b75d9a201cd226999f4f00cc983f13 AS dotnetrestore
 WORKDIR /build
