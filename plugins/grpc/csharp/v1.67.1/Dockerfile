@@ -5,17 +5,19 @@ ARG TARGETARCH
 
 RUN apt-get update \
  && apt-get install -y curl git cmake build-essential autoconf clang libc++-dev libtool pkg-config unzip zip
-RUN arch=${TARGETARCH}; \
-    if [ "${arch}" = "amd64" ]; then arch="x86_64"; fi; \
-    curl -fsSL -o /usr/local/bin/bazel https://github.com/bazelbuild/bazel/releases/download/7.4.0/bazel-7.4.0-linux-${arch} \
- && chmod +x /usr/local/bin/bazel
+RUN curl -fsSL -o /usr/local/bin/bazelisk https://github.com/bazelbuild/bazelisk/releases/download/v1.23.0/bazelisk-linux-${TARGETARCH} \
+ && chmod +x /usr/local/bin/bazelisk \
+ && mkdir /build \
+ && chown nobody:nogroup /build \
+ && usermod --home /build nobody
 
+USER nobody
 WORKDIR /build
 
 RUN git clone --depth 1 --branch v1.67.1 https://github.com/grpc/grpc
 WORKDIR /build/grpc
-RUN bazel build //src/compiler:grpc_plugin_support
-RUN bazel build //src/compiler:grpc_csharp_plugin.stripped
+RUN bazelisk build //src/compiler:grpc_plugin_support
+RUN bazelisk build //src/compiler:grpc_csharp_plugin.stripped
 
 FROM mcr.microsoft.com/dotnet/sdk:8.0.403-bookworm-slim@sha256:cab0284cce7bc26d41055d0ac5859a69a8b75d9a201cd226999f4f00cc983f13 AS dotnetrestore
 WORKDIR /build
