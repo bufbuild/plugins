@@ -18,7 +18,10 @@ RUN bazel build '//:protoc_lib'
 COPY --link BUILD cpp.cc plugins/
 RUN bazel build '//plugins:protoc-gen-cpp.stripped'
 
-FROM gcr.io/distroless/cc-debian12:latest@sha256:6714977f9f02632c31377650c15d89a7efaebf43bab0f37c712c30fc01edb973
-COPY --from=build --link --chmod=0755 /build/bazel-bin/plugins/protoc-gen-cpp .
+FROM gcr.io/distroless/cc-debian12:latest@sha256:6714977f9f02632c31377650c15d89a7efaebf43bab0f37c712c30fc01edb973 AS base
+
+FROM scratch
+COPY --link --from=base / /
+COPY --link --from=build --chmod=0755 /build/bazel-bin/plugins/protoc-gen-cpp .
 USER nobody
 ENTRYPOINT ["/protoc-gen-cpp"]

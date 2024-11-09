@@ -7,3 +7,5 @@ output_languages:
   - cpp
 spdx_license_id: BSD-3-Clause
 license_url: https://github.com/protocolbuffers/protobuf/blob/v25.0/LICENSE
+registry:
+  cmake: {}
