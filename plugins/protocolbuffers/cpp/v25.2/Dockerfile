@@ -16,7 +16,9 @@ RUN curl -fsSL -o protoc.tar.gz https://github.com/protocolbuffers/protobuf/rele
  && rm protoc.tar.gz
 RUN bazel build '//:protoc_lib'
 COPY --link BUILD cpp.cc plugins/
-RUN bazel build '//plugins:protoc-gen-cpp.stripped'
+COPY --link disable_cpp_editions.patch .
+RUN git apply < disable_cpp_editions.patch \
+ && bazel build '//plugins:protoc-gen-cpp.stripped'
 
 FROM gcr.io/distroless/cc-debian12:latest@sha256:6714977f9f02632c31377650c15d89a7efaebf43bab0f37c712c30fc01edb973 AS base
 
