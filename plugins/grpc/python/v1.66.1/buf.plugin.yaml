@@ -1,0 +1,19 @@
+version: v1
+name: buf.build/grpc/python
+plugin_version: v1.66.1
+source_url: https://github.com/grpc/grpc
+description: Generates Python client and server stubs for the gRPC framework.
+deps:
+  - plugin: buf.build/protocolbuffers/python:v27.4
+output_languages:
+  - python
+spdx_license_id: Apache-2.0
+license_url: https://github.com/grpc/grpc/blob/v1.66.1/LICENSE
+registry:
+  python:
+    package_type: "runtime"
+    # https://github.com/grpc/grpc/tree/v1.66.1/src/python/grpcio#supported-python-versions
+    requires_python: ">=3.8"
+    deps:
+      # https://pypi.org/project/grpcio/
+      - "grpcio"

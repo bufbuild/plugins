@@ -11,7 +11,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/google/go-github/v58/github"
+	"github.com/bufbuild/buf/private/pkg/slicesext"
+	"github.com/google/go-github/v66/github"
 	"github.com/hashicorp/go-retryablehttp"
 	"golang.org/x/mod/semver"
 	"golang.org/x/oauth2"
@@ -79,24 +80,29 @@ func (c *Client) Fetch(ctx context.Context, config *source.Config) (string, erro
 }
 
 func (c *Client) fetch(ctx context.Context, config *source.Config) (string, error) {
+	ignoreVersions := slicesext.ToStructMap(config.Source.IgnoreVersions)
 	switch {
 	case config.Source.GitHub != nil:
-		return c.fetchGithub(ctx, config.Source.GitHub.Owner, config.Source.GitHub.Repository)
+		return c.fetchGithub(ctx, config.Source.GitHub.Owner, config.Source.GitHub.Repository, ignoreVersions)
 	case config.Source.DartFlutter != nil:
-		return c.fetchDartFlutter(ctx, config.Source.DartFlutter.Name)
+		return c.fetchDartFlutter(ctx, config.Source.DartFlutter.Name, ignoreVersions)
 	case config.Source.GoProxy != nil:
-		return c.fetchGoProxy(ctx, config.Source.GoProxy.Name)
+		return c.fetchGoProxy(ctx, config.Source.GoProxy.Name, ignoreVersions)
 	case config.Source.NPMRegistry != nil:
-		return c.fetchNPMRegistry(ctx, config.Source.NPMRegistry.Name)
+		return c.fetchNPMRegistry(ctx, config.Source.NPMRegistry.Name, ignoreVersions)
 	case config.Source.Maven != nil:
-		return c.fetchMaven(ctx, config.Source.Maven.Group, config.Source.Maven.Name)
+		return c.fetchMaven(ctx, config.Source.Maven.Group, config.Source.Maven.Name, ignoreVersions)
 	case config.Source.Crates != nil:
-		return c.fetchCrate(ctx, config.Source.Crates.CrateName)
+		return c.fetchCrate(ctx, config.Source.Crates.CrateName, ignoreVersions)
 	}
 	return "", errors.New("failed to match a source")
 }
 
-func (c *Client) fetchDartFlutter(ctx context.Context, name string) (string, error) {
+func (c *Client) fetchDartFlutter(
+	ctx context.Context,
+	name string,
+	ignoreVersions map[string]struct{},
+) (string, error) {
 	request, err := http.NewRequestWithContext(
 		ctx,
 		http.MethodGet,
@@ -119,14 +125,37 @@ func (c *Client) fetchDartFlutter(ctx context.Context, name string) (string, err
 		Latest struct {
 			Version string `json:"version"`
 		} `json:"latest"`
+		Versions []struct {
+			Version string `json:"version"`
+		} `json:"versions"`
 	}
 	if err := json.NewDecoder(response.Body).Decode(&data); err != nil {
 		return "", err
 	}
-	return data.Latest.Version, nil
+	if len(ignoreVersions) == 0 {
+		return data.Latest.Version, nil
+	}
+	var latestVersion string
+	for _, version := range data.Versions {
+		version, ok := ensureSemverPrefix(version.Version)
+		if !ok {
+			continue
+		}
+		if _, ok := ignoreVersions[version]; ok {
+			continue
+		}
+		if latestVersion == "" || semver.Compare(latestVersion, version) < 0 {
+			latestVersion = version
+		}
+	}
+	// Shouldn't be possible unless we've ignored all versions
+	if latestVersion == "" {
+		return "", fmt.Errorf("failed to calculate latest version for dart source %s", name)
+	}
+	return latestVersion, nil
 }
 
-func (c *Client) fetchCrate(ctx context.Context, name string) (string, error) {
+func (c *Client) fetchCrate(ctx context.Context, name string, ignoreVersions map[string]struct{}) (string, error) {
 	request, err := http.NewRequestWithContext(
 		ctx,
 		http.MethodGet,
@@ -164,7 +193,11 @@ func (c *Client) fetchCrate(ctx context.Context, name string) (string, error) {
 			// from the server's index.
 			continue
 		}
-		if v, ok := ensureSemverPrefix(version.Num); ok {
+		v, ok := ensureSemverPrefix(version.Num)
+		if !ok {
+			continue
+		}
+		if _, ok := ignoreVersions[v]; !ok {
 			versions = append(versions, v)
 		}
 	}
@@ -175,7 +208,10 @@ func (c *Client) fetchCrate(ctx context.Context, name string) (string, error) {
 	return versions[len(versions)-1], nil
 }
 
-func (c *Client) fetchGoProxy(ctx context.Context, name string) (string, error) {
+func (c *Client) fetchGoProxy(ctx context.Context, name string, ignoreVersions map[string]struct{}) (string, error) {
+	if len(ignoreVersions) > 0 {
+		return "", errors.New("ignore_versions not supported yet for go sources")
+	}
 	request, err := http.NewRequestWithContext(
 		ctx,
 		http.MethodGet,
@@ -203,7 +239,10 @@ func (c *Client) fetchGoProxy(ctx context.Context, name string) (string, error) 
 	return data.Version, nil
 }
 
-func (c *Client) fetchNPMRegistry(ctx context.Context, name string) (string, error) {
+func (c *Client) fetchNPMRegistry(ctx context.Context, name string, ignoreVersions map[string]struct{}) (string, error) {
+	if len(ignoreVersions) > 0 {
+		return "", errors.New("ignore_versions not supported yet for NPM sources")
+	}
 	request, err := http.NewRequestWithContext(
 		ctx,
 		http.MethodGet,
@@ -233,7 +272,12 @@ func (c *Client) fetchNPMRegistry(ctx context.Context, name string) (string, err
 	return data.DistTags.Latest, nil
 }
 
-func (c *Client) fetchMaven(ctx context.Context, group string, name string) (string, error) {
+func (c *Client) fetchMaven(
+	ctx context.Context,
+	group string,
+	name string,
+	ignoreVersions map[string]struct{},
+) (string, error) {
 	groupComponents := strings.Split(group, ".")
 	targetURL, err := url.JoinPath(mavenURL, append(groupComponents, name, "maven-metadata.xml")...)
 	if err != nil {
@@ -271,6 +315,9 @@ func (c *Client) fetchMaven(ctx context.Context, group string, name string) (str
 			continue
 		}
 		v = semver.Canonical(v)
+		if _, ok := ignoreVersions[v]; ok {
+			continue
+		}
 		if latestVersion == "" || semver.Compare(latestVersion, v) < 0 {
 			latestVersion = v
 		}
@@ -281,7 +328,12 @@ func (c *Client) fetchMaven(ctx context.Context, group string, name string) (str
 	return latestVersion, nil
 }
 
-func (c *Client) fetchGithub(ctx context.Context, owner string, repository string) (string, error) {
+func (c *Client) fetchGithub(
+	ctx context.Context,
+	owner string,
+	repository string,
+	ignoreVersions map[string]struct{},
+) (string, error) {
 	// With the GitHub API we have a few options:
 	//
 	// ✅ 1. list all git tags
@@ -305,7 +357,9 @@ func (c *Client) fetchGithub(ctx context.Context, owner string, repository strin
 				continue
 			}
 			if v, ok := ensureSemverPrefix(*tag.Name); ok {
-				versions = append(versions, v)
+				if _, ok := ignoreVersions[v]; !ok {
+					versions = append(versions, v)
+				}
 			}
 		}
 		page = response.NextPage

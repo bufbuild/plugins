@@ -1,0 +1,20 @@
+version: v1
+name: buf.build/bufbuild/es
+plugin_version: v2.0.0
+source_url: https://github.com/bufbuild/protobuf-es
+integration_guide_url: https://github.com/bufbuild/protobuf-es#quickstart
+description: Base types for TypeScript/JavaScript for use in web browsers and Node.js. Generates message and enum types.
+output_languages:
+  - javascript
+  - typescript
+registry:
+  opts:
+    - import_extension=js
+  npm:
+    import_style: module
+    rewrite_import_path_suffix: pb.js
+    deps:
+      - package: '@bufbuild/protobuf'
+        version: ^2.0.0
+spdx_license_id: Apache-2.0
+license_url: https://github.com/bufbuild/protobuf-es/blob/v2.0.0/LICENSE

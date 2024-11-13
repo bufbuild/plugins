@@ -6,8 +6,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-
-	"go.uber.org/multierr"
 )
 
 var (
@@ -36,7 +34,7 @@ func loadConfigFile(filename string) (_ *Config, retErr error) {
 		return nil, err
 	}
 	defer func() {
-		retErr = multierr.Append(retErr, file.Close())
+		retErr = errors.Join(retErr, file.Close())
 	}()
 	config, err := NewConfig(file)
 	if err != nil {

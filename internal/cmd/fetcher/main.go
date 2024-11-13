@@ -16,7 +16,6 @@ import (
 	"time"
 
 	"github.com/bufbuild/buf/private/pkg/interrupt"
-	"go.uber.org/multierr"
 	"golang.org/x/mod/semver"
 
 	"github.com/bufbuild/plugins/internal/docker"
@@ -25,9 +24,11 @@ import (
 )
 
 var (
-	bazelDownloadRegexp = regexp.MustCompile(`bazelbuild/bazel/releases/download/[^/]+/bazel-[^-]+-linux`)
-	bazelImageName      = "gcr.io/bazel-public/bazel"
-	errNoVersions       = errors.New("no versions found")
+	bazelDownloadRegexp    = regexp.MustCompile(`bazelbuild/bazel/releases/download/[^/]+/bazel-[^-]+-linux`)
+	bazelImageName         = "gcr.io/bazel-public/bazel"
+	dockerfileImageName    = "docker/dockerfile"
+	dockerfileSyntaxPrefix = "# syntax=docker/dockerfile:"
+	errNoVersions          = errors.New("no versions found")
 )
 
 func main() {
@@ -36,7 +37,7 @@ func main() {
 		os.Exit(2)
 	}
 	root := os.Args[1]
-	ctx, _ := interrupt.WithCancel(context.Background())
+	ctx := interrupt.Handle(context.Background())
 	created, err := run(ctx, root)
 	if err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "failed to fetch versions: %v\n", err)
@@ -224,7 +225,7 @@ func copyDirectory(
 	}
 	defer func() {
 		if retErr != nil {
-			retErr = multierr.Append(retErr, os.RemoveAll(target))
+			retErr = errors.Join(retErr, os.RemoveAll(target))
 		}
 	}()
 	for _, file := range entries {
@@ -255,7 +256,7 @@ func createPluginDir(
 	}
 	defer func() {
 		if retErr != nil {
-			retErr = multierr.Append(retErr, os.RemoveAll(filepath.Join(dir, newVersion)))
+			retErr = errors.Join(retErr, os.RemoveAll(filepath.Join(dir, newVersion)))
 		}
 	}()
 	return copyDirectory(
@@ -290,7 +291,7 @@ func copyFile(
 	}()
 	filename := filepath.Base(dest)
 	switch filename {
-	case "Dockerfile", "Dockerfile.wasm", "buf.plugin.yaml", "package.json":
+	case "Dockerfile", "Dockerfile.wasm", "buf.plugin.yaml", "build.csproj", "package.json":
 		// We want to update these with the new version
 	default:
 		// Everything else just copy as-is
@@ -305,6 +306,10 @@ func copyFile(
 	latestBazelVersion := latestBaseImages.ImageVersion(bazelImageName)
 	if latestBazelVersion == "" {
 		return fmt.Errorf("failed to find latest version for bazel image %q", bazelImageName)
+	}
+	latestDockerfileVersion := latestBaseImages.ImageVersion(dockerfileImageName)
+	if latestDockerfileVersion == "" {
+		return fmt.Errorf("failed to find latest version for dockerfile image %q", bazelImageName)
 	}
 	s := bufio.NewScanner(srcFile)
 	for s.Scan() {
@@ -334,6 +339,9 @@ func copyFile(
 					line = strings.Join(fields, " ")
 				}
 			}
+		}
+		if isDockerfile && strings.HasPrefix(line, dockerfileSyntaxPrefix) {
+			line = dockerfileSyntaxPrefix + latestDockerfileVersion
 		}
 		if _, err := fmt.Fprintln(destFile, line); err != nil {
 			return err

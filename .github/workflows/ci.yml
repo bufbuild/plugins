@@ -34,7 +34,7 @@ jobs:
     - uses: actions/checkout@v4
       with:
         fetch-depth: 0
-    - uses: nrwl/nx-set-shas@40f1175ceec169e68c9857c27aa7c5063692aa9a
+    - uses: nrwl/nx-set-shas@e2e6dc8bce4b0387a05eb687735c39c41580b792
       id: last_successful_commit_push
       if: ${{ inputs.plugins == '' }}
       with:
@@ -43,7 +43,7 @@ jobs:
     - name: Get changed files
       id: changed-files
       if: ${{ inputs.plugins == '' }}
-      uses: tj-actions/changed-files@cc733854b1f224978ef800d29e4709d5ee2883e4
+      uses: tj-actions/changed-files@4edd678ac3f81e2dc578756871e4d00c19191daf
       with:
         base_sha: ${{ steps.last_successful_commit_push.outputs.base }}
         files: |
@@ -58,7 +58,7 @@ jobs:
     - name: Install Go
       uses: actions/setup-go@v5
       with:
-        go-version: '1.22'
+        go-version: '1.23'
         check-latest: true
     - name: Set PLUGINS env var from changed files
       if: ${{ inputs.plugins == '' }}
@@ -78,16 +78,16 @@ jobs:
       run: |
         go install github.com/bufbuild/buf/cmd/buf@${BUF_VERSION}
     - name: Login to Docker Hub
-      uses: docker/login-action@0d4c9c5ea7693da7b068278f7b52bda2a190a446
+      uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567
       with:
         username: ${{ secrets.DOCKERHUB_USERNAME }}
         password: ${{ secrets.DOCKERHUB_TOKEN }}
     - name: Set up Docker Buildx
       id: buildx
-      uses: docker/setup-buildx-action@4fd812986e6c8c2a69e18311145f9371337f27d4
+      uses: docker/setup-buildx-action@c47758b77c9736f4b2ef4073d4d51994fabfe349
     - name: Login to GitHub Container Registry
       if: github.repository == 'bufbuild/plugins'
-      uses: docker/login-action@0d4c9c5ea7693da7b068278f7b52bda2a190a446
+      uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567
       with:
         registry: ghcr.io
         username: ${{ github.actor }}

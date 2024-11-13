@@ -25,7 +25,7 @@ import (
 	githubkeychain "github.com/google/go-containerregistry/pkg/authn/github"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
-	"github.com/google/go-github/v58/github"
+	"github.com/google/go-github/v66/github"
 	"golang.org/x/mod/semver"
 
 	"github.com/bufbuild/plugins/internal/plugin"
@@ -81,8 +81,7 @@ type command struct {
 }
 
 func (c *command) run() error {
-	ctx, cancel := interrupt.WithCancel(context.Background())
-	defer cancel()
+	ctx := interrupt.Handle(context.Background())
 	// Create temporary directory
 	tmpDir, err := os.MkdirTemp("", "plugins-release")
 	if err != nil {

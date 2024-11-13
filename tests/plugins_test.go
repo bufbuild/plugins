@@ -1,10 +1,13 @@
 package tests
 
 import (
+	"bufio"
 	"cmp"
 	"context"
+	"encoding/xml"
 	"fmt"
 	"io"
+	"io/fs"
 	"net/http"
 	"os"
 	"os/exec"
@@ -24,14 +27,17 @@ import (
 	"github.com/bufbuild/plugins/internal/plugin"
 )
 
-const defaultGoModVersion = "1.16"
+const (
+	defaultGoModVersion = "1.16"
+	defaultGoPkgPrefix  = "github.com/bufbuild/plugins/internal/gen"
+)
 
 var (
 	bufGenYamlTemplate = template.Must(template.New("buf.gen.yaml").Parse(`version: v1
 managed:
   enabled: true
   go_package_prefix:
-    default: github.com/bufbuild/plugins/internal/gen
+    default: {{.GoPkgPrefix}}
 plugins:
   - name: {{.Name}}
     out: gen
@@ -85,33 +91,11 @@ func TestGeneration(t *testing.T) {
 	allowEmpty, _ := strconv.ParseBool(os.Getenv("ALLOW_EMPTY_PLUGIN_SUM"))
 	testPluginWithImage := func(t *testing.T, pluginMeta *plugin.Plugin, image string) {
 		t.Helper()
-		imageDir, err := filepath.Abs(filepath.Join("testdata", "images"))
-		require.NoError(t, err)
 		t.Run(image, func(t *testing.T) {
 			t.Parallel()
 			pluginDir := filepath.Join("testdata", pluginMeta.Name, pluginMeta.PluginVersion, image)
-			pluginGenDir := filepath.Join(pluginDir, "gen")
-			require.NoError(t, os.RemoveAll(pluginGenDir))
-			require.NoError(t, os.MkdirAll(pluginDir, 0o755))
-			require.NoError(t, createBufGenYaml(t, pluginDir, pluginMeta))
-			require.NoError(t, createProtocGenPlugin(t, pluginDir, pluginMeta))
-			bufCmd := exec.CommandContext(ctx, "buf", "generate", filepath.Join(imageDir, image+".bin.gz"))
-			bufCmd.Dir = pluginDir
-			output, err := bufCmd.CombinedOutput()
-			require.NoErrorf(t, err, "buf generate failed - output: %s", string(output))
-			// Ensure the gen directory is not empty, otherwise we'll get a sum of an empty directory.
-			// This is either a problem with the plugin itself, or the input. Some plugins require
-			// input protos that contain custom options to generate code. We should craft a test proto
-			// for these plugins. See grpc-ecosystem/gateway for an example.
-			genDirFiles, err := os.ReadDir(pluginGenDir)
-			require.NoError(t, err, "failed to read generated code directory")
-			if len(genDirFiles) == 0 {
-				allowedEmptyImages, ok := allowedEmptyPluginSums[pluginMeta.Name]
-				if !ok || !allowedEmptyImages[image] {
-					t.Fatalf("generated code directory is empty for %s", pluginMeta)
-				}
-			}
-			genDirHash, err := dirhash.HashDir(pluginGenDir, "", dirhash.Hash1)
+			genDir := runPluginWithImage(ctx, t, pluginDir, pluginMeta, image, defaultGoPkgPrefix)
+			genDirHash, err := dirhash.HashDir(genDir, "", dirhash.Hash1)
 			require.NoError(t, err, "failed to calculate directory hash of generated code")
 			pluginImageSumFile := filepath.Join(pluginDir, "plugin.sum")
 			existingPluginSumBytes, err := os.ReadFile(pluginImageSumFile)
@@ -134,7 +118,8 @@ func TestGeneration(t *testing.T) {
 
 	plugins := loadFilteredPlugins(t)
 	for _, toTest := range plugins {
-		t.Run(strings.TrimSuffix(toTest.Relpath, "/buf.plugin.yaml"), func(t *testing.T) {
+		testName := strings.TrimSuffix(toTest.Relpath, "/buf.plugin.yaml")
+		t.Run(testName, func(t *testing.T) {
 			t.Parallel()
 			images := images
 			if imageOverrides, ok := imageOverrides[toTest.Name]; ok {
@@ -143,26 +128,27 @@ func TestGeneration(t *testing.T) {
 			for _, image := range images {
 				testPluginWithImage(t, toTest, image)
 			}
-			switch toTest.Name {
-			case "buf.build/bufbuild/knit-ts":
+			switch strings.TrimPrefix(toTest.Name, "buf.build/") {
+			case "bufbuild/knit-ts":
 				testPluginWithImage(t, toTest, "knit-demo")
-			case "buf.build/grpc-ecosystem/gateway":
+			case "grpc-ecosystem/gateway":
 				if semver.Compare(toTest.PluginVersion, "v2.16.0") >= 0 {
 					testPluginWithImage(t, toTest, "grpc-gateway")
 				}
-			case "buf.build/community/mercari-grpc-federation":
-				if semver.Compare(toTest.PluginVersion, "v0.11.0") < 0 {
+			case "community/mercari-grpc-federation":
+				switch {
+				case semver.Compare(toTest.PluginVersion, "v1.4.1") >= 0:
+					testPluginWithImage(t, toTest, "grpc-federation-v1.4.1")
+				case semver.Compare(toTest.PluginVersion, "v0.13.6") >= 0:
+					testPluginWithImage(t, toTest, "grpc-federation-v0.13.6")
+				case semver.Compare(toTest.PluginVersion, "v0.11.0") >= 0:
+					testPluginWithImage(t, toTest, "grpc-federation-v0.11.0")
+				default:
 					// There was a breaking change in v0.11.0, so we need to test the old version separately
 					// https://github.com/mercari/grpc-federation/commit/baca78bf2421322c97e6977a06931fed29e4058a
 					testPluginWithImage(t, toTest, "grpc-federation")
 				}
-				if semver.Compare(toTest.PluginVersion, "v0.11.0") >= 0 && semver.Compare(toTest.PluginVersion, "v0.13.6") < 0 {
-					testPluginWithImage(t, toTest, "grpc-federation-v0.11.0")
-				}
-				if semver.Compare(toTest.PluginVersion, "v0.13.6") >= 0 {
-					testPluginWithImage(t, toTest, "grpc-federation-v0.13.6")
-				}
-			case "buf.build/googlecloudplatform/bq-schema":
+			case "googlecloudplatform/bq-schema":
 				testPluginWithImage(t, toTest, "bq-schema")
 			}
 		})
@@ -244,6 +230,169 @@ func TestGoMinVersion(t *testing.T) {
 	}
 }
 
+func TestGrpcGatewayDeprecationMessage(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	genSDKGoPkg := "buf.build/gen/go/someorg/somemodule/protocolbuffers/go"
+	plugins := loadFilteredPlugins(t)
+	for _, p := range plugins {
+		if p.Identity.IdentityString() != "buf.build/grpc-ecosystem/gateway" {
+			continue
+		}
+		if semver.Compare(p.PluginVersion, "v2.16.0") < 0 {
+			continue
+		}
+		genDir := runPluginWithImage(ctx, t, t.TempDir(), p, "grpc-gateway", genSDKGoPkg)
+		err := filepath.WalkDir(genDir, func(path string, d fs.DirEntry, err error) error {
+			if err != nil {
+				return err
+			}
+			if d.IsDir() {
+				return nil
+			}
+			f, err := os.Open(path)
+			if err != nil {
+				return err
+			}
+			defer f.Close()
+			scanner := bufio.NewScanner(f)
+			for scanner.Scan() {
+				line := strings.TrimSpace(scanner.Text())
+				if strings.Contains(line, "Deprecated:") && strings.Contains(line, genSDKGoPkg) {
+					return fmt.Errorf("line %q should not contain %q", line, genSDKGoPkg)
+				}
+			}
+			return scanner.Err()
+		})
+		require.NoError(t, err)
+	}
+}
+
+func TestMavenDependencies(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	client := &http.Client{}
+	plugins := loadFilteredPlugins(t)
+	for _, p := range plugins {
+		if p.Registry.Maven == nil || len(p.Registry.Maven.Deps) == 0 {
+			continue
+		}
+		t.Run(fmt.Sprintf("%s/%s@%s", p.Identity.Owner(), p.Identity.Plugin(), p.PluginVersion), func(t *testing.T) {
+			t.Parallel()
+			var alldeps []string
+			alldeps = append(alldeps, p.Registry.Maven.Deps...)
+			for _, runtime := range p.Registry.Maven.AdditionalRuntimes {
+				alldeps = append(alldeps, runtime.Deps...)
+			}
+			for _, dep := range alldeps {
+				fields := strings.Split(dep, ":")
+				require.Len(t, fields, 3)
+				groupID, artifactID, version := fields[0], fields[1], fields[2]
+				url := fmt.Sprintf(
+					"https://repo.maven.apache.org/maven2/%[1]s/%[2]s/%[3]s/%[2]s-%[3]s.pom",
+					strings.ReplaceAll(groupID, ".", "/"),
+					artifactID,
+					version,
+				)
+				req, err := http.NewRequestWithContext(ctx, http.MethodHead, url, nil)
+				require.NoError(t, err)
+				resp, err := client.Do(req)
+				require.NoError(t, err)
+				require.NoError(t, resp.Body.Close())
+				assert.Equalf(t, http.StatusOK, resp.StatusCode, "failed to find maven dependency %s", dep)
+			}
+		})
+	}
+}
+
+func TestNugetDependencies(t *testing.T) {
+	t.Parallel()
+
+	type packageReference struct {
+		XMLName   xml.Name `xml:"PackageReference"`
+		Include   string   `xml:"Include,attr"`
+		Version   string   `xml:"Version,attr"`
+		Condition string   `xml:"Condition,attr,omitempty"`
+	}
+	type propertyGroup struct {
+		XMLName          xml.Name `xml:"PropertyGroup"`
+		TargetFramework  string   `xml:"TargetFramework,omitempty"`
+		TargetFrameworks string   `xml:"TargetFrameworks,omitempty"`
+	}
+	type csharpProject struct {
+		XMLName           xml.Name           `xml:"Project"`
+		SDK               string             `xml:"Sdk,attr"`
+		PropertyGroup     propertyGroup      `xml:"PropertyGroup"`
+		PackageReferences []packageReference `xml:"ItemGroup>PackageReference"`
+	}
+
+	allPlugins := loadAllPlugins(t)
+	plugins := loadFilteredPlugins(t)
+	for _, p := range plugins {
+		if p.Registry.Nuget == nil {
+			continue
+		}
+		t.Run(p.String(), func(t *testing.T) {
+			t.Parallel()
+			// We require all NuGet-enabled plugins to have a build.csproj file to load plugin dependencies.
+			buildCsprojBytes, err := os.ReadFile(filepath.Join(filepath.Dir(p.Path), "build.csproj"))
+			require.NoError(t, err)
+			var project csharpProject
+			require.NoError(t, xml.Unmarshal(buildCsprojBytes, &project))
+
+			nugetConfig := p.Registry.Nuget
+			if len(nugetConfig.TargetFrameworks) == 1 {
+				require.Equal(t, project.PropertyGroup.TargetFramework, nugetConfig.TargetFrameworks[0])
+			} else {
+				require.EqualValues(t, strings.Split(project.PropertyGroup.TargetFrameworks, ";"), nugetConfig.TargetFrameworks)
+			}
+
+			// name -> version
+			allDependencies := map[string]string{}
+			populateNugetDeps(t, allDependencies, p, allPlugins)
+
+			// Include -> Version
+			packageReferences := map[string]string{}
+			for _, packageReference := range project.PackageReferences {
+				// TODO: Support conditions in this test.
+				require.Empty(t, packageReference.Condition)
+				_, exists := packageReferences[packageReference.Include]
+				// Should not have duplicate Include values in the build.csproj.
+				require.False(t, exists)
+				packageReferences[packageReference.Include] = packageReference.Version
+			}
+
+			require.Equal(t, allDependencies, packageReferences)
+		})
+	}
+}
+
+func runPluginWithImage(ctx context.Context, t *testing.T, basedir string, pluginMeta *plugin.Plugin, image string, goPkgPrefix string) string {
+	t.Helper()
+	gendir := filepath.Join(basedir, "gen")
+	require.NoError(t, createBufGenYaml(t, basedir, pluginMeta, goPkgPrefix))
+	require.NoError(t, createProtocGenPlugin(t, basedir, pluginMeta))
+	imageDir, err := filepath.Abs(filepath.Join("testdata", "images"))
+	require.NoError(t, err)
+	bufCmd := exec.CommandContext(ctx, "buf", "generate", filepath.Join(imageDir, image+".bin.gz"))
+	bufCmd.Dir = basedir
+	output, err := bufCmd.CombinedOutput()
+	require.NoErrorf(t, err, "buf generate failed - output: %s", string(output))
+	// Ensure the gen directory is not empty, otherwise we'll get a sum of an empty directory.
+	// This is either a problem with the plugin itself, or the input. Some plugins require
+	// input protos that contain custom options to generate code. We should craft a test proto
+	// for these plugins. See grpc-ecosystem/gateway for an example.
+	genDirFiles, err := os.ReadDir(gendir)
+	require.NoError(t, err, "failed to read generated code directory")
+	if len(genDirFiles) == 0 {
+		allowedEmptyImages, ok := allowedEmptyPluginSums[pluginMeta.Name]
+		if !ok || !allowedEmptyImages[image] {
+			t.Fatalf("generated code directory is empty for %s", pluginMeta)
+		}
+	}
+	return gendir
+}
+
 func getGoModVersion(ctx context.Context, t *testing.T, client *http.Client, module string, version string) string {
 	t.Helper()
 	goModURL := fmt.Sprintf("https://proxy.golang.org/%s/@v/%s.mod", module, version)
@@ -262,20 +411,21 @@ func getGoModVersion(ctx context.Context, t *testing.T, client *http.Client, mod
 	return cmp.Or(modFile.Go.Version, defaultGoModVersion)
 }
 
-func createBufGenYaml(t *testing.T, basedir string, plugin *plugin.Plugin) error {
+func createBufGenYaml(t *testing.T, basedir string, plugin *plugin.Plugin, goPkgPrefix string) error {
 	t.Helper()
-	bufGenYaml, err := os.Create(filepath.Join(basedir, "buf.gen.yaml"))
-	if err != nil {
-		return err
-	}
+	require.NoError(t, os.MkdirAll(basedir, 0755))
+	bufGenYAMLPath := filepath.Join(basedir, "buf.gen.yaml")
+	bufGenYaml, err := os.Create(bufGenYAMLPath)
+	require.NoErrorf(t, err, "failed to create %s: %s", bufGenYAMLPath, err)
 	defer func() {
 		require.NoError(t, bufGenYaml.Close())
 	}()
 	opts := plugin.Registry.Opts
 	opts = append(opts, testOverrideOptions[plugin.Name]...)
 	return bufGenYamlTemplate.Execute(bufGenYaml, map[string]any{
-		"Name": filepath.Base(plugin.Name),
-		"Opts": opts,
+		"GoPkgPrefix": goPkgPrefix,
+		"Name":        filepath.Base(plugin.Name),
+		"Opts":        opts,
 	})
 }
 
@@ -315,4 +465,31 @@ func createProtocGenPlugin(t *testing.T, basedir string, plugin *plugin.Plugin) 
 		"ImageName": fmt.Sprintf("%s/plugins-%s-%s", dockerOrg, fields[1], fields[2]),
 		"Version":   plugin.PluginVersion,
 	})
+}
+
+func populateNugetDeps(t *testing.T, dependencies map[string]string, nugetPlugin *plugin.Plugin, plugins []*plugin.Plugin) {
+	t.Helper()
+	for _, pluginDependency := range nugetPlugin.Deps {
+		var pluginDep *plugin.Plugin
+		for _, otherPlugin := range plugins {
+			if otherPlugin.String() == pluginDependency.Plugin {
+				pluginDep = otherPlugin
+				break
+			}
+		}
+		require.NotNil(t, pluginDep)
+		// Recurse into deps.
+		populateNugetDeps(t, dependencies, pluginDep, plugins)
+	}
+
+	for _, nugetDependency := range nugetPlugin.Registry.Nuget.Deps {
+		// TODO: Handle target frameworks in dependencies.
+		require.Empty(t, nugetDependency.TargetFrameworks)
+
+		if existingVersion, exists := dependencies[nugetDependency.Name]; exists {
+			// Versions cannot conflict amongst deps.
+			require.Equal(t, existingVersion, nugetDependency.Version)
+		}
+		dependencies[nugetDependency.Name] = nugetDependency.Version
+	}
 }

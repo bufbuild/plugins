@@ -23,5 +23,10 @@ registry:
         # https://docs.rs/crate/prost-types/0.12.3/features
         default_features: true
   # https://github.com/neoeinstein/protoc-gen-prost/blob/protoc-gen-prost-v0.3.1/protoc-gen-prost/README.md#options
-  # No options set.
-  opts: []
+  opts:
+    # Includes the encoded FileDescriptorSet in the generated output for each module.
+    - file_descriptor_set
+    # Change generation of bytes type fields into Rust `bytes::Bytes` types.
+    # Dependency on `bytes` crate is added as a result of `default_features: true` on `prost` dependency.
+    # https://crates.io/crates/prost/0.12.6/dependencies
+    - bytes=.
