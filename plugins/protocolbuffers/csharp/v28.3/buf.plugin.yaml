@@ -12,7 +12,7 @@ registry:
     - base_namespace=
   nuget:
     target_frameworks:
-      - netstandard1.1
+      - netstandard2.0
     deps:
       - name: Google.Protobuf
         version: 3.28.3
