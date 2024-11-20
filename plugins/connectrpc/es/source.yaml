@@ -1,3 +1,6 @@
 source:
+  # No more plugin updates
+  # See https://github.com/connectrpc/connect-es/blob/v2.0.0/MIGRATING.md#dependency-updates-in-packagejson for more information
+  disabled: true
   npm_registry:
     name: "@connectrpc/protoc-gen-connect-es"
