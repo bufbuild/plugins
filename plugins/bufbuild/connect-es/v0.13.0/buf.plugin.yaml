@@ -2,7 +2,7 @@ version: v1
 name: buf.build/bufbuild/connect-es
 plugin_version: v0.13.0
 source_url: https://github.com/bufbuild/connect-es
-description: Generates code that is compatible with browsers and Node.js for working with Connect, gRPC, and gRPC-Web.
+description: Generates code that is compatible with browsers and Node.js for working with Connect, gRPC, and gRPC-Web. This plugin is deprecated because it has moved to the connectrpc org.
 deps:
   - plugin: buf.build/bufbuild/es:v1.3.0
 output_languages:
