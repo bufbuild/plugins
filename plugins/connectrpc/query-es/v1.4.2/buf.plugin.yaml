@@ -3,7 +3,7 @@ name: buf.build/connectrpc/query-es
 plugin_version: v1.4.2
 source_url: https://github.com/connectrpc/connect-query-es
 integration_guide_url: https://connectrpc.com/docs/web/query/getting-started
-description: Generates client stubs for calling Connect services with TanStack Query. This plugin is for Connect-ES v1. For Connect-ES v2, you'll only need the bufbuild/es plugin. See see [Migration Guide](https://github.com/connectrpc/connect-es/blob/v2.0.0/MIGRATING.md) for details.
+description: Generates client stubs for calling Connect services with TanStack Query. This plugin is for Connect-ES v1. For Connect-ES v2, you'll only need the bufbuild/es plugin.
 deps:
   - plugin: buf.build/bufbuild/es:v1.10.0
 output_languages:
