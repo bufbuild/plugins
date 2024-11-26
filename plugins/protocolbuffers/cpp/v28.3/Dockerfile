@@ -21,7 +21,7 @@ RUN bazelisk ${BAZEL_OPTS} build '//:protoc_lib'
 COPY --link BUILD cpp.cc plugins/
 RUN bazelisk ${BAZEL_OPTS} build '//plugins:protoc-gen-cpp.stripped'
 
-FROM gcr.io/distroless/cc-debian12:latest@sha256:3310655aac0d85eb9d579792387af1ff3eb7a1667823478be58020ab0e0d97a8 AS base
+FROM gcr.io/distroless/cc-debian12:latest@sha256:2fb69596e692931f909c4c69ab09e50608959eaf8898c44fa64db741a23588b0 AS base
 
 FROM scratch
 COPY --from=base --link / /
