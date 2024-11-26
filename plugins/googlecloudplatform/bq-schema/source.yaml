@@ -1,4 +1,7 @@
 source:
+  # Disabled until we have a proper release
+  # See: https://github.com/GoogleCloudPlatform/protoc-gen-bq-schema/pull/52
+  disabled: true
   github:
     owner: GoogleCloudPlatform
     repository: protoc-gen-bq-schema
