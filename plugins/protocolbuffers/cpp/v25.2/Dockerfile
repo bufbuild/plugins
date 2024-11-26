@@ -20,7 +20,7 @@ COPY --link disable_cpp_editions.patch .
 RUN git apply < disable_cpp_editions.patch \
  && bazel build '//plugins:protoc-gen-cpp.stripped'
 
-FROM gcr.io/distroless/cc-debian12:latest@sha256:6714977f9f02632c31377650c15d89a7efaebf43bab0f37c712c30fc01edb973 AS base
+FROM gcr.io/distroless/cc-debian12:latest@sha256:2fb69596e692931f909c4c69ab09e50608959eaf8898c44fa64db741a23588b0 AS base
 
 FROM scratch
 COPY --link --from=base / /
