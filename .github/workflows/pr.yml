@@ -37,7 +37,7 @@ jobs:
     - name: Get changed files
       id: changed-files
       if: ${{ inputs.plugins == '' }}
-      uses: tj-actions/changed-files@4edd678ac3f81e2dc578756871e4d00c19191daf
+      uses: tj-actions/changed-files@bab30c2299617f6615ec02a68b9a40d10bd21366
       with:
         files: |
           plugins/**
