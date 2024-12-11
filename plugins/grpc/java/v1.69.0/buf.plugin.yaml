@@ -1,0 +1,30 @@
+version: v1
+name: buf.build/grpc/java
+plugin_version: v1.69.0
+source_url: https://github.com/grpc/grpc-java
+integration_guide_url: https://grpc.io/docs/languages/java/quickstart
+description: Generates Java client and server stubs for the gRPC framework.
+deps:
+  - plugin: buf.build/protocolbuffers/java:v29.0
+output_languages:
+  - java
+spdx_license_id: Apache-2.0
+license_url: https://github.com/grpc/grpc-java/blob/v1.69.0/LICENSE
+registry:
+  maven:
+    deps:
+      - io.grpc:grpc-core:1.69.0
+      - io.grpc:grpc-protobuf:1.69.0
+      - io.grpc:grpc-stub:1.69.0
+      # Add direct dependency on newer protobuf as gRPC is still on 3.25.3
+      - com.google.protobuf:protobuf-java:4.29.0
+    additional_runtimes:
+      - name: lite
+        deps:
+          - io.grpc:grpc-core:1.69.0
+          - io.grpc:grpc-protobuf-lite:1.69.0
+          - io.grpc:grpc-stub:1.69.0
+          # Add direct dependency on newer protobuf as gRPC is still on 3.25.3
+          - com.google.protobuf:protobuf-javalite:4.29.0
+          - build.buf:protobuf-javalite:4.29.0
+        opts: [lite]
