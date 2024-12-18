@@ -15,5 +15,6 @@ registry:
         version: v1.36.0
   opts:
     - paths=source_relative
+    - default_api_level=API_HYBRID
 spdx_license_id: BSD-3-Clause
 license_url: https://github.com/protocolbuffers/protobuf-go/blob/v1.36.0/LICENSE
