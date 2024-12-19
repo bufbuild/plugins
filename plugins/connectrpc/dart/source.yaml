@@ -1,3 +1,4 @@
 source:
-  dart_flutter:
-    name: connectrpc
+  github:
+    owner: connectrpc
+    repository: connect-dart
