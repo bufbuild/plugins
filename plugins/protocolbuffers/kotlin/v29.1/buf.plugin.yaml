@@ -1,0 +1,27 @@
+version: v1
+name: buf.build/protocolbuffers/kotlin
+plugin_version: v29.1
+source_url: https://github.com/protocolbuffers/protobuf
+integration_guide_url: https://protobuf.dev/getting-started/kotlintutorial
+description: Base types for Kotlin. Generates message and enum types.
+deps:
+  - plugin: buf.build/protocolbuffers/java:v29.1
+output_languages:
+  - kotlin
+spdx_license_id: BSD-3-Clause
+license_url: https://github.com/protocolbuffers/protobuf/blob/v29.1/LICENSE
+registry:
+  maven:
+    compiler:
+      kotlin:
+        version: 1.8.22
+    deps:
+      - com.google.protobuf:protobuf-kotlin:4.29.1
+      - org.jetbrains.kotlin:kotlin-stdlib:1.8.22
+      - org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.8.22
+    additional_runtimes:
+      - name: lite
+        deps:
+          - com.google.protobuf:protobuf-kotlin-lite:4.29.1
+          - org.jetbrains.kotlin:kotlin-stdlib:1.8.22
+        opts: [lite]
