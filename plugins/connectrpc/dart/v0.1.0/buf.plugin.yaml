@@ -9,4 +9,4 @@ deps:
 output_languages:
   - dart
 spdx_license_id: Apache-2.0
-license_url: https://github.com/connectrpc/connect-dart/blob/LICENSE
+license_url: https://github.com/connectrpc/connect-dart/blob/v0.1.0/LICENSE

@@ -1,4 +1,4 @@
-# syntax=docker/dockerfile:1.4
+# syntax=docker/dockerfile:1.12
 FROM dart:3.5.4-sdk AS build
 
 WORKDIR /build
