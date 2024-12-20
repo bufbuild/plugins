@@ -1,10 +1,9 @@
-# syntax=docker/dockerfile:1.12
+# syntax=docker/dockerfile:1.4
 FROM dart:3.5.4-sdk AS build
 
 WORKDIR /build
-RUN curl -fsSL https://github.com/connectrpc/connect-dart/archive/refs/tags/v0.1.0.tar.gz --compressed -o connect-dart.tar.gz \
- && tar -xvf connect-dart.tar.gz \
- && cd connect-dart-0.1.0/packages/connect \
+RUN git clone --depth=1 --branch v0.1.0 https://github.com/connectrpc/connect-dart.git
+RUN cd connect-dart/packages/connect \
  && dart pub get \ 
  && dart compile exe bin/protoc-gen-connect-dart.dart -o /build/protoc-gen-connect-dart
 
