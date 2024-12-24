@@ -7,7 +7,7 @@ description: Generates Go client and server stubs for the gRPC framework.
 output_languages:
   - go
 deps:
-  - plugin: buf.build/protocolbuffers/go:v1.34.2
+  - plugin: buf.build/protocolbuffers/go:v1.36.2
 registry:
   go:
     min_version: "1.19"

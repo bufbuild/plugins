@@ -1,5 +1,5 @@
-# syntax=docker/dockerfile:1.9
-FROM --platform=$BUILDPLATFORM golang:1.22.5-bookworm AS build
+# syntax=docker/dockerfile:1.12
+FROM --platform=$BUILDPLATFORM golang:1.23.4-bookworm AS build
 
 ARG TARGETOS TARGETARCH
 ENV CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH
