@@ -1,7 +1,6 @@
 # syntax=docker/dockerfile:1.12
 FROM debian:bookworm-20241223 AS build
 
-ENV USE_BAZEL_VERSION=7.4.1
 ARG TARGETARCH
 ARG BAZEL_OPTS="--host_jvm_args=-Djava.net.preferIPv4Stack=true"
 
