@@ -1,0 +1,9 @@
+version: v1
+name: buf.build/protocolbuffers/objc
+plugin_version: v29.3
+source_url: https://github.com/protocolbuffers/protobuf
+description: Base types for Objective-C. Generates message and enum types.
+output_languages:
+  - objective_c
+spdx_license_id: BSD-3-Clause
+license_url: https://github.com/protocolbuffers/protobuf/blob/v29.3/LICENSE
