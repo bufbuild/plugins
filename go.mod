@@ -4,7 +4,7 @@ go 1.23.0
 
 require (
 	aead.dev/minisign v0.3.0
-	github.com/bufbuild/buf v1.48.0
+	github.com/bufbuild/buf v1.49.0
 	github.com/google/go-containerregistry v0.20.2
 	github.com/google/go-github/v66 v66.0.0
 	github.com/hashicorp/go-retryablehttp v0.7.7
@@ -43,5 +43,5 @@ require (
 	github.com/spf13/cobra v1.8.1 // indirect
 	github.com/vbatts/tar-split v0.11.6 // indirect
 	golang.org/x/crypto v0.31.0 // indirect
-	golang.org/x/sys v0.28.0 // indirect
+	golang.org/x/sys v0.29.0 // indirect
 )
