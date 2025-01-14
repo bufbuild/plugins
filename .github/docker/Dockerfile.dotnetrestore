@@ -1,3 +1,3 @@
-FROM mcr.microsoft.com/dotnet/sdk:8.0.404-bookworm-slim@sha256:f25e4f51fa06e3b14af1a1135013a3e96055b76caa0e76afc0096d64a77879fd
+FROM mcr.microsoft.com/dotnet/sdk:8.0.404-bookworm-slim@sha256:bbcc25ec18dfc904271748a3c3d36edc989458ff3948e7cd300504754d9a4c2d
 
 CMD echo this is a dummy file used to automate dependency upgrades for plugins
