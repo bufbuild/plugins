@@ -1,0 +1,20 @@
+version: v1
+name: buf.build/protocolbuffers/go
+plugin_version: v1.36.3
+source_url: https://github.com/protocolbuffers/protobuf-go
+integration_guide_url: https://protobuf.dev/getting-started/gotutorial
+description: Base types for Go. Generates message and enum types.
+output_languages:
+  - go
+registry:
+  go:
+    # https://github.com/protocolbuffers/protobuf-go/blob/v1.36.3/go.mod#L3
+    min_version: "1.21"
+    deps:
+      - module: google.golang.org/protobuf
+        version: v1.36.3
+  opts:
+    - paths=source_relative
+    - default_api_level=API_HYBRID
+spdx_license_id: BSD-3-Clause
+license_url: https://github.com/protocolbuffers/protobuf-go/blob/v1.36.3/LICENSE
