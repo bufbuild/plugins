@@ -20,4 +20,4 @@ deps:
   - plugin: buf.build/protocolbuffers/go:v1.36.1
   - plugin: buf.build/grpc/go:v1.5.1
 spdx_license_id: BSD-3-Clause
-license_url: https://github.com/grpc-ecosystem/grpc-gateway/blob/v2.26.0/LICENSE.txt
+license_url: https://github.com/grpc-ecosystem/grpc-gateway/blob/v2.26.0/LICENSE
