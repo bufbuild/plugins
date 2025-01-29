@@ -1,4 +1,6 @@
 source:
+  ignore_versions:
+    - v3.0
   github:
     owner: GoogleCloudPlatform
     repository: protoc-gen-bq-schema
