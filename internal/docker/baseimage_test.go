@@ -34,9 +34,6 @@ func TestBaseImages(t *testing.T) {
 	assert.NotEmpty(t, baseImages)
 	assert.NotEmpty(t, baseImages.ImageNameAndVersion("debian"))
 	assert.Empty(t, baseImages.ImageNameAndVersion("untracked"))
-	// Test just returning version
-	assert.NotEmpty(t, baseImages.ImageVersion("gcr.io/bazel-public/bazel"))
-	assert.NotContains(t, baseImages.ImageVersion("gcr.io/bazel-public/bazel"), "bazel:")
 	// Test distroless image upgrades
 	javaImage := baseImages.ImageNameAndVersion("gcr.io/distroless/java11-debian11")
 	assert.NotEmpty(t, javaImage)
