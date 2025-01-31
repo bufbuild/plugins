@@ -1,3 +1,0 @@
-FROM gcr.io/bazel-public/bazel:7.4.1
-
-CMD echo this is a dummy file used to automate dependency upgrades for plugins

@@ -11,7 +11,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"regexp"
 	"strings"
 	"time"
 
@@ -24,8 +23,6 @@ import (
 )
 
 var (
-	bazelDownloadRegexp    = regexp.MustCompile(`bazelbuild/bazel/releases/download/[^/]+/bazel-[^-]+-linux`)
-	bazelImageName         = "gcr.io/bazel-public/bazel"
 	dockerfileImageName    = "docker/dockerfile"
 	dockerfileSyntaxPrefix = "# syntax=docker/dockerfile:"
 	errNoVersions          = errors.New("no versions found")
@@ -303,23 +300,13 @@ func copyFile(
 	isDockerfile := strings.HasPrefix(filename, "Dockerfile")
 	prevVersion = strings.TrimPrefix(prevVersion, "v")
 	newVersion = strings.TrimPrefix(newVersion, "v")
-	latestBazelVersion := latestBaseImages.ImageVersion(bazelImageName)
-	if latestBazelVersion == "" {
-		return fmt.Errorf("failed to find latest version for bazel image %q", bazelImageName)
-	}
 	latestDockerfileVersion := latestBaseImages.ImageVersion(dockerfileImageName)
 	if latestDockerfileVersion == "" {
-		return fmt.Errorf("failed to find latest version for dockerfile image %q", bazelImageName)
+		return fmt.Errorf("failed to find latest version for dockerfile image %q", dockerfileImageName)
 	}
 	s := bufio.NewScanner(srcFile)
 	for s.Scan() {
 		line := strings.ReplaceAll(s.Text(), prevVersion, newVersion)
-		line = bazelDownloadRegexp.ReplaceAllString(
-			line,
-			fmt.Sprintf(`bazelbuild/bazel/releases/download/%[1]s/bazel-%[1]s-linux`,
-				latestBazelVersion,
-			),
-		)
 		if isDockerfile && len(line) > 5 && strings.EqualFold(line[0:5], "from ") {
 			// Replace FROM line with the latest base image (if found)
 			fields := strings.Fields(line)
