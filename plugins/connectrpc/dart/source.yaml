@@ -1,4 +1,7 @@
 source:
+  ignore_versions:
+    # https://github.com/connectrpc/connect-dart/pull/6
+    - v0.2.0
   github:
     owner: connectrpc
     repository: connect-dart
