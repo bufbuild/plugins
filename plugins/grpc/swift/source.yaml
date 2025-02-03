@@ -1,4 +1,11 @@
 source:
+  # grpc-swift has upgraded to v2.0.0, but the protoc plugin is now split out
+  # into a separate grpc-swift-protobuf project. Unfortunately, the two
+  # projects are no longer versioned together - grpc-swift-protobuf is at
+  # v1.0.0.
+  # Disabling updates to this plugin until we can determine the best way
+  # forward.
+  disabled: true
   github:
     owner: grpc
     repository: grpc-swift
