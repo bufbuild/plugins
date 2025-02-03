@@ -1,0 +1,9 @@
+version: v1
+name: buf.build/community/protobuf-c
+plugin_version: v1.5.1
+source_url: https://github.com/protobuf-c/protobuf-c
+description: Base types for C. Generates message and enum types.
+output_languages:
+  - c
+spdx_license_id: BSD-2-Clause
+license_url: https://github.com/protobuf-c/protobuf-c/blob/v1.5.1/LICENSE
