@@ -41,7 +41,7 @@ jobs:
         uses: google-github-actions/auth@71f986410dfbc7added4569d411d040a91dc6935
         with:
           workload_identity_provider: projects/491113660045/locations/global/workloadIdentityPools/plugins-workload-pool/providers/plugins-workload-provider
-          service_account: buf-plugins-1-bufbuild-plugins@buf-plugins-1.iam.gserviceaccount.com	
+          service_account: buf-plugins-1-bufbuild-plugins@buf-plugins-1.iam.gserviceaccount.com
       - name: Setup gcloud
         uses: google-github-actions/setup-gcloud@77e7a554d41e2ee56fc945c52dfd3f33d12def9a
       - name: Download Plugins
@@ -51,10 +51,19 @@ jobs:
           go run ./cmd/download-plugins -since ${{ inputs.since }} downloads
       - name: Upload To Release Bucket
         run: gsutil -m rsync -r downloads gs://buf-plugins
+      - name: Generate Github Token
+        id: generate_issues_token
+        uses: tibdex/github-app-token@3beb63f4bd073e61482598c45c71c1019b59b73a
+        if: ${{ failure() }}
+        with:
+          app_id: ${{ secrets.BUFBUILD_ISSUE_CREATOR_APP_ID }}
+          private_key: ${{ secrets.BUFBUILD_ISSUE_CREATOR_APP_KEY }}
+          permissions: >-
+            {"issues": "write"}
       - uses: dblock/create-a-github-issue@c5e54b8762a0c4c2cd9330750e30b81bcc369c38
-        if: failure()
+        if: ${{ failure() }}
         env:
-          GITHUB_TOKEN: ${{ github.token }}
+          GITHUB_TOKEN: ${{ steps.generate_issues_token.outputs.token }}
           GITHUB_SERVER_URL: ${ github.server_url }}
           GITHUB_REPOSITORY: ${{ github.repository }}
           GITHUB_RUN_ID: ${{ github.run_id }}

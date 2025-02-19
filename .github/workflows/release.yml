@@ -47,10 +47,19 @@ jobs:
         if: always()
         run: |
           rm -fv minisign.key
+      - name: Generate Github Token
+        id: generate_issues_token
+        uses: tibdex/github-app-token@3beb63f4bd073e61482598c45c71c1019b59b73a
+        if: ${{ failure() }}
+        with:
+          app_id: ${{ secrets.BUFBUILD_ISSUE_CREATOR_APP_ID }}
+          private_key: ${{ secrets.BUFBUILD_ISSUE_CREATOR_APP_KEY }}
+          permissions: >-
+            {"issues": "write"}
       - uses: dblock/create-a-github-issue@c5e54b8762a0c4c2cd9330750e30b81bcc369c38
-        if: failure()
+        if: ${{ failure() }}
         env:
-          GITHUB_TOKEN: ${{ github.token }}
+          GITHUB_TOKEN: ${{ steps.generate_issues_token.outputs.token }}
           GITHUB_SERVER_URL: ${ github.server_url }}
           GITHUB_REPOSITORY: ${{ github.repository }}
           GITHUB_RUN_ID: ${{ github.run_id }}
