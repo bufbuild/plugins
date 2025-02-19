@@ -1,0 +1,23 @@
+version: v1
+name: buf.build/grpc/swift-protobuf
+plugin_version: v1.0.0
+source_url: https://github.com/grpc/grpc-swift-protobuf
+description: Generates Swift client and server stubs for the gRPC framework.
+deps:
+  # https://github.com/grpc/grpc-swift-protobuf/blob/1.0.0/Package.swift#L42
+  - plugin: buf.build/apple/swift:v1.28.2
+output_languages:
+  - swift
+registry:
+  swift:
+    deps:
+      - source: https://github.com/grpc/grpc-swift-protobuf.git
+        package: grpc-swift-protobuf
+        # https://github.com/grpc/grpc-swift-protobuf/blob/1.0.0/Package.swift#L22
+        products: [ GRPCProtobuf ]
+        version: 1.0.0
+  opts:
+    - Visibility=Public
+    - FileNaming=PathToUnderscores
+spdx_license_id: Apache-2.0
+license_url: https://github.com/grpc/grpc-swift-protobuf/blob/1.0.0/LICENSE
