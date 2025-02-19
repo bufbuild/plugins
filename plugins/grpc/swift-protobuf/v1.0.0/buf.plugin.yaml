@@ -5,7 +5,7 @@ source_url: https://github.com/grpc/grpc-swift-protobuf
 description: Generates Swift client and server stubs for the gRPC framework.
 deps:
   # https://github.com/grpc/grpc-swift-protobuf/blob/1.0.0/Package.swift#L42
-  - plugin: buf.build/apple/swift:v1.28.2
+  - plugin: buf.build/apple/swift:v1.28.1
 output_languages:
   - swift
 registry:
