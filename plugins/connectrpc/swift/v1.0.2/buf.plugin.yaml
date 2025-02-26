@@ -14,7 +14,7 @@ registry:
       - source: https://github.com/connectrpc/connect-swift.git
         package: connect-swift
         products: [ Connect ]
-        swift_versions: [ ".v5" ]
+        swift_versions: [ ".v5", ".v6" ]
         version: 1.0.2
         platforms:
           macos: v10_15
