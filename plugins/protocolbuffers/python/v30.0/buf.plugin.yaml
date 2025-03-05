@@ -12,8 +12,8 @@ license_url: https://github.com/protocolbuffers/protobuf/blob/v30.0/LICENSE
 registry:
   python:
     package_type: "runtime"
-    # https://github.com/protocolbuffers/protobuf/blob/v30.0/python/dist/setup.py#L77
-    requires_python: ">=3.8"
+    # https://github.com/protocolbuffers/protobuf/blob/v30.0/python/dist/setup.py#L76
+    requires_python: ">=3.9"
     deps:
       # https://pypi.org/project/protobuf/
-      - "protobuf~=5.30.0"
+      - "protobuf~=6.30.0"
