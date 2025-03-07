@@ -1,0 +1,20 @@
+diff --git a/src/google/protobuf/compiler/cpp/generator.h b/src/google/protobuf/compiler/cpp/generator.h
+index 64f334d5b..fd6e08e84 100644
+--- a/src/google/protobuf/compiler/cpp/generator.h
++++ b/src/google/protobuf/compiler/cpp/generator.h
+@@ -70,14 +70,7 @@ class PROTOC_EXPORT CppGenerator : public CodeGenerator {
+                 std::string* error) const override;
+ 
+   uint64_t GetSupportedFeatures() const override {
+-    return FEATURE_PROTO3_OPTIONAL | FEATURE_SUPPORTS_EDITIONS;
+-  }
+-
+-  Edition GetMinimumEdition() const override { return Edition::EDITION_PROTO2; }
+-  Edition GetMaximumEdition() const override { return Edition::EDITION_2023; }
+-
+-  std::vector<const FieldDescriptor*> GetFeatureExtensions() const override {
+-    return {GetExtensionReflection(pb::cpp)};
++    return FEATURE_PROTO3_OPTIONAL;
+   }
+ 
+  private:
