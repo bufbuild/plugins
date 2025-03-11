@@ -1,0 +1,21 @@
+version: v1
+name: buf.build/community/timostamm-protobuf-ts
+plugin_version: v2.9.5
+source_url: https://github.com/timostamm/protobuf-ts
+integration_guide_url: https://github.com/timostamm/protobuf-ts#quickstart
+description: Generates Protobuf and RPC for TypeScript.
+output_languages:
+  - javascript
+  - typescript
+registry:
+  npm:
+    import_style: module
+    deps:
+      - package: '@protobuf-ts/runtime'
+        version: ^2.9.5
+      - package: '@protobuf-ts/runtime-rpc'
+        version: ^2.9.5
+  opts:
+    - output_javascript,optimize_code_size,long_type_string,add_pb_suffix,ts_nocheck,eslint_disable
+spdx_license_id: Apache-2.0
+license_url: https://github.com/timostamm/protobuf-ts/blob/v2.9.5/LICENSE
