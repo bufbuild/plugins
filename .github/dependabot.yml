@@ -15,6 +15,10 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+    groups:
+      gomod:
+        patterns:
+          - "*"
   # plugin base images
   - package-ecosystem: "docker"
     directory: "/.github/docker"
