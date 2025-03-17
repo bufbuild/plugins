@@ -87,7 +87,7 @@ func TestGeneration(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping code generation test")
 	}
-	ctx := context.Background()
+	ctx := t.Context()
 	allowEmpty, _ := strconv.ParseBool(os.Getenv("ALLOW_EMPTY_PLUGIN_SUM"))
 	testPluginWithImage := func(t *testing.T, pluginMeta *plugin.Plugin, image string) {
 		t.Helper()
@@ -178,7 +178,7 @@ func TestBufPluginConfig(t *testing.T) {
 	for _, p := range plugins {
 		yamlBytes, err := os.ReadFile(p.Path)
 		require.NoError(t, err)
-		config, err := bufremotepluginconfig.GetConfigForData(context.Background(), yamlBytes)
+		config, err := bufremotepluginconfig.GetConfigForData(t.Context(), yamlBytes)
 		require.NoErrorf(t, err, "invalid plugin config: %q", p.Path)
 		assert.NotEmpty(t, config.Name)
 		assert.NotEmpty(t, config.PluginVersion)
@@ -191,7 +191,7 @@ func TestBufPluginConfig(t *testing.T) {
 
 func TestGoMinVersion(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
+	ctx := t.Context()
 	client := &http.Client{}
 	plugins := loadFilteredPlugins(t)
 	for _, p := range plugins {
@@ -232,7 +232,7 @@ func TestGoMinVersion(t *testing.T) {
 
 func TestGrpcGatewayDeprecationMessage(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
+	ctx := t.Context()
 	genSDKGoPkg := "buf.build/gen/go/someorg/somemodule/protocolbuffers/go"
 	plugins := loadFilteredPlugins(t)
 	for _, p := range plugins {
@@ -270,7 +270,7 @@ func TestGrpcGatewayDeprecationMessage(t *testing.T) {
 
 func TestMavenDependencies(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
+	ctx := t.Context()
 	client := &http.Client{}
 	plugins := loadFilteredPlugins(t)
 	for _, p := range plugins {

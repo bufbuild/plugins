@@ -21,11 +21,8 @@ linters-settings:
     # TODO, OPT, etc. comments are fine to commit. Use FIXME comments for
     # temporary hacks, and use godox to prevent committing them.
     keywords: [FIXME]
-  govet:
-    disable:
-      - loopclosure # not needed in go 1.22
   tagliatelle:
-    # Check the struck tag name case.
+    # Check the struct tag name case.
     case:
       rules:
         json: snake
@@ -43,14 +40,11 @@ linters:
     # Other disabled linters
     - cyclop            # covered by gocyclo
     - depguard          # not needed
-    - execinquery       # deprecated by author
-    - exportloopref     # deprecated by author
     - funlen            # rely on code review to limit function length
     - gochecknoglobals  # sometimes useful to declare constants
     - gocognit          # dubious "cognitive overhead" quantification
     - gofumpt           # prefer standard gofmt
     - goimports         # using gci
-    - gomnd             # replaced by mnd
     - ireturn           # "accept interfaces, return structs" isn't ironclad
     - lll               # don't want hard limits for line length
     - maintidx          # covered by gocyclo
@@ -59,6 +53,7 @@ linters:
     - perfsprint        # waiting for https://github.com/catenacyber/perfsprint/issues/21
     - rowserrcheck      # no SQL code in plugins
     - sqlclosecheck     # no SQL code in plugins
+    - tenv              # replaced by usetesting
     - testpackage       # internal tests are fine
     - wastedassign      # not supported with generics
     - wrapcheck         # don't _always_ need to wrap errors
@@ -70,10 +65,6 @@ issues:
         - err113
         - goerr113
       text: "do not define dynamic errors"
-    # Benchmarks can't be run in parallel
-    - path: benchmark_test\.go
-      linters:
-        - paralleltest
     # dupword reports several errors in .proto test fixtures
     # gosec reports a few minor issues in tests
     - path: _test\.go
