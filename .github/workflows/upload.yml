@@ -38,12 +38,12 @@ jobs:
         # swap a GitHub OIDC token for GCP service account credentials, allowing
         # this workflow to manage the buf-plugins bucket
       - name: Auth To GCP
-        uses: google-github-actions/auth@71f986410dfbc7added4569d411d040a91dc6935
+        uses: google-github-actions/auth@71f986410dfbc7added4569d411d040a91dc6935 # v2.1.8
         with:
           workload_identity_provider: projects/491113660045/locations/global/workloadIdentityPools/plugins-workload-pool/providers/plugins-workload-provider
           service_account: buf-plugins-1-bufbuild-plugins@buf-plugins-1.iam.gserviceaccount.com
       - name: Setup gcloud
-        uses: google-github-actions/setup-gcloud@77e7a554d41e2ee56fc945c52dfd3f33d12def9a
+        uses: google-github-actions/setup-gcloud@77e7a554d41e2ee56fc945c52dfd3f33d12def9a # v2.1.4
       - name: Download Plugins
         env:
           GITHUB_TOKEN: ${{ github.token }}
@@ -53,14 +53,14 @@ jobs:
         run: gsutil -m rsync -r downloads gs://buf-plugins
       - name: Generate Github Token
         id: generate_issues_token
-        uses: tibdex/github-app-token@3beb63f4bd073e61482598c45c71c1019b59b73a
+        uses: tibdex/github-app-token@3beb63f4bd073e61482598c45c71c1019b59b73a # v2.1.0
         if: ${{ failure() }}
         with:
           app_id: ${{ secrets.BUFBUILD_ISSUE_CREATOR_APP_ID }}
           private_key: ${{ secrets.BUFBUILD_ISSUE_CREATOR_APP_KEY }}
           permissions: >-
             {"issues": "write"}
-      - uses: dblock/create-a-github-issue@c5e54b8762a0c4c2cd9330750e30b81bcc369c38
+      - uses: dblock/create-a-github-issue@c5e54b8762a0c4c2cd9330750e30b81bcc369c38 # v3.2.0
         if: ${{ failure() }}
         env:
           GITHUB_TOKEN: ${{ steps.generate_issues_token.outputs.token }}
