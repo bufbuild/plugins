@@ -213,7 +213,7 @@ func FilterByBaseRefDiff(ctx context.Context, plugins []*Plugin, lookuper envcon
 	}
 	allChangedFiles, err := git.ChangedFilesFrom(ctx, baseRef)
 	if err != nil {
-		return nil, fmt.Errorf("calculate changed files from base SHA %s: %w", baseRef, err)
+		return nil, fmt.Errorf("calculate changed files from base ref %q: %w", baseRef, err)
 	}
 	changedPluginFiles := filterPluginPaths(allChangedFiles)
 	if len(changedPluginFiles) == 0 {
