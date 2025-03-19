@@ -19,9 +19,10 @@ import (
 	"github.com/bufbuild/buf/private/bufpkg/bufremoteplugin/bufremotepluginref"
 	"github.com/bufbuild/buf/private/pkg/encoding"
 	"github.com/bufbuild/buf/private/pkg/slicesext"
-	"github.com/bufbuild/plugins/internal/git"
 	"github.com/sethvargo/go-envconfig"
 	"golang.org/x/mod/semver"
+
+	"github.com/bufbuild/plugins/internal/git"
 )
 
 // Plugin represents metadata (and filesystem path) information about a plugin.
@@ -207,7 +208,7 @@ func FilterByPluginsEnv(plugins []*Plugin, pluginsEnv string) ([]*Plugin, error)
 // changed files, and filters the relevant files in the plugins directory to determine which plugins
 // changed from the ones passed.
 func FilterByBaseRefDiff(ctx context.Context, plugins []*Plugin, lookuper envconfig.Lookuper) ([]*Plugin, error) {
-	baseRef, err := getBaseRefFromEnv(lookuper)
+	baseRef, err := getBaseRefFromEnv(ctx, lookuper)
 	if err != nil {
 		return nil, fmt.Errorf("get base SHA from env: %w", err)
 	}
@@ -343,12 +344,12 @@ func calculateGitModified(ctx context.Context, pluginYamlPath string) (bool, err
 	return strings.TrimSpace(output.String()) != "", nil
 }
 
-func getBaseRefFromEnv(lookuper envconfig.Lookuper) (string, error) {
+func getBaseRefFromEnv(ctx context.Context, lookuper envconfig.Lookuper) (string, error) {
 	type env struct {
 		BaseRef string `env:"BASE_REF"`
 	}
 	var e env
-	if err := envconfig.ProcessWith(context.Background(), &envconfig.Config{
+	if err := envconfig.ProcessWith(ctx, &envconfig.Config{
 		Target:   &e,
 		Lookuper: lookuper,
 	}); err != nil {
@@ -374,10 +375,7 @@ func filterPluginPaths(filePaths []string) []string {
 			//   plugins/<owner_name>/<plugin_name>/<version>/*
 			//  | 1     | 2          | 3           | 4       | 5
 			parts := strings.Split(filePath, "/")
-			if len(parts) != 5 {
-				return false
-			}
-			return true
+			return len(parts) == 5
 		},
 	)
 }

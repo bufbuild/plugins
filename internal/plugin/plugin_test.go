@@ -72,6 +72,10 @@ func TestFilterPluginPaths(t *testing.T) {
 	t.Parallel()
 	assert.Equal(
 		t,
+		[]string{
+			"plugins/protocolbuffers/go/v1.2.3/Dockerfile",
+			"plugins/protocolbuffers/go/v1.2.3/some_other.file",
+		},
 		filterPluginPaths(
 			[]string{
 				"some/unrelated/file.txt",
@@ -81,10 +85,6 @@ func TestFilterPluginPaths(t *testing.T) {
 				"plugins/protocolbuffers/go/source.yaml",
 			},
 		),
-		[]string{
-			"plugins/protocolbuffers/go/v1.2.3/Dockerfile",
-			"plugins/protocolbuffers/go/v1.2.3/some_other.file",
-		},
 	)
 }
 
