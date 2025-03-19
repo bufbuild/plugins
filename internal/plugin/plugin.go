@@ -369,13 +369,12 @@ func filterPluginPaths(filePaths []string) []string {
 			if !strings.HasPrefix(filePath, "plugins/") {
 				return false
 			}
-			// We only care about files exactly in the version dirs, no deeper, which means 4 parts after
-			// the "plugins/" prefix:
+			// We only care about files in the plugins version dirs, no deeper, which means exactly 5
+			// parts in the path:
 			//   plugins/<owner_name>/<plugin_name>/<version>/*
-			//          | 1          | 2           | 3       | 4
-			pluginPath := strings.TrimPrefix(filePath, "plugins/")
-			parts := strings.Split(pluginPath, "/")
-			if len(parts) != 4 {
+			//  | 1     | 2          | 3           | 4       | 5
+			parts := strings.Split(filePath, "/")
+			if len(parts) != 5 {
 				return false
 			}
 			return true
