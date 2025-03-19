@@ -68,6 +68,26 @@ func TestFilterByChangedFiles(t *testing.T) {
 	)
 }
 
+func TestFilterPluginPaths(t *testing.T) {
+	t.Parallel()
+	assert.Equal(
+		t,
+		filterPluginPaths(
+			[]string{
+				"some/unrelated/file.txt",
+				"plugins/protocolbuffers/go/v1.2.3/Dockerfile",
+				"plugins/protocolbuffers/go/v1.2.3/some_other.file",
+				"plugins/protocolbuffers/go/v1.2.3/some/deeper.file",
+				"plugins/protocolbuffers/go/source.yaml",
+			},
+		),
+		[]string{
+			"plugins/protocolbuffers/go/v1.2.3/Dockerfile",
+			"plugins/protocolbuffers/go/v1.2.3/some_other.file",
+		},
+	)
+}
+
 func runFilterByPluginsEnv(t *testing.T, plugins []*Plugin, pluginsEnv string) []string {
 	t.Helper()
 	filtered, err := FilterByPluginsEnv(plugins, pluginsEnv)
@@ -85,7 +105,7 @@ func runFilterByChangedFiles(t *testing.T, plugins []*Plugin, allModified []stri
 		"ALL_MODIFIED_FILES": strings.Join(allModified, ","),
 		"ANY_MODIFIED":       strconv.FormatBool(anyModified),
 	})
-	filtered, err := FilterByChangedFiles(plugins, lookuper)
+	filtered, err := FilterByBaseRefDiff(t.Context(), plugins, lookuper)
 	require.NoError(t, err)
 	paths := make([]string, 0, len(filtered))
 	for _, plugin := range filtered {

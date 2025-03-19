@@ -11,7 +11,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"slices"
-	"strconv"
 	"strings"
 	"sync"
 	"unicode"
@@ -19,6 +18,8 @@ import (
 	"github.com/bufbuild/buf/private/bufpkg/bufremoteplugin/bufremotepluginconfig"
 	"github.com/bufbuild/buf/private/bufpkg/bufremoteplugin/bufremotepluginref"
 	"github.com/bufbuild/buf/private/pkg/encoding"
+	"github.com/bufbuild/buf/private/pkg/slicesext"
+	"github.com/bufbuild/plugins/internal/git"
 	"github.com/sethvargo/go-envconfig"
 	"golang.org/x/mod/semver"
 )
@@ -199,34 +200,34 @@ func FilterByPluginsEnv(plugins []*Plugin, pluginsEnv string) ([]*Plugin, error)
 	return filtered, nil
 }
 
-// FilterByChangedFiles works with https://github.com/tj-actions/changed-files#outputs to filter out unchanged plugins.
-// This allows PR builds to only build the plugins which changed instead of all plugins.
-func FilterByChangedFiles(plugins []*Plugin, lookuper envconfig.Lookuper) ([]*Plugin, error) {
-	var changedFiles changedFiles
-	if err := envconfig.ProcessWith(context.Background(), &envconfig.Config{
-		Target:   &changedFiles,
-		Lookuper: lookuper,
-	}); err != nil {
-		return nil, err
-	}
-	// ANY_MODIFIED env var not set - filter everything
-	if len(changedFiles.AnyModified) == 0 {
-		return nil, nil
-	}
-	anyModified, err := strconv.ParseBool(changedFiles.AnyModified)
+// FilterByBaseRefDiff filters the passed plugins to the ones that changed from a Git base SHA to
+// diff against.
+//
+// It looks in the ENV for a BASE_REF variable with the base SHA to compare against, calculates the
+// changed files, and filters the relevant files in the plugins directory to determine which plugins
+// changed from the ones passed.
+func FilterByBaseRefDiff(ctx context.Context, plugins []*Plugin, lookuper envconfig.Lookuper) ([]*Plugin, error) {
+	baseRef, err := getBaseRefFromEnv(lookuper)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("get base SHA from env: %w", err)
 	}
-	// None of our included file patterns were changed - filter everything
-	if !anyModified {
+	allChangedFiles, err := git.ChangedFilesFrom(ctx, baseRef)
+	if err != nil {
+		return nil, fmt.Errorf("calculate changed files from base SHA %s: %w", baseRef, err)
+	}
+	changedPluginFiles := filterPluginPaths(allChangedFiles)
+	if len(changedPluginFiles) == 0 {
+		// None of the relevant plugin files changed - filter out everything
 		return nil, nil
 	}
-	// plugins/community/chrusty-jsonschema/v1.3.9/*: build plugins/community/chrusty-jsonschema/v1.3.9/buf.plugin.yaml
-	// plugins/bufbuild/connect-go/v0.1.1/*: build plugins/bufbuild/connect-go/v0.1.1/buf.plugin.yaml
-	var filtered []*Plugin
+	// Only return the ones that actually changed, eg:
+	//
+	// plugins/community/chrusty-jsonschema/v1.3.9/* -> plugins/community/chrusty-jsonschema/v1.3.9/buf.plugin.yaml
+	// plugins/bufbuild/connect-go/v0.1.1/*          -> plugins/bufbuild/connect-go/v0.1.1/buf.plugin.yaml
+	var changed []*Plugin
 	for _, plugin := range plugins {
 		include := false
-		for _, changedFile := range changedFiles.AllModifiedFiles {
+		for _, changedFile := range changedPluginFiles {
 			changedDir := filepath.ToSlash(filepath.Dir(changedFile))
 			if strings.HasPrefix(plugin.Relpath, changedDir) {
 				include = true
@@ -239,10 +240,10 @@ func FilterByChangedFiles(plugins []*Plugin, lookuper envconfig.Lookuper) ([]*Pl
 		}
 		if include {
 			log.Printf("including plugin: %s", plugin.Relpath)
-			filtered = append(filtered, plugin)
+			changed = append(changed, plugin)
 		}
 	}
-	return filtered, nil
+	return changed, nil
 }
 
 func ParsePluginsEnvVar(pluginsEnv string) ([]IncludePlugin, error) {
@@ -342,9 +343,42 @@ func calculateGitModified(ctx context.Context, pluginYamlPath string) (bool, err
 	return strings.TrimSpace(output.String()) != "", nil
 }
 
-// changedFiles contains data from the tj-actions/changed-files action.
-// See https://github.com/tj-actions/changed-files#outputs for more details.
-type changedFiles struct {
-	AnyModified      string   `env:"ANY_MODIFIED"`
-	AllModifiedFiles []string `env:"ALL_MODIFIED_FILES"`
+func getBaseRefFromEnv(lookuper envconfig.Lookuper) (string, error) {
+	type env struct {
+		BaseRef string `env:"BASE_REF"`
+	}
+	var e env
+	if err := envconfig.ProcessWith(context.Background(), &envconfig.Config{
+		Target:   &e,
+		Lookuper: lookuper,
+	}); err != nil {
+		return "", fmt.Errorf("envconfig process with: %w", err)
+	}
+	if e.BaseRef == "" {
+		return "", fmt.Errorf("empty or missing BASE_REF")
+	}
+	return e.BaseRef, nil
+}
+
+// filterPluginPaths returns the filepaths that are considered to be a relevant plugin file.
+func filterPluginPaths(filePaths []string) []string {
+	return slicesext.Filter(
+		filePaths,
+		func(filePath string) bool {
+			// Include all files within plugins/*
+			if !strings.HasPrefix(filePath, "plugins/") {
+				return false
+			}
+			// We only care about files exactly in the version dirs, no deeper, which means 4 parts after
+			// the "plugins/" prefix:
+			//   plugins/<owner_name>/<plugin_name>/<version>/*
+			//          | 1          | 2           | 3       | 4
+			pluginPath := strings.TrimPrefix(filePath, "plugins/")
+			parts := strings.Split(pluginPath, "/")
+			if len(parts) != 4 {
+				return false
+			}
+			return true
+		},
+	)
 }
