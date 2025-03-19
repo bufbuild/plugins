@@ -24,8 +24,8 @@ func ChangedFilesFrom(ctx context.Context, ref string) ([]string, error) {
 		execext.WithStderr(stderr),
 	); err != nil {
 		return nil, fmt.Errorf(
-			"run git diff (stdout: %s, stderr: %s): %w",
-			stdout.String(), stderr.String(), err,
+			"run git diff: %w\nstdout: %s\nstderr: %s",
+			err, stdout.String(), stderr.String(),
 		)
 	}
 	return strings.Split(stdout.String(), "\n"), nil
