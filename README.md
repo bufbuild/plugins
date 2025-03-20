@@ -15,3 +15,4 @@ If you have a plugin that you'd like to use but that we don't include here, you 
 For help and discussion regarding Protobuf plugins, join us on [Slack](https://buf.build/links/slack).
 
 For feature requests, bugs, or technical questions, email us at [dev@buf.build](dev@buf.build).
+
