@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"log"
@@ -25,7 +26,7 @@ func main() {
 		log.Fatalf("failed to find plugins: %v", err)
 	}
 	// Filter by changed plugins (for PR builds)
-	includedPlugins, err := plugin.FilterByChangedFiles(plugins, envconfig.OsLookuper())
+	includedPlugins, err := plugin.FilterByBaseRefDiff(context.Background(), plugins, envconfig.OsLookuper())
 	if err != nil {
 		log.Fatalf("failed to filter plugins by changed files: %v", err)
 	}

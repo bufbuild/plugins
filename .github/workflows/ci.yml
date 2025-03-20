@@ -40,31 +40,15 @@ jobs:
       with:
         main-branch-name: ${{ github.ref_name }}
         workflow-id: 'ci.yml'
-    - name: Get changed files
-      id: changed-files
-      if: ${{ inputs.plugins == '' }}
-      uses: tj-actions/changed-files@dcc7a0cba800f454d79fff4b993e8c3555bcc0a8
-      with:
-        base_sha: ${{ steps.last_successful_commit_push.outputs.base }}
-        files: |
-          plugins/**
-        files_ignore: |
-          **/source.yaml
-        separator: ","
-    - name: Show changed files
-      if: ${{ inputs.plugins == '' }}
-      run: |
-        echo '${{ toJSON(steps.changed-files.outputs) }}'
     - name: Install Go
       uses: actions/setup-go@v5
       with:
         go-version: '1.23'
         check-latest: true
-    - name: Set PLUGINS env var from changed files
+    - name: Calculate changed plugins and set PLUGINS env var from last successful commit push
       if: ${{ inputs.plugins == '' }}
       env:
-        ALL_MODIFIED_FILES: ${{ steps.changed-files.outputs.all_modified_files }}
-        ANY_MODIFIED: ${{ steps.changed-files.outputs.any_modified }}
+        BASE_REF: ${{ steps.last_successful_commit_push.outputs.base }}
       run: |
         val=`go run ./internal/cmd/changed-plugins .`
         if [[ -n "${val}" && -z "${PLUGINS}" ]]; then
