@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"log"
 	"strings"
 
 	"github.com/bufbuild/buf/private/pkg/execext"
@@ -19,7 +20,7 @@ func ChangedFilesFrom(ctx context.Context, ref string) ([]string, error) {
 	if err != nil {
 		return nil, fmt.Errorf("git show-ref: %w", err)
 	}
-	fmt.Printf("git ref %s resolves to:\n%s\n", ref, stdoutRefs)
+	log.Printf("git ref %s resolves to:\n%s\n", ref, stdoutRefs)
 	stdoutChangedFiles, err := execGitCommand(ctx, "--no-pager", "diff", "--name-only", ref)
 	if err != nil {
 		return nil, fmt.Errorf("git diff: %w", err)
