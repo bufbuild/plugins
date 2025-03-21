@@ -201,22 +201,19 @@ func FilterByPluginsEnv(plugins []*Plugin, pluginsEnv string) ([]*Plugin, error)
 	return filtered, nil
 }
 
-// FilterByBaseRefDiff filters the passed plugins to the ones that changed from a Git base SHA to
-// diff against.
-//
-// It looks in the ENV for a BASE_REF variable with the base SHA to compare against, calculates the
-// changed files, and filters the relevant files in the plugins directory to determine which plugins
-// changed from the ones passed.
+// FilterByBaseRefDiff filters the passed plugins to the ones that changed from a base Git ref to
+// diff against. It calculates the changed files from that ref, and filters the relevant files in
+// the plugins directory(ies) to determine which plugins changed from the ones passed.
 func FilterByBaseRefDiff(ctx context.Context, plugins []*Plugin, lookuper envconfig.Lookuper) ([]*Plugin, error) {
-	baseRef, err := getBaseRefFromEnv(ctx, lookuper)
+	diffEnv, err := readDiffEnv(ctx, lookuper)
 	if err != nil {
-		return nil, fmt.Errorf("get base SHA from env: %w", err)
+		return nil, fmt.Errorf("get diff env: %w", err)
 	}
-	allChangedFiles, err := git.ChangedFilesFrom(ctx, baseRef)
+	allChangedFiles, err := git.ChangedFilesFrom(ctx, diffEnv.baseRef)
 	if err != nil {
-		return nil, fmt.Errorf("calculate changed files from base ref %q: %w", baseRef, err)
+		return nil, fmt.Errorf("calculate changed files from base ref %q: %w", diffEnv.baseRef, err)
 	}
-	changedPluginFiles := filterPluginPaths(allChangedFiles)
+	changedPluginFiles := filterPluginPaths(allChangedFiles, diffEnv.includeTestdata)
 	if len(changedPluginFiles) == 0 {
 		// None of the relevant plugin files changed - filter out everything
 		return nil, nil
@@ -344,38 +341,61 @@ func calculateGitModified(ctx context.Context, pluginYamlPath string) (bool, err
 	return strings.TrimSpace(output.String()) != "", nil
 }
 
-func getBaseRefFromEnv(ctx context.Context, lookuper envconfig.Lookuper) (string, error) {
-	type env struct {
-		BaseRef string `env:"BASE_REF"`
-	}
-	var e env
-	if err := envconfig.ProcessWith(ctx, &envconfig.Config{
-		Target:   &e,
-		Lookuper: lookuper,
-	}); err != nil {
-		return "", fmt.Errorf("envconfig process with: %w", err)
-	}
-	if e.BaseRef == "" {
-		return "", fmt.Errorf("empty or missing BASE_REF")
-	}
-	return e.BaseRef, nil
+type diffEnv struct {
+	baseRef         string
+	includeTestdata bool
 }
 
-// filterPluginPaths returns the filepaths that are considered to be a relevant plugin file.
-func filterPluginPaths(filePaths []string) []string {
+func readDiffEnv(ctx context.Context, lookuper envconfig.Lookuper) (*diffEnv, error) {
+	type envVars struct {
+		BaseRef         string `env:"BASE_REF"`
+		IncludeTestdata bool   `env:"INCLUDE_TESTDATA"`
+	}
+	var env envVars
+	if err := envconfig.ProcessWith(ctx, &envconfig.Config{
+		Target:   &env,
+		Lookuper: lookuper,
+	}); err != nil {
+		return nil, fmt.Errorf("envconfig process with: %w", err)
+	}
+	if env.BaseRef == "" {
+		return nil, fmt.Errorf("empty or missing BASE_REF")
+	}
+	return &diffEnv{
+		baseRef:         env.BaseRef,
+		includeTestdata: env.IncludeTestdata,
+	}, nil
+}
+
+// filterPluginPaths returns the filepaths that are considered to be a relevant plugin file, based
+// on the plugins dir(s).
+func filterPluginPaths(filePaths []string, includeTestdata bool) []string {
 	return slicesext.Filter(
 		filePaths,
 		func(filePath string) bool {
-			// Include all files within plugins/*
-			if !strings.HasPrefix(filePath, "plugins/") {
+			const (
+				// Always include all files within plugins/*
+				pluginsDir = "plugins/"
+				// For PRs we'll want to also include files from within tests/testdata/buf.build/*
+				testdataPluginsDir = "tests/testdata/buf.build/"
+			)
+			// calculate the file path relative to the containing plugins dir
+			var relativeFilepath string
+			if strings.HasPrefix(filePath, pluginsDir) {
+				relativeFilepath = strings.TrimPrefix(filePath, pluginsDir)
+			} else if includeTestdata && strings.HasPrefix(filePath, testdataPluginsDir) {
+				relativeFilepath = strings.TrimPrefix(filePath, testdataPluginsDir)
+			}
+			if relativeFilepath == "" {
+				// file path is not within any accepted plugins dir, this changed file is not relevant
 				return false
 			}
-			// We only care about files in the plugins version dirs, including subdirs, which means >= 5
-			// parts in the path:
-			//   plugins/<owner_name>/<plugin_name>/<version>/*
-			//  | 1     | 2          | 3           | 4       | 5
-			parts := strings.Split(filePath, "/")
-			return len(parts) >= 5
+			// We only care about files in the plugins version dirs, including subdirs, which means >= 4
+			// parts in the **relative** path:
+			//   <plugins_dir>/<owner_name>/<plugin_name>/<version>/*
+			//                | 1          | 2           | 3       | 4
+			parts := strings.Split(relativeFilepath, "/")
+			return len(parts) >= 4
 		},
 	)
 }
