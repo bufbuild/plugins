@@ -75,6 +75,7 @@ func TestFilterPluginPaths(t *testing.T) {
 		[]string{
 			"plugins/protocolbuffers/go/v1.2.3/Dockerfile",
 			"plugins/protocolbuffers/go/v1.2.3/some_other.file",
+			"plugins/protocolbuffers/go/v1.2.3/some/deeper.file",
 		},
 		filterPluginPaths(
 			[]string{
