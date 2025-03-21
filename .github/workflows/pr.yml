@@ -45,6 +45,7 @@ jobs:
       if: ${{ inputs.plugins == '' }}
       env:
         BASE_REF: ${{ github.base_ref }}
+        INCLUDE_TESTDATA: 'true'
       run: |
         val=`go run ./internal/cmd/changed-plugins .`
         if [[ -n "${val}" && -z "${PLUGINS}" ]]; then
