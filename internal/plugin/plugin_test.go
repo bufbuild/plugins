@@ -1,11 +1,9 @@
 package plugin
 
 import (
-	"strconv"
 	"strings"
 	"testing"
 
-	"github.com/sethvargo/go-envconfig"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -52,26 +50,24 @@ func TestFilterByChangedFiles(t *testing.T) {
 	t.Parallel()
 	allPlugins, err := FindAll("../..")
 	require.NoError(t, err)
-	assert.Empty(t, runFilterByChangedFiles(t, allPlugins, nil, false))
-	expected := filterPluginsByPathPrefixes(t, allPlugins, "plugins/protocolbuffers/cpp/v21.7/")
-	got := runFilterByChangedFiles(
-		t,
-		allPlugins,
-		[]string{"tests/testdata/buf.build/protocolbuffers/cpp/v21.7/eliza/plugin.sum"},
-		true,
+	assert.Empty(t, runFilterByChangedFiles(t, allPlugins, nil))
+	assert.Equal(t,
+		filterPluginsByPathPrefixes(t, allPlugins, "plugins/protocolbuffers/cpp/v21.7/"),
+		runFilterByChangedFiles(t, allPlugins, []string{"tests/testdata/buf.build/protocolbuffers/cpp/v21.7/eliza/plugin.sum"}),
 	)
-	assert.Equal(t, expected, got)
 	assert.Equal(t,
 		filterPluginsByPathPrefixes(t, allPlugins,
 			"plugins/protocolbuffers/cpp/v21.7/",
 			"plugins/protocolbuffers/java/v21.7/",
 			"plugins/bufbuild/connect-go/v1.0.0/",
-		), runFilterByChangedFiles(t, allPlugins,
+		),
+		runFilterByChangedFiles(t, allPlugins,
 			[]string{
 				"plugins/bufbuild/connect-go/v1.0.0/buf.plugin.yaml",
 				"tests/testdata/buf.build/protocolbuffers/cpp/v21.7/eliza/plugin.sum",
 				"tests/testdata/buf.build/protocolbuffers/java/v21.7/petapis/plugin.sum",
-			}, true),
+			},
+		),
 	)
 }
 
@@ -149,13 +145,13 @@ func runFilterByPluginsEnv(t *testing.T, plugins []*Plugin, pluginsEnv string) [
 	return paths
 }
 
-func runFilterByChangedFiles(t *testing.T, plugins []*Plugin, allModified []string, anyModified bool) []string {
+func runFilterByChangedFiles(t *testing.T, plugins []*Plugin, allModified []string) []string {
 	t.Helper()
-	lookuper := envconfig.MapLookuper(map[string]string{
-		"ALL_MODIFIED_FILES": strings.Join(allModified, ","),
-		"ANY_MODIFIED":       strconv.FormatBool(anyModified),
-	})
-	filtered, err := FilterByBaseRefDiff(t.Context(), plugins, lookuper)
+	filtered, err := filterPluginsByChangedFiles(
+		plugins,
+		allModified,
+		true, // for these tests, always include testdata
+	)
 	require.NoError(t, err)
 	paths := make([]string, 0, len(filtered))
 	for _, plugin := range filtered {

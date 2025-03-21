@@ -213,7 +213,11 @@ func FilterByBaseRefDiff(ctx context.Context, plugins []*Plugin, lookuper envcon
 	if err != nil {
 		return nil, fmt.Errorf("calculate changed files from base ref %q: %w", diffEnv.baseRef, err)
 	}
-	changedPluginFiles := filterPluginPaths(allChangedFiles, diffEnv.includeTestdata)
+	return filterPluginsByChangedFiles(plugins, allChangedFiles, diffEnv.includeTestdata)
+}
+
+func filterPluginsByChangedFiles(plugins []*Plugin, allChangedFiles []string, includeTestdata bool) ([]*Plugin, error) {
+	changedPluginFiles := filterPluginPaths(allChangedFiles, includeTestdata)
 	if len(changedPluginFiles) == 0 {
 		// None of the relevant plugin files changed - filter out everything
 		return nil, nil
