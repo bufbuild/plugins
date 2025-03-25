@@ -8,8 +8,6 @@ import (
 	"os"
 	"strings"
 
-	"github.com/sethvargo/go-envconfig"
-
 	"github.com/bufbuild/plugins/internal/plugin"
 )
 
@@ -26,7 +24,7 @@ func main() {
 		log.Fatalf("failed to find plugins: %v", err)
 	}
 	// Filter by changed plugins (for PR builds)
-	includedPlugins, err := plugin.FilterByBaseRefDiff(context.Background(), plugins, envconfig.OsLookuper())
+	includedPlugins, err := plugin.FilterByBaseRefDiff(context.Background(), plugins)
 	if err != nil {
 		log.Fatalf("failed to filter plugins by changed files: %v", err)
 	}

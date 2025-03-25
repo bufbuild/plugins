@@ -11,6 +11,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"slices"
+	"strconv"
 	"strings"
 	"sync"
 	"unicode"
@@ -19,7 +20,6 @@ import (
 	"github.com/bufbuild/buf/private/bufpkg/bufremoteplugin/bufremotepluginref"
 	"github.com/bufbuild/buf/private/pkg/encoding"
 	"github.com/bufbuild/buf/private/pkg/slicesext"
-	"github.com/sethvargo/go-envconfig"
 	"golang.org/x/mod/semver"
 
 	"github.com/bufbuild/plugins/internal/git"
@@ -204,8 +204,8 @@ func FilterByPluginsEnv(plugins []*Plugin, pluginsEnv string) ([]*Plugin, error)
 // FilterByBaseRefDiff filters the passed plugins to the ones that changed from a base Git ref to
 // diff against. It calculates the changed files from that ref, and filters the relevant files in
 // the plugins directory(ies) to determine which plugins changed from the ones passed.
-func FilterByBaseRefDiff(ctx context.Context, plugins []*Plugin, lookuper envconfig.Lookuper) ([]*Plugin, error) {
-	diffEnv, err := readDiffEnv(ctx, lookuper)
+func FilterByBaseRefDiff(ctx context.Context, plugins []*Plugin) ([]*Plugin, error) {
+	diffEnv, err := readDiffEnv()
 	if err != nil {
 		return nil, fmt.Errorf("get diff env: %w", err)
 	}
@@ -350,24 +350,24 @@ type diffEnv struct {
 	includeTestdata bool
 }
 
-func readDiffEnv(ctx context.Context, lookuper envconfig.Lookuper) (*diffEnv, error) {
-	type envVars struct {
-		BaseRef         string `env:"BASE_REF"`
-		IncludeTestdata bool   `env:"INCLUDE_TESTDATA"`
+func readDiffEnv() (*diffEnv, error) {
+	baseRef, ok := os.LookupEnv("BASE_REF")
+	if !ok {
+		return nil, fmt.Errorf("missing BASE_REF")
+	} else if baseRef == "" {
+		return nil, fmt.Errorf("empty BASE_REF")
 	}
-	var env envVars
-	if err := envconfig.ProcessWith(ctx, &envconfig.Config{
-		Target:   &env,
-		Lookuper: lookuper,
-	}); err != nil {
-		return nil, fmt.Errorf("envconfig process with: %w", err)
-	}
-	if env.BaseRef == "" {
-		return nil, fmt.Errorf("empty or missing BASE_REF")
+	var includeTestdata bool // default false
+	if includeTestdataStr, _ := os.LookupEnv("INCLUDE_TESTDATA"); includeTestdataStr != "" {
+		var err error
+		includeTestdata, err = strconv.ParseBool(includeTestdataStr)
+		if err != nil {
+			return nil, fmt.Errorf("invalid INCLUDE_TESTDATA value %s: %w", includeTestdataStr, err)
+		}
 	}
 	return &diffEnv{
-		baseRef:         env.BaseRef,
-		includeTestdata: env.IncludeTestdata,
+		baseRef:         baseRef,
+		includeTestdata: includeTestdata,
 	}, nil
 }
 
