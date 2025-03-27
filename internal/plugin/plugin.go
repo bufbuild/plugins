@@ -19,8 +19,10 @@ import (
 	"github.com/bufbuild/buf/private/bufpkg/bufremoteplugin/bufremotepluginconfig"
 	"github.com/bufbuild/buf/private/bufpkg/bufremoteplugin/bufremotepluginref"
 	"github.com/bufbuild/buf/private/pkg/encoding"
-	"github.com/sethvargo/go-envconfig"
+	"github.com/bufbuild/buf/private/pkg/slicesext"
 	"golang.org/x/mod/semver"
+
+	"github.com/bufbuild/plugins/internal/git"
 )
 
 // Plugin represents metadata (and filesystem path) information about a plugin.
@@ -199,34 +201,35 @@ func FilterByPluginsEnv(plugins []*Plugin, pluginsEnv string) ([]*Plugin, error)
 	return filtered, nil
 }
 
-// FilterByChangedFiles works with https://github.com/tj-actions/changed-files#outputs to filter out unchanged plugins.
-// This allows PR builds to only build the plugins which changed instead of all plugins.
-func FilterByChangedFiles(plugins []*Plugin, lookuper envconfig.Lookuper) ([]*Plugin, error) {
-	var changedFiles changedFiles
-	if err := envconfig.ProcessWith(context.Background(), &envconfig.Config{
-		Target:   &changedFiles,
-		Lookuper: lookuper,
-	}); err != nil {
-		return nil, err
-	}
-	// ANY_MODIFIED env var not set - filter everything
-	if len(changedFiles.AnyModified) == 0 {
-		return nil, nil
-	}
-	anyModified, err := strconv.ParseBool(changedFiles.AnyModified)
+// FilterByBaseRefDiff filters the passed plugins to the ones that changed from a base Git ref to
+// diff against. It calculates the changed files from that ref, and filters the relevant files in
+// the plugins directory(ies) to determine which plugins changed from the ones passed.
+func FilterByBaseRefDiff(ctx context.Context, plugins []*Plugin) ([]*Plugin, error) {
+	diffEnv, err := readDiffEnv()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("get diff env: %w", err)
 	}
-	// None of our included file patterns were changed - filter everything
-	if !anyModified {
+	allChangedFiles, err := git.ChangedFilesFrom(ctx, diffEnv.baseRef)
+	if err != nil {
+		return nil, fmt.Errorf("calculate changed files from base ref %q: %w", diffEnv.baseRef, err)
+	}
+	return filterPluginsByChangedFiles(plugins, allChangedFiles, diffEnv.includeTestdata)
+}
+
+func filterPluginsByChangedFiles(plugins []*Plugin, allChangedFiles []string, includeTestdata bool) ([]*Plugin, error) {
+	changedPluginFiles := filterPluginPaths(allChangedFiles, includeTestdata)
+	if len(changedPluginFiles) == 0 {
+		// None of the relevant plugin files changed - filter out everything
 		return nil, nil
 	}
-	// plugins/community/chrusty-jsonschema/v1.3.9/*: build plugins/community/chrusty-jsonschema/v1.3.9/buf.plugin.yaml
-	// plugins/bufbuild/connect-go/v0.1.1/*: build plugins/bufbuild/connect-go/v0.1.1/buf.plugin.yaml
-	var filtered []*Plugin
+	// Only return the ones that actually changed, eg:
+	//
+	// plugins/community/chrusty-jsonschema/v1.3.9/* -> plugins/community/chrusty-jsonschema/v1.3.9/buf.plugin.yaml
+	// plugins/bufbuild/connect-go/v0.1.1/*          -> plugins/bufbuild/connect-go/v0.1.1/buf.plugin.yaml
+	var changed []*Plugin
 	for _, plugin := range plugins {
 		include := false
-		for _, changedFile := range changedFiles.AllModifiedFiles {
+		for _, changedFile := range changedPluginFiles {
 			changedDir := filepath.ToSlash(filepath.Dir(changedFile))
 			if strings.HasPrefix(plugin.Relpath, changedDir) {
 				include = true
@@ -239,10 +242,10 @@ func FilterByChangedFiles(plugins []*Plugin, lookuper envconfig.Lookuper) ([]*Pl
 		}
 		if include {
 			log.Printf("including plugin: %s", plugin.Relpath)
-			filtered = append(filtered, plugin)
+			changed = append(changed, plugin)
 		}
 	}
-	return filtered, nil
+	return changed, nil
 }
 
 func ParsePluginsEnvVar(pluginsEnv string) ([]IncludePlugin, error) {
@@ -342,9 +345,61 @@ func calculateGitModified(ctx context.Context, pluginYamlPath string) (bool, err
 	return strings.TrimSpace(output.String()) != "", nil
 }
 
-// changedFiles contains data from the tj-actions/changed-files action.
-// See https://github.com/tj-actions/changed-files#outputs for more details.
-type changedFiles struct {
-	AnyModified      string   `env:"ANY_MODIFIED"`
-	AllModifiedFiles []string `env:"ALL_MODIFIED_FILES"`
+type diffEnv struct {
+	baseRef         string
+	includeTestdata bool
+}
+
+func readDiffEnv() (*diffEnv, error) {
+	baseRef, ok := os.LookupEnv("BASE_REF")
+	if !ok {
+		return nil, fmt.Errorf("missing BASE_REF")
+	} else if baseRef == "" {
+		return nil, fmt.Errorf("empty BASE_REF")
+	}
+	var includeTestdata bool // default false
+	if includeTestdataStr, _ := os.LookupEnv("INCLUDE_TESTDATA"); includeTestdataStr != "" {
+		var err error
+		includeTestdata, err = strconv.ParseBool(includeTestdataStr)
+		if err != nil {
+			return nil, fmt.Errorf("invalid INCLUDE_TESTDATA value %s: %w", includeTestdataStr, err)
+		}
+	}
+	return &diffEnv{
+		baseRef:         baseRef,
+		includeTestdata: includeTestdata,
+	}, nil
+}
+
+// filterPluginPaths returns the filepaths that are considered to be a relevant plugin file, based
+// on the plugins dir(s).
+func filterPluginPaths(filePaths []string, includeTestdata bool) []string {
+	return slicesext.Filter(
+		filePaths,
+		func(filePath string) bool {
+			const (
+				// Always include all files within plugins/*
+				pluginsDir = "plugins/"
+				// For PRs we'll want to also include files from within tests/testdata/buf.build/*
+				testdataPluginsDir = "tests/testdata/buf.build/"
+			)
+			// calculate the file path relative to the containing plugins dir
+			var relativeFilepath string
+			if strings.HasPrefix(filePath, pluginsDir) {
+				relativeFilepath = strings.TrimPrefix(filePath, pluginsDir)
+			} else if includeTestdata && strings.HasPrefix(filePath, testdataPluginsDir) {
+				relativeFilepath = strings.TrimPrefix(filePath, testdataPluginsDir)
+			}
+			if relativeFilepath == "" {
+				// file path is not within any accepted plugins dir, this changed file is not relevant
+				return false
+			}
+			// We only care about files in the plugins version dirs, including subdirs, which means >= 4
+			// parts in the **relative** path:
+			//   <plugins_dir>/<owner_name>/<plugin_name>/<version>/*
+			//                | 1          | 2           | 3       | 4
+			parts := strings.Split(relativeFilepath, "/")
+			return len(parts) >= 4
+		},
+	)
 }

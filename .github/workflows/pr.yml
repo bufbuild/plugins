@@ -34,31 +34,16 @@ jobs:
     - uses: actions/checkout@v4
       with:
         fetch-depth: 0
-    - name: Get changed files
-      id: changed-files
-      if: ${{ inputs.plugins == '' }}
-      uses: tj-actions/changed-files@2f7c5bfce28377bc069a65ba478de0a74aa0ca32 # v46.0.1
-      with:
-        files: |
-          plugins/**
-          tests/testdata/buf.build/**
-        files_ignore: |
-          **/source.yaml
-        separator: ","
-    - name: Show changed files
-      if: ${{ inputs.plugins == '' }}
-      run: |
-        echo '${{ toJSON(steps.changed-files.outputs) }}'
     - name: Install Go
       uses: actions/setup-go@v5
       with:
         go-version: '1.24'
         check-latest: true
-    - name: Set PLUGINS env var from changed files
+    - name: Calculate changed plugins and set PLUGINS env var from base branch
       if: ${{ inputs.plugins == '' }}
       env:
-        ALL_MODIFIED_FILES: ${{ steps.changed-files.outputs.all_modified_files }}
-        ANY_MODIFIED: ${{ steps.changed-files.outputs.any_modified }}
+        BASE_REF: 'origin/${{ github.base_ref }}' # we can use a remote ref because we fetch everything back in the checkout step
+        INCLUDE_TESTDATA: 'true'
       run: |
         val=`go run ./internal/cmd/changed-plugins .`
         if [[ -n "${val}" && -z "${PLUGINS}" ]]; then

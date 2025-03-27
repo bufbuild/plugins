@@ -1,11 +1,9 @@
 package plugin
 
 import (
-	"strconv"
 	"strings"
 	"testing"
 
-	"github.com/sethvargo/go-envconfig"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -50,22 +48,90 @@ func TestFilterByPluginsEnv(t *testing.T) {
 
 func TestFilterByChangedFiles(t *testing.T) {
 	t.Parallel()
-	plugins, err := FindAll("../..")
+	allPlugins, err := FindAll("../..")
 	require.NoError(t, err)
-	assert.Empty(t, runFilterByChangedFiles(t, plugins, nil, false))
-	assert.Equal(t, filterPluginsByPathPrefixes(t, plugins, "plugins/protocolbuffers/cpp/v21.7/"), runFilterByChangedFiles(t, plugins, []string{"tests/testdata/buf.build/protocolbuffers/cpp/v21.7/eliza/plugin.sum"}, true))
+	assert.Empty(t, runFilterByChangedFiles(t, allPlugins, nil))
 	assert.Equal(t,
-		filterPluginsByPathPrefixes(t, plugins,
+		filterPluginsByPathPrefixes(t, allPlugins, "plugins/protocolbuffers/cpp/v21.7/"),
+		runFilterByChangedFiles(t, allPlugins, []string{"tests/testdata/buf.build/protocolbuffers/cpp/v21.7/eliza/plugin.sum"}),
+	)
+	assert.Equal(t,
+		filterPluginsByPathPrefixes(t, allPlugins,
 			"plugins/protocolbuffers/cpp/v21.7/",
 			"plugins/protocolbuffers/java/v21.7/",
 			"plugins/bufbuild/connect-go/v1.0.0/",
-		), runFilterByChangedFiles(t, plugins,
+		),
+		runFilterByChangedFiles(t, allPlugins,
 			[]string{
 				"plugins/bufbuild/connect-go/v1.0.0/buf.plugin.yaml",
 				"tests/testdata/buf.build/protocolbuffers/cpp/v21.7/eliza/plugin.sum",
 				"tests/testdata/buf.build/protocolbuffers/java/v21.7/petapis/plugin.sum",
-			}, true),
+			},
+		),
 	)
+}
+
+func TestFilterPluginPaths(t *testing.T) {
+	t.Parallel()
+	type testCase struct {
+		name            string
+		includeTestdata bool
+		expected        []string
+		changedFiles    []string
+	}
+	testCases := []testCase{
+		{
+			name:     "no_changed_files",
+			expected: []string{},
+		},
+		{
+			name: "changed_files",
+			expected: []string{
+				"plugins/owner1/plugin1/v1.2.3/Dockerfile",
+				"plugins/owner2/plugin2/v4.5.6/some_other.file",
+				"plugins/owner3/plugin3/v7.8.9/some/deeper.file",
+			},
+			changedFiles: []string{
+				"some/unrelated/file.txt",
+				"plugins/owner1/plugin1/v1.2.3/Dockerfile",
+				"plugins/owner2/plugin2/v4.5.6/some_other.file",
+				"plugins/owner3/plugin3/v7.8.9/some/deeper.file",
+				"plugins/owner4/plugin4/source.yaml",                        // not in the version dir
+				"tests/testdata/buf.build/owner1/plugin1/v1.2.3/Dockerfile", // testdata is not included
+			},
+		},
+		{
+			name:            "changed_files_with_testdata",
+			includeTestdata: true,
+			expected: []string{
+				"plugins/owner1/plugin1/v1.2.3/Dockerfile",
+				"plugins/owner2/plugin2/v4.5.6/some_other.file",
+				"plugins/owner3/plugin3/v7.8.9/some/deeper.file",
+				"tests/testdata/buf.build/owner1/plugin1/v1.2.3/Dockerfile",
+				"tests/testdata/buf.build/owner2/plugin2/v1.2.3/some/deeper.file",
+			},
+			changedFiles: []string{
+				"some/unrelated/file.txt",
+				"plugins/owner1/plugin1/v1.2.3/Dockerfile",
+				"plugins/owner2/plugin2/v4.5.6/some_other.file",
+				"plugins/owner3/plugin3/v7.8.9/some/deeper.file",
+				"plugins/owner4/plugin4/source.yaml", // not in the version dir
+				"tests/testdata/buf.build/owner1/plugin1/v1.2.3/Dockerfile",
+				"tests/testdata/buf.build/owner2/plugin2/v1.2.3/some/deeper.file",
+				"tests/testdata/buf.build/owner3/plugin3/source.yaml", // not in the version dir
+			},
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(
+				t,
+				tc.expected,
+				filterPluginPaths(tc.changedFiles, tc.includeTestdata),
+			)
+		})
+	}
 }
 
 func runFilterByPluginsEnv(t *testing.T, plugins []*Plugin, pluginsEnv string) []string {
@@ -79,13 +145,13 @@ func runFilterByPluginsEnv(t *testing.T, plugins []*Plugin, pluginsEnv string) [
 	return paths
 }
 
-func runFilterByChangedFiles(t *testing.T, plugins []*Plugin, allModified []string, anyModified bool) []string {
+func runFilterByChangedFiles(t *testing.T, plugins []*Plugin, allModified []string) []string {
 	t.Helper()
-	lookuper := envconfig.MapLookuper(map[string]string{
-		"ALL_MODIFIED_FILES": strings.Join(allModified, ","),
-		"ANY_MODIFIED":       strconv.FormatBool(anyModified),
-	})
-	filtered, err := FilterByChangedFiles(plugins, lookuper)
+	filtered, err := filterPluginsByChangedFiles(
+		plugins,
+		allModified,
+		true, // for these tests, always include testdata
+	)
 	require.NoError(t, err)
 	paths := make([]string, 0, len(filtered))
 	for _, plugin := range filtered {
