@@ -1,10 +1,9 @@
 module github.com/bufbuild/plugins
 
 go 1.24.0
-
 require (
 	aead.dev/minisign v0.3.0
-	github.com/bufbuild/buf v1.50.1
+	github.com/bufbuild/buf v1.51.0
 	github.com/google/go-containerregistry v0.20.3
 	github.com/google/go-github/v66 v66.0.0
 	github.com/hashicorp/go-retryablehttp v0.7.7
