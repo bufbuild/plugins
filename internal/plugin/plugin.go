@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"cmp"
 	"context"
+	"errors"
 	"fmt"
 	"io/fs"
 	"log"
@@ -353,9 +354,9 @@ type diffEnv struct {
 func readDiffEnv() (*diffEnv, error) {
 	baseRef, ok := os.LookupEnv("BASE_REF")
 	if !ok {
-		return nil, fmt.Errorf("missing BASE_REF")
+		return nil, errors.New("missing BASE_REF")
 	} else if baseRef == "" {
-		return nil, fmt.Errorf("empty BASE_REF")
+		return nil, errors.New("empty BASE_REF")
 	}
 	var includeTestdata bool // default false
 	if includeTestdataStr, _ := os.LookupEnv("INCLUDE_TESTDATA"); includeTestdataStr != "" {

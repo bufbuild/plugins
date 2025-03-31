@@ -344,7 +344,7 @@ func TestNugetDependencies(t *testing.T) {
 			if len(nugetConfig.TargetFrameworks) == 1 {
 				require.Equal(t, project.PropertyGroup.TargetFramework, nugetConfig.TargetFrameworks[0])
 			} else {
-				require.EqualValues(t, strings.Split(project.PropertyGroup.TargetFrameworks, ";"), nugetConfig.TargetFrameworks)
+				require.Equal(t, strings.Split(project.PropertyGroup.TargetFrameworks, ";"), nugetConfig.TargetFrameworks)
 			}
 
 			// name -> version
