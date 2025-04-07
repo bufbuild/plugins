@@ -14,7 +14,10 @@ RUN curl -fsSL -o /tmp/protobuf-c.tar.gz https://github.com/protobuf-c/protobuf-
  && make install \
  && strip /usr/local/bin/protoc-gen-c
 
-FROM gcr.io/distroless/cc-debian12:latest@sha256:c1cbcec08d39c81adbefb80cabc51cba285465866f7b5ab15ddb2fcae51a1aed
+FROM gcr.io/distroless/cc-debian12:latest@sha256:c1cbcec08d39c81adbefb80cabc51cba285465866f7b5ab15ddb2fcae51a1aed AS base
+
+FROM scratch
+COPY --from=base --link / /
 COPY --from=build --link --chmod=0755 --chown=root:root /usr/local/bin/protoc-gen-c .
 USER nobody
 ENTRYPOINT ["/protoc-gen-c"]
