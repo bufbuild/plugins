@@ -36,7 +36,7 @@ jobs:
       - name: Get buf version
         shell: bash
         run: |
-          echo BUF_VERSION=$(go list -m -f '{{.GoVersion}}' github.com/bufbuild/buf) >> $GITHUB_ENV
+          echo BUF_VERSION=$(go list -m -f '{{.Version}}' github.com/bufbuild/buf) >> $GITHUB_ENV
       - name: Install buf cli
         run: |
           go install github.com/bufbuild/buf/cmd/buf@${BUF_VERSION}
