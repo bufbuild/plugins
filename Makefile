@@ -44,8 +44,9 @@ lint: $(GOLANGCI_LINT)
 	$(GOLANGCI_LINT) run --timeout=5m
 	$(GOLANGCI_LINT) fmt --diff
 
-.PHONY: format
-format: $(GOLANGCI_LINT)
+.PHONY: lintfix
+lintfix: $(GOLANGCI_LINT)
+	$(GOLANGCI_LINT) run --timeout=5m --fix
 	$(GOLANGCI_LINT) fmt
 
 

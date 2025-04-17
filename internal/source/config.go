@@ -6,17 +6,6 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// NewConfig returns a new config.
-func NewConfig(reader io.Reader) (*Config, error) {
-	decoder := yaml.NewDecoder(reader)
-	decoder.KnownFields(true)
-	var config *Config
-	if err := decoder.Decode(&config); err != nil {
-		return nil, err
-	}
-	return config, nil
-}
-
 // Cacheable indicates that a given config can be cached by the returned key.
 // This allows duplicate configurations to only fetch latest versions once.
 type Cacheable interface {
@@ -27,6 +16,17 @@ type Cacheable interface {
 type Config struct {
 	Filename string `yaml:"-"`
 	Source   Source `yaml:"source"`
+}
+
+// NewConfig returns a new config.
+func NewConfig(reader io.Reader) (*Config, error) {
+	decoder := yaml.NewDecoder(reader)
+	decoder.KnownFields(true)
+	var config *Config
+	if err := decoder.Decode(&config); err != nil {
+		return nil, err
+	}
+	return config, nil
 }
 
 func (c Config) CacheKey() string {
