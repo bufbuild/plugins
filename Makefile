@@ -7,6 +7,9 @@ DOCKER_ORG ?= bufbuild
 DOCKER_BUILD_EXTRA_ARGS ?=
 DOCKER_BUILDER := bufbuild-plugins
 DOCKER_CACHE_DIR ?= $(TMP)/dockercache
+GO ?= go
+GOLANGCI_LINT_VERSION ?= v2.1.2
+GOLANGCI_LINT := $(TMP)/golangici-lint-$(GOLANGCI_LINT_VERSION)
 
 GO_TEST_FLAGS ?= -race -count=1
 
@@ -31,18 +34,32 @@ ifeq ($(PLUGINS),)
 	@echo "See Makefile for example PLUGINS env var usage."
 else
 	docker buildx inspect "$(DOCKER_BUILDER)" 2> /dev/null || docker buildx create --use --bootstrap --name="$(DOCKER_BUILDER)" > /dev/null
-	go run ./internal/cmd/dockerbuild -cache-dir "$(DOCKER_CACHE_DIR)" -org "$(DOCKER_ORG)" -- $(DOCKER_BUILD_EXTRA_ARGS) || \
+	$(GO) run ./internal/cmd/dockerbuild -cache-dir "$(DOCKER_CACHE_DIR)" -org "$(DOCKER_ORG)" -- $(DOCKER_BUILD_EXTRA_ARGS) || \
 		(docker buildx rm "$(DOCKER_BUILDER)"; exit 1)
 	docker buildx rm "$(DOCKER_BUILDER)" > /dev/null
 endif
 
+.PHONY: lint
+lint: $(GOLANGCI_LINT)
+	$(GOLANGCI_LINT) run --timeout=5m
+	$(GOLANGCI_LINT) fmt --diff
+
+.PHONY: format
+format: $(GOLANGCI_LINT)
+	$(GOLANGCI_LINT) fmt
+
+
+$(GOLANGCI_LINT):
+	GOBIN=$(abspath $(TMP)) $(GO) install -ldflags="-s -w" github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.1.2
+	mv $(TMP)/golangci-lint $@
+
 .PHONY: dockerpush
 dockerpush:
-	@go run ./internal/cmd/dockerpush -org "$(DOCKER_ORG)"
+	@$(GO) run ./internal/cmd/dockerpush -org "$(DOCKER_ORG)"
 
 .PHONY: test
 test: build
-	go test $(GO_TEST_FLAGS) ./...
+	$(GO) test $(GO_TEST_FLAGS) ./...
 
 .PHONY: push
 push: build

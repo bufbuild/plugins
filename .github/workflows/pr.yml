@@ -71,6 +71,13 @@ jobs:
         registry: ghcr.io
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
+    - name: Cache golangci-lint
+      uses: actions/cache@v4
+      with:
+        path: .tmp/golangci-lint*
+        key: ${{ runner.os }}-golangci-lint
+    - name: Lint
+      run: make lint
     - name: Test
       run: make test
     - name: Archive plugin generated code
