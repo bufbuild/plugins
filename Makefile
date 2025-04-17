@@ -50,7 +50,7 @@ format: $(GOLANGCI_LINT)
 
 
 $(GOLANGCI_LINT):
-	GOBIN=$(abspath $(TMP)) $(GO) install -ldflags="-s -w" github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.1.2
+	GOBIN=$(abspath $(TMP)) $(GO) install -ldflags="-s -w" github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$(GOLANGCI_LINT_VERSION)
 	mv $(TMP)/golangci-lint $@
 
 .PHONY: dockerpush
