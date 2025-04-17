@@ -5,7 +5,6 @@ linters:
     - cyclop            # covered by gocyclo
     - depguard          # not needed
     - exhaustruct
-    - funcorder         # may enable in the future if matches preferred style
     - funlen            # rely on code review to limit function length
     - gochecknoglobals  # sometimes useful to declare constants
     - gocognit          # dubious "cognitive overhead" quantification
