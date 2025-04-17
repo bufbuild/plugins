@@ -52,7 +52,7 @@ jobs:
     - name: Get buf version
       shell: bash
       run: |
-        echo BUF_VERSION=$(go list -m -json github.com/bufbuild/buf | jq -r .Version) >> $GITHUB_ENV
+        echo BUF_VERSION=$(go list -m -f '{{.Version}}' github.com/bufbuild/buf) >> $GITHUB_ENV
     - name: Install buf cli
       run: |
         go install github.com/bufbuild/buf/cmd/buf@${BUF_VERSION}
@@ -71,6 +71,8 @@ jobs:
         registry: ghcr.io
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
+    - name: Lint
+      run: make lint
     - name: Test
       run: make test
     - name: Archive plugin generated code
