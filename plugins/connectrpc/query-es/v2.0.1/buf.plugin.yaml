@@ -16,6 +16,8 @@ registry:
     import_style: module
     rewrite_import_path_suffix: connectquery.js
     deps:
+      - package: '@connectrpc/connect-query'
+        version: ^2.0.1
       - package: '@bufbuild/protobuf'
         version: ^2.2.3
 spdx_license_id: Apache-2.0
