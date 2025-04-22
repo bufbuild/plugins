@@ -10,6 +10,8 @@ output_languages:
   - javascript
   - typescript
 registry:
+  opts:
+    - import_extension=js
   npm:
     import_style: module
     rewrite_import_path_suffix: connectquery.js
