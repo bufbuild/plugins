@@ -6,7 +6,7 @@ ARG BAZEL_OPTS="--host_jvm_args=-Djava.net.preferIPv4Stack=true"
 
 RUN apt-get update \
  && apt-get install -y curl git cmake build-essential autoconf clang libc++-dev libtool pkg-config unzip zip
-RUN curl -fsSL -o /usr/local/bin/bazelisk https://github.com/bazelbuild/bazelisk/releases/download/v1.24.1/bazelisk-linux-${TARGETARCH} \
+RUN curl -fsSL -o /usr/local/bin/bazelisk https://github.com/bazelbuild/bazelisk/releases/download/v1.26.0/bazelisk-linux-${TARGETARCH} \
  && chmod +x /usr/local/bin/bazelisk \
  && mkdir /build \
  && chown nobody:nogroup /build \
