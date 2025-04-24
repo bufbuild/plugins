@@ -1,0 +1,11 @@
+version: v1
+name: buf.build/grpc/objc
+plugin_version: v1.72.0
+source_url: https://github.com/grpc/grpc
+description: Generates Objective-C client and server stubs for the gRPC framework.
+deps:
+  - plugin: buf.build/protocolbuffers/objc:v30.2
+output_languages:
+  - objective_c
+spdx_license_id: Apache-2.0
+license_url: https://github.com/grpc/grpc/blob/v1.72.0/LICENSE
