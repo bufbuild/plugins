@@ -6,7 +6,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/bufbuild/buf/private/pkg/interrupt"
+	"buf.build/go/interrupt"
 
 	"github.com/bufbuild/plugins/internal/docker"
 	"github.com/bufbuild/plugins/internal/plugin"

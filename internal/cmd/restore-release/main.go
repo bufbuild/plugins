@@ -21,7 +21,7 @@ import (
 	"os/exec"
 	"strings"
 
-	"github.com/bufbuild/buf/private/pkg/interrupt"
+	"buf.build/go/interrupt"
 
 	"github.com/bufbuild/plugins/internal/release"
 )

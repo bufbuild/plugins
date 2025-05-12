@@ -15,7 +15,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/bufbuild/buf/private/pkg/interrupt"
+	"buf.build/go/interrupt"
 	"golang.org/x/mod/semver"
 	"golang.org/x/sync/errgroup"
 

@@ -7,7 +7,7 @@ import (
 	"log"
 	"strings"
 
-	"github.com/bufbuild/buf/private/pkg/execext"
+	"buf.build/go/standard/xos/xexec"
 )
 
 // ChangedFilesFrom returns the list of file paths that changed, comparing the current git repo
@@ -26,12 +26,12 @@ func execGitCommand(ctx context.Context, args ...string) (string, error) {
 		stdout = bytes.NewBuffer(nil)
 		stderr = bytes.NewBuffer(nil)
 	)
-	if err := execext.Run(
+	if err := xexec.Run(
 		ctx,
 		"git",
-		execext.WithArgs(args...),
-		execext.WithStdout(stdout),
-		execext.WithStderr(stderr),
+		xexec.WithArgs(args...),
+		xexec.WithStdout(stdout),
+		xexec.WithStderr(stderr),
 	); err != nil {
 		return "", fmt.Errorf(
 			"run git %v: %w\nstdout: %s\nstderr: %s",

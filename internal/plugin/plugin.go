@@ -17,10 +17,10 @@ import (
 	"sync"
 	"unicode"
 
+	"buf.build/go/standard/xslices"
 	"github.com/bufbuild/buf/private/bufpkg/bufremoteplugin/bufremotepluginconfig"
 	"github.com/bufbuild/buf/private/bufpkg/bufremoteplugin/bufremotepluginref"
 	"github.com/bufbuild/buf/private/pkg/encoding"
-	"github.com/bufbuild/buf/private/pkg/slicesext"
 	"golang.org/x/mod/semver"
 
 	"github.com/bufbuild/plugins/internal/git"
@@ -375,7 +375,7 @@ func readDiffEnv() (*diffEnv, error) {
 // filterPluginPaths returns the filepaths that are considered to be a relevant plugin file, based
 // on the plugins dir(s).
 func filterPluginPaths(filePaths []string, includeTestdata bool) []string {
-	return slicesext.Filter(
+	return xslices.Filter(
 		filePaths,
 		func(filePath string) bool {
 			const (

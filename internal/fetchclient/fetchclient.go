@@ -11,7 +11,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/bufbuild/buf/private/pkg/slicesext"
+	"buf.build/go/standard/xslices"
 	"github.com/google/go-github/v66/github"
 	"github.com/hashicorp/go-retryablehttp"
 	"golang.org/x/mod/semver"
@@ -80,7 +80,7 @@ func (c *Client) Fetch(ctx context.Context, config *source.Config) (string, erro
 }
 
 func (c *Client) fetch(ctx context.Context, config *source.Config) (string, error) {
-	ignoreVersions := slicesext.ToStructMap(config.Source.IgnoreVersions)
+	ignoreVersions := xslices.ToStructMap(config.Source.IgnoreVersions)
 	switch {
 	case config.Source.GitHub != nil:
 		return c.fetchGithub(ctx, config.Source.GitHub.Owner, config.Source.GitHub.Repository, ignoreVersions)
