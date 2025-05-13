@@ -20,8 +20,8 @@ import (
 	"strings"
 
 	"aead.dev/minisign"
-	"github.com/bufbuild/buf/private/pkg/app/appcmd"
-	"github.com/bufbuild/buf/private/pkg/app/appext"
+	"buf.build/go/app/appcmd"
+	"buf.build/go/app/appext"
 	"github.com/spf13/pflag"
 	"golang.org/x/mod/semver"
 

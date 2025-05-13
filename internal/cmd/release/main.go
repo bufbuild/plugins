@@ -21,7 +21,7 @@ import (
 	"time"
 
 	"aead.dev/minisign"
-	"github.com/bufbuild/buf/private/pkg/interrupt"
+	"buf.build/go/interrupt"
 	githubkeychain "github.com/google/go-containerregistry/pkg/authn/github"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/google/go-containerregistry/pkg/v1/remote"

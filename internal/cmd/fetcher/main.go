@@ -14,7 +14,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/bufbuild/buf/private/pkg/interrupt"
+	"buf.build/go/interrupt"
 	"golang.org/x/mod/semver"
 
 	"github.com/bufbuild/plugins/internal/docker"
