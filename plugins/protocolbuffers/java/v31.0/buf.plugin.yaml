@@ -1,0 +1,19 @@
+version: v1
+name: buf.build/protocolbuffers/java
+plugin_version: v31.0
+source_url: https://github.com/protocolbuffers/protobuf
+description: Base types for Java. Generates message and enum types.
+output_languages:
+  - java
+spdx_license_id: BSD-3-Clause
+license_url: https://github.com/protocolbuffers/protobuf/blob/v31.0/LICENSE
+registry:
+  maven:
+    deps:
+      - com.google.protobuf:protobuf-java:4.31.0
+    additional_runtimes:
+      - name: lite
+        deps:
+          - com.google.protobuf:protobuf-javalite:4.31.0
+          - build.buf:protobuf-javalite:4.31.0
+        opts: [lite]
