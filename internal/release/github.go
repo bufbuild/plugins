@@ -14,9 +14,8 @@ import (
 	"time"
 
 	"aead.dev/minisign"
-	"github.com/google/go-github/v66/github"
-	"github.com/hashicorp/go-retryablehttp"
-	"golang.org/x/oauth2"
+	"github.com/gofri/go-github-ratelimit/github_ratelimit"
+	"github.com/google/go-github/v72/github"
 )
 
 type GithubOwner string
@@ -35,20 +34,20 @@ type Client struct {
 
 // NewClient returns a new HTTP client which can be used to perform actions on GitHub releases.
 func NewClient(ctx context.Context) *Client {
-	var httpClient *http.Client
-	if ghToken := os.Getenv("GITHUB_TOKEN"); ghToken != "" {
-		log.Printf("creating authenticated client with GITHUB_TOKEN")
-		ts := oauth2.StaticTokenSource(
-			&oauth2.Token{AccessToken: ghToken},
-		)
-		httpClient = oauth2.NewClient(ctx, ts)
+	githubToken := os.Getenv("GITHUB_TOKEN")
+	if githubToken != "" {
+		log.Printf("creating authenticated GitHub client with GITHUB_TOKEN")
 	} else {
-		client := retryablehttp.NewClient()
-		client.Logger = nil
-		httpClient = client.StandardClient()
+		log.Printf("creating unauthenticated GitHub client")
 	}
+	rateLimiter, err := github_ratelimit.NewRateLimitWaiterClient(nil)
+	if err != nil {
+		log.Printf("failed to create rate limiter: %v", err)
+		rateLimiter = http.DefaultClient
+	}
+	githubClient := github.NewClient(rateLimiter).WithAuthToken(githubToken)
 	return &Client{
-		GitHub: github.NewClient(httpClient),
+		GitHub: githubClient,
 	}
 }
 
