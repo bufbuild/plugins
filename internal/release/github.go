@@ -33,7 +33,9 @@ type Client struct {
 }
 
 // NewClient returns a new HTTP client which can be used to perform actions on GitHub releases.
-func NewClient(ctx context.Context) *Client {
+// The returned client is authenticated if the GITHUB_TOKEN environment variable is set.
+// The returned context.Context is altered to support rate limiting.
+func NewClient(ctx context.Context) (context.Context, *Client) {
 	githubToken := os.Getenv("GITHUB_TOKEN")
 	if githubToken != "" {
 		log.Printf("creating authenticated GitHub client with GITHUB_TOKEN")
@@ -43,10 +45,15 @@ func NewClient(ctx context.Context) *Client {
 	rateLimiter, err := github_ratelimit.NewRateLimitWaiterClient(nil)
 	if err != nil {
 		log.Printf("failed to create rate limiter: %v", err)
+		// Fallback to default client if rate limiter creation fails.
+		ctx = context.WithValue(ctx, github.SleepUntilPrimaryRateLimitResetWhenRateLimited, true)
 		rateLimiter = http.DefaultClient
+	} else {
+		// Disable the github-go rate limiter for github_ratelimit.
+		ctx = context.WithValue(ctx, github.BypassRateLimitCheck, true)
 	}
 	githubClient := github.NewClient(rateLimiter).WithAuthToken(githubToken)
-	return &Client{
+	return ctx, &Client{
 		GitHub: githubClient,
 	}
 }

@@ -58,7 +58,7 @@ func run() error {
 	}
 
 	ctx := context.Background()
-	client := release.NewClient(ctx)
+	ctx, client := release.NewClient(ctx)
 
 	publicKey, err := loadPublicKey(minisignPublicKey)
 	if err != nil {

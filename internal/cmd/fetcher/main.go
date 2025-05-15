@@ -155,7 +155,7 @@ func run(ctx context.Context, root string) ([]createdPlugin, error) {
 	if err != nil {
 		return nil, err
 	}
-	client := fetchclient.New(ctx)
+	ctx, client := fetchclient.New(ctx)
 	latestVersions := make(map[string]string, len(configs))
 	created := make([]createdPlugin, 0, len(configs))
 	for _, config := range configs {

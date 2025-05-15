@@ -52,7 +52,7 @@ type command struct {
 
 func (c *command) run() error {
 	ctx := interrupt.Handle(context.Background())
-	client := release.NewClient(ctx)
+	ctx, client := release.NewClient(ctx)
 	githubRelease, err := client.GetReleaseByTag(ctx, release.GithubOwnerBufbuild, release.GithubRepoPlugins, c.release)
 	if err != nil {
 		return fmt.Errorf("failed to retrieve release %s: %w", c.release, err)

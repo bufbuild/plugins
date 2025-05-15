@@ -96,7 +96,7 @@ func (c *command) run() error {
 			log.Printf("failed to remove %q: %v", tmpDir, err)
 		}
 	}()
-	client := release.NewClient(ctx)
+	ctx, client := release.NewClient(ctx)
 	latestRelease, err := client.GetLatestRelease(ctx, c.githubReleaseOwner, release.GithubRepoPlugins)
 	if err != nil && !errors.Is(err, release.ErrNotFound) {
 		return fmt.Errorf("failed to retrieve latest release: %w", err)
@@ -292,14 +292,14 @@ func (c *command) createRelease(ctx context.Context, client *release.Client, rel
 	}
 	// Create GitHub release
 	repositoryReleaseParams := &github.RepositoryRelease{
-		TagName: github.String(releaseName),
-		Name:    github.String(releaseName),
-		Body:    github.String(releaseBody),
+		TagName: github.Ptr(releaseName),
+		Name:    github.Ptr(releaseName),
+		Body:    github.Ptr(releaseBody),
 		// Start release as a draft until all assets are uploaded
-		Draft: github.Bool(true),
+		Draft: github.Ptr(true),
 	}
 	if c.githubCommit != "" {
-		repositoryReleaseParams.TargetCommitish = github.String(c.githubCommit)
+		repositoryReleaseParams.TargetCommitish = github.Ptr(c.githubCommit)
 	}
 	repositoryRelease, err := client.CreateRelease(ctx, c.githubReleaseOwner, release.GithubRepoPlugins, repositoryReleaseParams)
 	if err != nil {
@@ -319,7 +319,7 @@ func (c *command) createRelease(ctx context.Context, client *release.Client, rel
 	}
 	// Publish release
 	if _, err := client.EditRelease(ctx, c.githubReleaseOwner, release.GithubRepoPlugins, repositoryRelease.GetID(), &github.RepositoryRelease{
-		Draft: github.Bool(false),
+		Draft: github.Ptr(false),
 	}); err != nil {
 		return err
 	}
