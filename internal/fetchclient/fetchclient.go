@@ -48,19 +48,19 @@ func New(ctx context.Context) (context.Context, *Client) {
 	} else {
 		log.Printf("creating unauthenticated GitHub client")
 	}
-	rateLimiter, err := github_ratelimit.NewRateLimitWaiterClient(nil)
+	httpClient, err := github_ratelimit.NewRateLimitWaiterClient(nil)
 	if err != nil {
 		log.Printf("failed to create rate limiter: %v", err)
 		// Fallback to default client if rate limiter creation fails.
 		ctx = context.WithValue(ctx, github.SleepUntilPrimaryRateLimitResetWhenRateLimited, true)
-		rateLimiter = http.DefaultClient
+		httpClient = http.DefaultClient
 	} else {
 		// Disable the github-go rate limiter for github_ratelimit.
 		ctx = context.WithValue(ctx, github.BypassRateLimitCheck, true)
 	}
-	githubClient := github.NewClient(rateLimiter).WithAuthToken(githubToken)
+	githubClient := github.NewClient(httpClient).WithAuthToken(githubToken)
 	return ctx, &Client{
-		httpClient: rateLimiter,
+		httpClient: httpClient,
 		ghClient:   githubClient,
 	}
 }
