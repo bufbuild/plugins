@@ -14,8 +14,8 @@ import (
 	"time"
 
 	"aead.dev/minisign"
-	"github.com/gofri/go-github-ratelimit/github_ratelimit"
 	"github.com/google/go-github/v72/github"
+	"golang.org/x/oauth2"
 )
 
 type GithubOwner string
@@ -36,23 +36,17 @@ type Client struct {
 // The returned client is authenticated if the GITHUB_TOKEN environment variable is set.
 // The returned context.Context is altered to support rate limiting.
 func NewClient(ctx context.Context) (context.Context, *Client) {
+	httpClient := http.DefaultClient
 	githubToken := os.Getenv("GITHUB_TOKEN")
 	if githubToken != "" {
 		log.Printf("creating authenticated GitHub client with GITHUB_TOKEN")
 	} else {
 		log.Printf("creating unauthenticated GitHub client")
 	}
-	httpClient, err := github_ratelimit.NewRateLimitWaiterClient(nil)
-	if err != nil {
-		log.Printf("failed to create rate limiter: %v", err)
-		// Fallback to default client if rate limiter creation fails.
-		ctx = context.WithValue(ctx, github.SleepUntilPrimaryRateLimitResetWhenRateLimited, true)
-		httpClient = http.DefaultClient
-	} else {
-		// Disable the github-go rate limiter for github_ratelimit.
-		ctx = context.WithValue(ctx, github.BypassRateLimitCheck, true)
-	}
 	githubClient := github.NewClient(httpClient).WithAuthToken(githubToken)
+	// Set the context to wait for the primary rate limit to reset when rate limited.
+	// See: https://github.com/google/go-github?tab=readme-ov-file#rate-limiting
+	ctx = context.WithValue(ctx, github.SleepUntilPrimaryRateLimitResetWhenRateLimited, true)
 	return ctx, &Client{
 		GitHub: githubClient,
 	}

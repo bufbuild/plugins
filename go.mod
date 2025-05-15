@@ -8,12 +8,12 @@ require (
 	buf.build/go/interrupt v1.1.0
 	buf.build/go/standard v0.1.0
 	github.com/bufbuild/buf v1.54.0
-	github.com/gofri/go-github-ratelimit v1.1.1
 	github.com/google/go-containerregistry v0.20.3
 	github.com/google/go-github/v72 v72.0.0
 	github.com/spf13/pflag v1.0.6
 	github.com/stretchr/testify v1.10.0
 	golang.org/x/mod v0.24.0
+	golang.org/x/oauth2 v0.25.0
 	golang.org/x/sync v0.14.0
 	gopkg.in/yaml.v3 v3.0.1
 )
