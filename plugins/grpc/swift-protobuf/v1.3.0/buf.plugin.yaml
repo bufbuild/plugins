@@ -16,9 +16,9 @@ registry:
         # https://github.com/grpc/grpc-swift-protobuf/blob/1.3.0/Package.swift#L22
         products: [ GRPCProtobuf ]
         version: 1.3.0
-        # https://github.com/grpc/grpc-swift-protobuf/blob/1.3.0/Package.swift#L51
+        # https://github.com/grpc/grpc-swift-protobuf/blob/1.3.0/Package.swift#L65
         swift_versions: [ ".v6" ]
-        # https://github.com/grpc/grpc-swift-protobuf/blob/1.3.0/Package.swift#L149-152
+        # https://github.com/grpc/grpc-swift-protobuf/blob/1.3.0/Package.swift#L58
         platforms:
           macos: v15
           ios: v18
