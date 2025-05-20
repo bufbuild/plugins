@@ -52,7 +52,7 @@ jobs:
     - name: Get buf version
       shell: bash
       run: |
-        echo BUF_VERSION=$(go list -m -f '{{.Version}}' github.com/bufbuild/buf) >> $GITHUB_ENV
+        echo BUF_VERSION=$(go list -m -f '{{.Version}}' github.com/bufbuild/buf | cut -c2-) >> $GITHUB_ENV
     - uses: bufbuild/buf-action@v1
       with:
         setup_only: true
