@@ -1,0 +1,7 @@
+version: v1
+name: buf.build/bufbuild/protoschema-pubsub
+plugin_version: v0.5.0
+source_url: https://github.com/bufbuild/protoschema-plugins
+description: Generates a PubSub schema in the form of a single self-contained messaged normalized to proto2.
+spdx_license_id: Apache-2.0
+license_url: https://github.com/bufbuild/protoschema-plugins/blob/v0.5.0/LICENSE
