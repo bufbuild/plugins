@@ -1,0 +1,10 @@
+{
+    "name": "plugins-timostamm-protobuf-ts",
+    "version": "1.0.0",
+    "dependencies": {
+        "@protobuf-ts/plugin": "2.11.0"
+    },
+    "devDependencies": {
+        "esbuild": "^0.25.1"
+    }
+}
