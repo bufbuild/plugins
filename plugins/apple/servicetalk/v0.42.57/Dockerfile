@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1.15
-FROM debian:bookworm-20250428 AS build
+FROM debian:bookworm-20250520 AS build
 
 WORKDIR /app
 RUN apt-get update \
