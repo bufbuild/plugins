@@ -1,0 +1,8 @@
+version: v1
+name: buf.build/community/salesforce-reactive-grpc
+plugin_version: v1.2.4
+source_url: https://github.com/community/salesforce-reactive-grpc
+output_languages:
+  - java
+spdx_license_id: BSD-3-Clause
+license_url: https://github.com/salesforce/reactive-grpc/blob/v1.2.4/LICENSE
