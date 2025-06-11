@@ -2,6 +2,7 @@ package tests
 
 import (
 	"bufio"
+	"bytes"
 	"cmp"
 	"context"
 	"encoding/xml"
@@ -25,6 +26,7 @@ import (
 	"golang.org/x/mod/sumdb/dirhash"
 
 	"github.com/bufbuild/plugins/internal/plugin"
+	"github.com/bufbuild/plugins/internal/source"
 )
 
 const (
@@ -186,6 +188,25 @@ func TestBufPluginConfig(t *testing.T) {
 		assert.NotEmpty(t, config.LicenseURL)
 		// Don't allow underscore in plugin names - this would cause issues in remote packages
 		assert.NotContains(t, config.Name.IdentityString(), "_")
+	}
+}
+
+func TestPluginSourceConfig(t *testing.T) {
+	t.Parallel()
+	plugins := loadAllPlugins(t)
+	testedPaths := make(map[string]struct{}, len(plugins))
+	for _, p := range plugins {
+		sourceYAML := filepath.Join(filepath.Dir(filepath.Dir(p.Path)), "source.yaml")
+		// We don't need to check every version of a plugin, just the top-level plugin source.yaml
+		if _, ok := testedPaths[sourceYAML]; ok {
+			continue
+		}
+		testedPaths[sourceYAML] = struct{}{}
+		sourceYAMLBytes, err := os.ReadFile(sourceYAML)
+		require.NoErrorf(t, err, "failed to read plugin's source.yaml config: %q", sourceYAML)
+		config, err := source.NewConfig(bytes.NewReader(sourceYAMLBytes))
+		require.NoErrorf(t, err, "invalid plugin source config: %q", sourceYAML)
+		assert.NotEqual(t, "unknown", config.Source.Name())
 	}
 }
 
