@@ -15,4 +15,4 @@ registry:
       - com.salesforce.servicelibs:reactor-grpc-stub:1.2.4
       - io.projectreactor:reactor-core:3.5.4
       # Add direct dependency on newer protobuf
-      - com.google.protobuf:protobuf-java:4.31.1
+      - com.google.protobuf:protobuf-java:4.31.0
