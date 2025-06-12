@@ -3,7 +3,16 @@ name: buf.build/community/salesforce-reactive-grpc
 plugin_version: v1.2.4
 source_url: https://github.com/salesforce/reactive-grpc
 description: Generates reactive programming bindings (RxJava, Reactor) for gRPC services.
+deps:
+  - plugin: buf.build/grpc/java:v1.73.0
 output_languages:
   - java
 spdx_license_id: BSD-3-Clause
 license_url: https://github.com/salesforce/reactive-grpc/blob/v1.2.4/LICENSE
+registry:
+  maven:
+    deps:
+      - com.salesforce.servicelibs:reactor-grpc-stub:1.2.4
+      - io.projectreactor:reactor-core:3.5.4
+      # Add direct dependency on newer protobuf
+      - com.google.protobuf:protobuf-java:4.31.1
