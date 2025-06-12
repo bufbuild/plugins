@@ -98,10 +98,7 @@ func (c *command) run() error {
 			return nil
 		}
 	}
-	limit := runtime.GOMAXPROCS(0)
-	if limit > maxLimit {
-		limit = maxLimit
-	}
+	limit := min(runtime.GOMAXPROCS(0), maxLimit)
 	var eg *errgroup.Group
 	eg, ctx = errgroup.WithContext(ctx)
 	eg.SetLimit(limit)
