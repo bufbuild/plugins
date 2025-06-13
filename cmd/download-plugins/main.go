@@ -125,7 +125,7 @@ func run() error {
 			return err
 		}
 		if !exists {
-			if err := downloadReleaseToDir(ctx, client.GitHub.Client(), pluginRelease, downloadDir); err != nil {
+			if err := downloadReleaseToDir(ctx, client.GitHub, pluginRelease, downloadDir); err != nil {
 				return err
 			}
 		}
@@ -166,7 +166,7 @@ func pluginExistsMatchingDigest(plugin release.PluginRelease, downloadDir string
 	return digest == plugin.PluginZipDigest, nil
 }
 
-func downloadReleaseToDir(ctx context.Context, client *http.Client, plugin release.PluginRelease, downloadDir string) error {
+func downloadReleaseToDir(ctx context.Context, client *github.Client, plugin release.PluginRelease, downloadDir string) error {
 	expectedDigest, err := parseDigest(plugin.PluginZipDigest)
 	if err != nil {
 		return fmt.Errorf("failed to parse digest for plugin: %w", err)
@@ -184,11 +184,11 @@ func downloadReleaseToDir(ctx context.Context, client *http.Client, plugin relea
 		}
 	}()
 	log.Printf("downloading: %v", plugin.URL)
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, plugin.URL, nil)
+	req, err := client.NewRequest(http.MethodGet, plugin.URL, nil)
 	if err != nil {
 		return fmt.Errorf("failed to make HTTP request: %w", err)
 	}
-	resp, err := client.Do(req)
+	resp, err := client.BareDo(ctx, req)
 	if err != nil {
 		return fmt.Errorf("failed to perform HTTP request: %w", err)
 	}
@@ -197,9 +197,6 @@ func downloadReleaseToDir(ctx context.Context, client *http.Client, plugin relea
 			log.Printf("failed to close response: %v", err)
 		}
 	}()
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("failed to download %s: %s", plugin.URL, resp.Status)
-	}
 	digest := sha256.New()
 	w := io.MultiWriter(f, digest)
 	if _, err := io.Copy(w, resp.Body); err != nil {
