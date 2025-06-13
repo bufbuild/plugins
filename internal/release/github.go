@@ -14,9 +14,8 @@ import (
 	"time"
 
 	"aead.dev/minisign"
-	"github.com/google/go-github/v66/github"
+	"github.com/google/go-github/v72/github"
 	"github.com/hashicorp/go-retryablehttp"
-	"golang.org/x/oauth2"
 )
 
 type GithubOwner string
@@ -34,21 +33,18 @@ type Client struct {
 }
 
 // NewClient returns a new HTTP client which can be used to perform actions on GitHub releases.
-func NewClient(ctx context.Context) *Client {
+func NewClient() *Client {
 	var httpClient *http.Client
+	client := retryablehttp.NewClient()
+	client.Logger = nil
+	httpClient = client.StandardClient()
+	ghClient := github.NewClient(httpClient)
 	if ghToken := os.Getenv("GITHUB_TOKEN"); ghToken != "" {
 		log.Printf("creating authenticated client with GITHUB_TOKEN")
-		ts := oauth2.StaticTokenSource(
-			&oauth2.Token{AccessToken: ghToken},
-		)
-		httpClient = oauth2.NewClient(ctx, ts)
-	} else {
-		client := retryablehttp.NewClient()
-		client.Logger = nil
-		httpClient = client.StandardClient()
+		ghClient = ghClient.WithAuthToken(ghToken)
 	}
 	return &Client{
-		GitHub: github.NewClient(httpClient),
+		GitHub: ghClient,
 	}
 }
 

@@ -59,7 +59,7 @@ func newRootCommand(name string) *appcmd.Command {
 }
 
 func run(ctx context.Context, container appext.Container, flags *flags) error {
-	client := release.NewClient(ctx)
+	client := release.NewClient()
 	latestRelease, err := client.GetLatestRelease(ctx, release.GithubOwnerBufbuild, release.GithubRepoPlugins)
 	if err != nil {
 		return fmt.Errorf("failed to determine latest %s/%s release: %w", release.GithubOwnerBufbuild, release.GithubRepoPlugins, err)

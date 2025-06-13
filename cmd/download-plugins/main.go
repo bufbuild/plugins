@@ -17,7 +17,7 @@ import (
 	"time"
 
 	"aead.dev/minisign"
-	"github.com/google/go-github/v66/github"
+	"github.com/google/go-github/v72/github"
 	"golang.org/x/mod/semver"
 
 	"github.com/bufbuild/plugins/internal/plugin"
@@ -57,8 +57,8 @@ func run() error {
 		return err
 	}
 
-	ctx := context.Background()
-	client := release.NewClient(ctx)
+	ctx := context.WithValue(context.Background(), github.SleepUntilPrimaryRateLimitResetWhenRateLimited, true)
+	client := release.NewClient()
 
 	publicKey, err := loadPublicKey(minisignPublicKey)
 	if err != nil {

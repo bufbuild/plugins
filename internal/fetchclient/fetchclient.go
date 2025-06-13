@@ -12,7 +12,7 @@ import (
 	"strings"
 
 	"buf.build/go/standard/xslices"
-	"github.com/google/go-github/v66/github"
+	"github.com/google/go-github/v72/github"
 	"github.com/hashicorp/go-retryablehttp"
 	"golang.org/x/mod/semver"
 	"golang.org/x/oauth2"
