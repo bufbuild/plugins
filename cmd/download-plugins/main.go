@@ -188,20 +188,12 @@ func downloadReleaseToDir(ctx context.Context, client *github.Client, plugin rel
 	if err != nil {
 		return fmt.Errorf("failed to make HTTP request: %w", err)
 	}
-	resp, err := client.BareDo(ctx, req)
-	if err != nil {
-		return fmt.Errorf("failed to perform HTTP request: %w", err)
-	}
-	defer func() {
-		if err := resp.Body.Close(); err != nil {
-			log.Printf("failed to close response: %v", err)
-		}
-	}()
 	digest := sha256.New()
 	w := io.MultiWriter(f, digest)
-	if _, err := io.Copy(w, resp.Body); err != nil {
-		return fmt.Errorf("failed to copy file: %w", err)
+	if _, err := client.Do(ctx, req, w); err != nil {
+		return fmt.Errorf("failed to perform HTTP request: %w", err)
 	}
+
 	sha256Digest := hex.EncodeToString(digest.Sum(nil))
 	if sha256Digest != expectedDigest {
 		return fmt.Errorf("checksum mismatch for %s: %q (expected) != %q (actual)", plugin.URL, expectedDigest, sha256Digest)
