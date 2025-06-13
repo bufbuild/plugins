@@ -9,7 +9,7 @@ require (
 	buf.build/go/standard v0.1.0
 	github.com/bufbuild/buf v1.54.0
 	github.com/google/go-containerregistry v0.20.5
-	github.com/google/go-github/v66 v66.0.0
+	github.com/google/go-github/v72 v72.0.0
 	github.com/hashicorp/go-retryablehttp v0.7.7
 	github.com/spf13/pflag v1.0.6
 	github.com/stretchr/testify v1.10.0

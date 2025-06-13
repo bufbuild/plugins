@@ -25,7 +25,7 @@ import (
 	githubkeychain "github.com/google/go-containerregistry/pkg/authn/github"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
-	"github.com/google/go-github/v66/github"
+	"github.com/google/go-github/v72/github"
 	"golang.org/x/mod/semver"
 
 	"github.com/bufbuild/plugins/internal/plugin"
@@ -96,7 +96,7 @@ func (c *command) run() error {
 			log.Printf("failed to remove %q: %v", tmpDir, err)
 		}
 	}()
-	client := release.NewClient(ctx)
+	client := release.NewClient()
 	latestRelease, err := client.GetLatestRelease(ctx, c.githubReleaseOwner, release.GithubRepoPlugins)
 	if err != nil && !errors.Is(err, release.ErrNotFound) {
 		return fmt.Errorf("failed to retrieve latest release: %w", err)
