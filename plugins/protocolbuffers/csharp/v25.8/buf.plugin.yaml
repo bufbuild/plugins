@@ -1,0 +1,18 @@
+version: v1
+name: buf.build/protocolbuffers/csharp
+plugin_version: v25.8
+source_url: https://github.com/protocolbuffers/protobuf
+description: Base types for C#. Generates message and enum types.
+output_languages:
+  - csharp
+spdx_license_id: BSD-3-Clause
+license_url: https://github.com/protocolbuffers/protobuf/blob/v25.8/LICENSE
+registry:
+  opts:
+    - base_namespace=
+  nuget:
+    target_frameworks:
+      - netstandard2.0
+    deps:
+      - name: Google.Protobuf
+        version: 3.25.8
