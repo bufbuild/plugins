@@ -7,10 +7,10 @@ require (
 	buf.build/go/app v0.1.0
 	buf.build/go/interrupt v1.1.0
 	buf.build/go/standard v0.1.0
-	github.com/bufbuild/buf v1.54.0
+	github.com/bufbuild/buf v1.55.1
 	github.com/google/go-containerregistry v0.20.6
 	github.com/google/go-github/v72 v72.0.0
-	github.com/hashicorp/go-retryablehttp v0.7.7
+	github.com/hashicorp/go-retryablehttp v0.7.8
 	github.com/spf13/pflag v1.0.6
 	github.com/stretchr/testify v1.10.0
 	golang.org/x/mod v0.25.0
@@ -40,6 +40,6 @@ require (
 	github.com/sirupsen/logrus v1.9.3 // indirect
 	github.com/spf13/cobra v1.9.1 // indirect
 	github.com/vbatts/tar-split v0.12.1 // indirect
-	golang.org/x/crypto v0.38.0 // indirect
+	golang.org/x/crypto v0.39.0 // indirect
 	golang.org/x/sys v0.33.0 // indirect
 )
