@@ -4,7 +4,7 @@ WORKDIR /app
 RUN python -mvenv /app
 ADD /requirements.txt requirements.txt
 RUN . ./bin/activate \
- && pip install --no-cache-dir "connect-python[compiler]" \
+ && pip install --no-cache-dir -r requirements.txt \
  && pip uninstall --yes pip setuptools \
  && rm -f requirements.txt bin/activate.fish bin/activate.csh bin/Activate.ps1 \
  && rm -f bin/protoc-gen-connect_python
