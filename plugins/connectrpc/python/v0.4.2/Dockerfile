@@ -1,0 +1,15 @@
+# syntax=docker/dockerfile:1.15
+FROM python:3.11.13-bookworm AS build
+WORKDIR /app
+RUN python -mvenv /app
+ADD /requirements.txt requirements.txt
+RUN . ./bin/activate \
+ && pip install --no-cache-dir "connect-python[compiler]" \
+ && pip uninstall --yes pip setuptools \
+ && rm -f requirements.txt bin/activate.fish bin/activate.csh bin/Activate.ps1 \
+ && rm -f bin/protoc-gen-connect_python
+
+FROM python:3.11.13-bookworm
+COPY --from=build --link /app /app
+USER nobody
+ENTRYPOINT [ "/app/bin/protoc-gen-connect_python" ]

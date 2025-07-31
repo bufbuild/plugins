@@ -1,0 +1,4 @@
+source:
+  github:
+    owner: connectrpc
+    repository: connect-python
