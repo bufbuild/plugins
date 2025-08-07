@@ -5,7 +5,7 @@ ARG TARGETOS TARGETARCH
 ENV CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH
 
 RUN --mount=type=cache,target=/go/pkg/mod \
-    go install -ldflags "-s -w" -trimpath github.com/sudorandom/protoc-gen-connect-openapi@v0.19.0 \
+    go install -ldflags "-s -w" -tags remote_plugin -trimpath github.com/sudorandom/protoc-gen-connect-openapi@v0.19.1 \
  && mv /go/bin/${GOOS}_${GOARCH}/protoc-gen-connect-openapi /go/bin/protoc-gen-connect-openapi || true
 
 FROM scratch
