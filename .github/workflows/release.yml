@@ -49,7 +49,7 @@ jobs:
           rm -fv minisign.key
       - name: Generate Github Token
         id: generate_issues_token
-        uses: actions/create-github-app-token@df432ceedc7162793a195dd1713ff69aefc7379e # v2.0.6
+        uses: actions/create-github-app-token@0f859bf9e69e887678d5bbfbee594437cb440ffe # v2.1.0
         if: ${{ failure() }}
         with:
           app-id: ${{ secrets.BUFBUILD_ISSUE_CREATOR_APP_ID }}
