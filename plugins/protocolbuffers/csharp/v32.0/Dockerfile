@@ -1,0 +1,36 @@
+# syntax=docker/dockerfile:1.17
+FROM debian:bookworm-20250811 AS build
+
+ARG TARGETARCH
+ARG BAZEL_OPTS="--host_jvm_args=-Djava.net.preferIPv4Stack=true"
+
+RUN apt-get update \
+ && apt-get install -y curl git cmake build-essential autoconf clang libc++-dev libtool pkg-config unzip zip
+RUN curl -fsSL -o /usr/local/bin/bazelisk https://github.com/bazelbuild/bazelisk/releases/download/v1.25.0/bazelisk-linux-${TARGETARCH} \
+ && chmod +x /usr/local/bin/bazelisk \
+ && mkdir /build \
+ && chown nobody:nogroup /build \
+ && usermod --home /build nobody
+
+USER nobody
+WORKDIR /build
+RUN curl -fsSL -o protoc.tar.gz https://github.com/protocolbuffers/protobuf/releases/download/v32.0/protobuf-32.0.tar.gz \
+ && tar --strip-components=1 -zxf protoc.tar.gz \
+ && rm protoc.tar.gz
+RUN bazelisk ${BAZEL_OPTS} build '//:protoc_lib'
+COPY --link BUILD csharp.cc plugins/
+RUN bazelisk ${BAZEL_OPTS} build '//plugins:protoc-gen-csharp.stripped'
+
+FROM mcr.microsoft.com/dotnet/sdk:8.0.413-bookworm-slim@sha256:7fd287cec03e027e39be13fb06ca1347f1338c7a6ab4ad305d94d91852693f70 AS dotnetrestore
+WORKDIR /build
+COPY --link ./build.csproj /build/build.csproj
+RUN mkdir /nuget && dotnet restore --packages /nuget
+
+FROM gcr.io/distroless/cc-debian12:latest@sha256:00cc20b928afcc8296b72525fa68f39ab332f758c4f2a9e8d90845d3e06f1dc4 AS base
+
+FROM scratch
+COPY --from=base --link / /
+COPY --link --from=dotnetrestore /nuget /nuget
+COPY --from=build --link --chmod=0755 /build/bazel-bin/plugins/protoc-gen-csharp .
+USER nobody
+ENTRYPOINT ["/protoc-gen-csharp"]
