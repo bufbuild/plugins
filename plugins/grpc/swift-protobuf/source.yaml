@@ -1,6 +1,4 @@
 source:
   github:
-    # https://github.com/grpc/grpc-swift-protobuf had the initial v2 plugin version,
-    # which then moved to https://github.com/grpc/grpc-swift-2.
     owner: grpc
-    repository: grpc-swift-2
+    repository: grpc-swift-protobuf
