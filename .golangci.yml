@@ -13,6 +13,7 @@ linters:
     - maintidx          # covered by gocyclo
     - mnd               # some unnamed constants are okay
     - nlreturn          # generous whitespace violates house style
+    - noinlineerr       # excess scope violates house style
     - rowserrcheck      # no SQL code in plugins
     - sqlclosecheck     # no SQL code in plugins
     - testpackage       # internal tests are fine
@@ -20,6 +21,7 @@ linters:
     - wastedassign      # not supported with generics
     - wrapcheck         # don't _always_ need to wrap errors
     - wsl               # generous whitespace violates house style
+    - wsl_v5            # generous whitespace violates house style
   settings:
     errcheck:
       check-type-assertions: true

@@ -28,10 +28,11 @@ import (
 
 // Plugin represents metadata (and filesystem path) information about a plugin.
 type Plugin struct {
-	Path    string `yaml:"-"`
-	Relpath string `yaml:"-"`
 	// Parsed external yaml config
 	bufremotepluginconfig.ExternalConfig `yaml:"-"`
+
+	Path    string `yaml:"-"`
+	Relpath string `yaml:"-"`
 	// Plugin identity (parsed from ExternalConfig.Name).
 	Identity bufremotepluginref.PluginIdentity `yaml:"-"`
 	// For callers that need git commit info - ensure we only calculate it once.
@@ -386,8 +387,8 @@ func filterPluginPaths(filePaths []string, includeTestdata bool) []string {
 			)
 			// calculate the file path relative to the containing plugins dir
 			var relativeFilepath string
-			if strings.HasPrefix(filePath, pluginsDir) {
-				relativeFilepath = strings.TrimPrefix(filePath, pluginsDir)
+			if after, ok := strings.CutPrefix(filePath, pluginsDir); ok {
+				relativeFilepath = after
 			} else if includeTestdata && strings.HasPrefix(filePath, testdataPluginsDir) {
 				relativeFilepath = strings.TrimPrefix(filePath, testdataPluginsDir)
 			}
