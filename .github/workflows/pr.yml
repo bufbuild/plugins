@@ -31,7 +31,7 @@ jobs:
     - name: set PLUGINS from workflow inputs
       if: ${{ inputs.plugins }}
       run: echo "PLUGINS=${{ inputs.plugins }}" >> $GITHUB_ENV
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
       with:
         fetch-depth: 0
     - name: Install Go
