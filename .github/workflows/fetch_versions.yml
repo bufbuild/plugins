@@ -31,7 +31,7 @@ jobs:
       - name: Install Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.24'
+          go-version: '1.25'
           check-latest: true
       - name: Get buf version
         shell: bash

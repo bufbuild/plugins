@@ -28,10 +28,11 @@ import (
 
 // Plugin represents metadata (and filesystem path) information about a plugin.
 type Plugin struct {
-	Path    string `yaml:"-"`
-	Relpath string `yaml:"-"`
 	// Parsed external yaml config
 	bufremotepluginconfig.ExternalConfig `yaml:"-"`
+
+	Path    string `yaml:"-"`
+	Relpath string `yaml:"-"`
 	// Plugin identity (parsed from ExternalConfig.Name).
 	Identity bufremotepluginref.PluginIdentity `yaml:"-"`
 	// For callers that need git commit info - ensure we only calculate it once.
