@@ -9,7 +9,7 @@ DOCKER_BUILDER := bufbuild-plugins
 DOCKER_CACHE_DIR ?= $(TMP)/dockercache
 GO ?= go
 GOLANGCI_LINT_VERSION ?= v2.4.0
-GOLANGCI_LINT := $(TMP)/golangici-lint-$(GOLANGCI_LINT_VERSION)
+GOLANGCI_LINT := $(TMP)/golangci-lint-$(GOLANGCI_LINT_VERSION)
 
 GO_TEST_FLAGS ?= -race -count=1
 
@@ -52,7 +52,7 @@ lintfix: $(GOLANGCI_LINT)
 
 $(GOLANGCI_LINT):
 	GOBIN=$(abspath $(TMP)) $(GO) install -ldflags="-s -w" github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$(GOLANGCI_LINT_VERSION)
-	mv $(TMP)/golangci-lint $@
+	ln -s $(abspath $(TMP))/golangci-lint $@
 
 .PHONY: dockerpush
 dockerpush:
