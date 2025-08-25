@@ -52,7 +52,7 @@ lintfix: $(GOLANGCI_LINT)
 
 $(GOLANGCI_LINT):
 	GOBIN=$(abspath $(TMP)) $(GO) install -ldflags="-s -w" github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$(GOLANGCI_LINT_VERSION)
-	ln -s $(abspath $(TMP))/golangci-lint $@
+	ln -sf $(abspath $(TMP))/golangci-lint $@
 
 .PHONY: dockerpush
 dockerpush:
