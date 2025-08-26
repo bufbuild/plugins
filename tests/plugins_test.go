@@ -388,6 +388,39 @@ func TestNugetDependencies(t *testing.T) {
 	}
 }
 
+func TestPyPIDependencies(t *testing.T) {
+	t.Parallel()
+	ctx := t.Context()
+	plugins := loadFilteredPlugins(t)
+	for _, p := range plugins {
+		if p.Registry.Python == nil || len(p.Registry.Python.Deps) == 0 {
+			continue
+		}
+		// https://docs.astral.sh/uv/getting-started/installation/
+		_, err := exec.LookPath("uv")
+		require.NoError(t, err, "uv must be installed to run this test")
+		t.Run(fmt.Sprintf("%s/%s@%s", p.Identity.Owner(), p.Identity.Plugin(), p.PluginVersion), func(t *testing.T) {
+			t.Parallel()
+			tmpdir := t.TempDir()
+
+			uvInitCmd := exec.CommandContext(ctx, "uv", "init")
+			uvInitCmd.Dir = tmpdir
+			output, err := uvInitCmd.CombinedOutput()
+			require.NoErrorf(t, err, "uv init failed - output: %s", string(output))
+
+			// Make sure we can add all dependencies with `uv add`, which will lookup
+			// the dependency specifier from pypi and make sure that we can resolve
+			// versions.
+			for _, dep := range p.Registry.Python.Deps {
+				uvInitCmd := exec.CommandContext(ctx, "uv", "add", dep)
+				uvInitCmd.Dir = tmpdir
+				output, err := uvInitCmd.CombinedOutput()
+				require.NoErrorf(t, err, "uv add failed - output: %s", string(output))
+			}
+		})
+	}
+}
+
 func runPluginWithImage(ctx context.Context, t *testing.T, basedir string, pluginMeta *plugin.Plugin, image string, goPkgPrefix string) string {
 	t.Helper()
 	gendir := filepath.Join(basedir, "gen")
