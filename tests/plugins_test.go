@@ -391,7 +391,7 @@ func TestNugetDependencies(t *testing.T) {
 func TestPyPIDependencies(t *testing.T) {
 	t.Parallel()
 	ctx := t.Context()
-	plugins := loadAllPlugins(t)
+	plugins := loadFilteredPlugins(t)
 	for _, p := range plugins {
 		if p.Registry.Python == nil || len(p.Registry.Python.Deps) == 0 {
 			continue
