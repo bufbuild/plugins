@@ -240,9 +240,6 @@ func (c *Client) fetchGoProxy(ctx context.Context, name string, ignoreVersions m
 }
 
 func (c *Client) fetchNPMRegistry(ctx context.Context, name string, ignoreVersions map[string]struct{}) (string, error) {
-	if len(ignoreVersions) > 0 {
-		return "", errors.New("ignore_versions not supported yet for NPM sources")
-	}
 	request, err := http.NewRequestWithContext(
 		ctx,
 		http.MethodGet,
@@ -262,14 +259,28 @@ func (c *Client) fetchNPMRegistry(ctx context.Context, name string, ignoreVersio
 	}
 
 	var data struct {
-		DistTags struct {
-			Latest string `json:"latest"`
-		} `json:"dist-tags"` //nolint:tagliatelle
+		Versions map[string]any `json:"versions"`
 	}
 	if err := json.NewDecoder(response.Body).Decode(&data); err != nil {
 		return "", err
 	}
-	return data.DistTags.Latest, nil
+	latestVersion := ""
+	for version := range data.Versions {
+		semverVersion, ok := ensureSemverPrefix(version)
+		if !ok {
+			continue
+		}
+		if _, ignored := ignoreVersions[semverVersion]; ignored {
+			continue
+		}
+		if latestVersion == "" || semver.Compare(latestVersion, semverVersion) < 0 {
+			latestVersion = semverVersion
+		}
+	}
+	if latestVersion == "" {
+		return "", errors.New("no versions found")
+	}
+	return latestVersion, nil
 }
 
 func (c *Client) fetchMaven(
