@@ -1,3 +1,7 @@
 source:
+  ignore_versions:
+    # Ignored until release assets are published.
+    # Ref: https://github.com/grpc/grpc-web/issues/1495
+    - v2.0.0
   npm_registry:
     name: grpc-web
