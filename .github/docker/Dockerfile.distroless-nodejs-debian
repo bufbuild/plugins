@@ -1,3 +1,3 @@
-FROM gcr.io/distroless/nodejs22-debian12:latest@sha256:4c6848a24760c190338d20c3fd2e987431f8fe05c4067a114801cb66ca0018a1
+FROM gcr.io/distroless/nodejs22-debian12:latest@sha256:355fcfe4978098f7411a7574877701e9ed793042c60aaddcd10100226a891abd
 
 CMD echo this is a dummy file used to automate dependency upgrades for plugins
