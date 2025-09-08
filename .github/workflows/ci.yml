@@ -41,7 +41,7 @@ jobs:
         main-branch-name: ${{ github.ref_name }}
         workflow-id: 'ci.yml'
     - name: Install Go
-      uses: actions/setup-go@v5
+      uses: actions/setup-go@v6
       with:
         go-version: '1.25'
         check-latest: true
