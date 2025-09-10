@@ -1,0 +1,24 @@
+version: v1
+name: buf.build/connectrpc/query-es
+plugin_version: v2.2.0
+source_url: https://github.com/connectrpc/connect-query-es
+integration_guide_url: https://connectrpc.com/docs/web/query/getting-started
+description: Generates stubs for calling Connect RPCs with TanStack Query.
+deps:
+  - plugin: buf.build/bufbuild/es:v2.7.0
+output_languages:
+  - javascript
+  - typescript
+registry:
+  opts:
+    - import_extension=js
+  npm:
+    import_style: module
+    rewrite_import_path_suffix: connectquery.js
+    deps:
+      - package: '@connectrpc/connect-query'
+        version: ^2.2.0
+      - package: '@bufbuild/protobuf'
+        version: ^2.7.0
+spdx_license_id: Apache-2.0
+license_url: https://github.com/connectrpc/connect-query-es/blob/v2.2.0/LICENSE
