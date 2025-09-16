@@ -1,3 +1,6 @@
 source:
+  ignore_versions:
+    # Published to NPM but no corresponding GitHub tag or release assets.
+    - v2.0.2
   npm_registry:
     name: grpc-web
