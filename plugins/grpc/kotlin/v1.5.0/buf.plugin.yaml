@@ -5,8 +5,8 @@ source_url: https://github.com/grpc/grpc-kotlin
 integration_guide_url: https://grpc.io/docs/languages/kotlin/quickstart
 description: Generates Kotlin client and server stubs for the gRPC framework.
 deps:
-  - plugin: buf.build/grpc/java:v1.72.0
-  - plugin: buf.build/protocolbuffers/kotlin:v30.2
+  - plugin: buf.build/grpc/java:v1.75.0
+  - plugin: buf.build/protocolbuffers/kotlin:v32.0
 output_languages:
   - kotlin
 spdx_license_id: Apache-2.0
@@ -18,7 +18,7 @@ registry:
         version: 1.8.22
     deps:
       - io.grpc:grpc-kotlin-stub:1.5.0
-      - org.jetbrains.kotlinx:kotlinx-coroutines-core-jvm:1.7.3
+      - org.jetbrains.kotlinx:kotlinx-coroutines-core-jvm:1.10.2
     additional_runtimes:
       - name: lite
         opts: [lite]
