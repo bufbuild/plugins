@@ -15,7 +15,7 @@ registry:
   maven:
     compiler:
       kotlin:
-        version: 1.8.22
+        version: 2.2.20
     deps:
       - io.grpc:grpc-kotlin-stub:1.5.0
       - org.jetbrains.kotlinx:kotlinx-coroutines-core-jvm:1.10.2
