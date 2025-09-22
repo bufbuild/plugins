@@ -5,7 +5,7 @@ source_url: https://github.com/apple/servicetalk
 integration_guide_url: https://docs.servicetalk.io/
 description: A networking framework that evolves with your application.
 deps:
-  - plugin: buf.build/protocolbuffers/java:v32.0
+  - plugin: buf.build/protocolbuffers/java:v32.1
 output_languages:
   - java
 spdx_license_id: Apache-2.0
@@ -17,6 +17,6 @@ registry:
       - io.servicetalk:servicetalk-grpc-api:0.42.60
       - io.servicetalk:servicetalk-grpc-protobuf:0.42.60
       # Add direct dependency on newer protobuf
-      - com.google.protobuf:protobuf-java:4.32.0
+      - com.google.protobuf:protobuf-java:4.32.1
   opts:
     - javaDocs=false
