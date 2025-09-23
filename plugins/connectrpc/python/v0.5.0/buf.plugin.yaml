@@ -6,13 +6,13 @@ description: Generates client and server stubs for Connect Python. Compatible wi
 spdx_license_id: Apache-2.0
 license_url: https://github.com/connectrpc/connect-python/blob/v0.5.0/LICENSE
 deps:
-  - plugin: buf.build/protocolbuffers/python:v31.1
+  - plugin: buf.build/protocolbuffers/python:v32.1
 output_languages:
   - python
 registry:
   python:
     package_type: "runtime"
-    # https://github.com/connectrpc/connect-python/blob/v0.5.0/pyproject.toml#L31
+    # https://github.com/connectrpc/connect-python/blob/v0.5.0/protoc-gen-connect-python/pyproject.toml#L11
     requires_python: ">=3.10"
     deps:
       # https://pypi.org/project/connect-python/

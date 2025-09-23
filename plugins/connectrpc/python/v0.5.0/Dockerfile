@@ -2,13 +2,12 @@
 FROM python:3.11.13-bookworm AS build
 WORKDIR /app
 RUN python -mvenv /app
-ADD /requirements.txt requirements.txt
 RUN . ./bin/activate \
- && pip install --no-cache-dir -r requirements.txt \
+ && pip install --no-cache-dir protoc-gen-connect-python==0.5.0 \
  && pip uninstall --yes pip setuptools \
- && rm -f requirements.txt bin/activate.fish bin/activate.csh bin/Activate.ps1
+ && rm -f bin/activate.fish bin/activate.csh bin/Activate.ps1
 
 FROM python:3.11.13-bookworm
 COPY --from=build --link /app /app
 USER nobody
-ENTRYPOINT [ "/app/bin/protoc-gen-connect_python" ]
+ENTRYPOINT [ "/app/bin/protoc-gen-connect-python" ]
