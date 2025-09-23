@@ -7,7 +7,10 @@ RUN . ./bin/activate \
  && pip uninstall --yes pip setuptools \
  && rm -f bin/activate.fish bin/activate.csh bin/Activate.ps1
 
-FROM python:3.11.13-bookworm
-COPY --from=build --link /app /app
+FROM gcr.io/distroless/python3-debian12:latest@sha256:a0ded8676ed10e194cce1b8fdf9171672cda95ad1cabba4ece7b01f4db2e7471 AS base
+
+FROM scratch
+COPY --link --from=base / /
+COPY --link --from=build --chmod=0755 /app /app
 USER nobody
 ENTRYPOINT [ "/app/bin/protoc-gen-connect-python" ]
