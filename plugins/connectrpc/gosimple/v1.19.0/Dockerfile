@@ -1,11 +1,11 @@
-# syntax=docker/dockerfile:1.17
+# syntax=docker/dockerfile:1.18
 FROM --platform=$BUILDPLATFORM golang:1.25.1-bookworm AS build
 
 ARG TARGETOS TARGETARCH
 ENV CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH
 
 RUN --mount=type=cache,target=/go/pkg/mod \
-    go install -ldflags="-s -w" -trimpath connectrpc.com/connect/cmd/protoc-gen-connect-go@main \
+    go install -ldflags="-s -w" -trimpath connectrpc.com/connect/cmd/protoc-gen-connect-go@v1.19.0 \
  && mv /go/bin/${GOOS}_${GOARCH}/protoc-gen-connect-go /go/bin/protoc-gen-connect-go || true
 
 FROM scratch
