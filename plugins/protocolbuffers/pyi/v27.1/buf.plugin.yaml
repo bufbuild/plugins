@@ -16,4 +16,4 @@ registry:
       # https://pypi.org/project/protobuf/
       - "protobuf>3.20"
       # https://pypi.org/project/types-protobuf/
-      - "types-protobuf~=5.27"
+      - "types-protobuf"
