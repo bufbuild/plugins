@@ -1,0 +1,21 @@
+version: v1
+name: buf.build/connectrpc/gosimple
+plugin_version: v1.19.1
+source_url: https://github.com/connectrpc/connect-go
+integration_guide_url: https://connectrpc.com/docs/go/getting-started
+description: Generates client and server stubs with simple function signatures for connectrpc.com/connect. Compatible with the gRPC, gRPC-Web, and Connect RPC protocols.
+deps:
+  - plugin: buf.build/protocolbuffers/go:v1.36.9
+output_languages:
+  - go
+registry:
+  go:
+    min_version: "1.24"
+    deps:
+      - module: connectrpc.com/connect
+        version: v1.19.1
+  opts:
+    - paths=source_relative
+    - simple
+spdx_license_id: Apache-2.0
+license_url: https://github.com/connectrpc/connect-go/blob/v1.19.1/LICENSE
