@@ -2,10 +2,11 @@ version: v1
 name: buf.build/bufbuild/validate-go
 plugin_version: v1.0.1
 source_url: https://github.com/bufbuild/protoc-gen-validate
-description: Generates Go code to validate Protobuf messages using protoc-gen-validate constraints.
+description: Deprecated in favor of https://github.com/bufbuild/protovalidate-go which does not require code generation.
 deps:
   - plugin: buf.build/protocolbuffers/go:v1.30.0
 output_languages:
   - go
 spdx_license_id: Apache-2.0
 license_url: https://github.com/bufbuild/protoc-gen-validate/blob/v1.0.1/LICENSE
+deprecated: true
