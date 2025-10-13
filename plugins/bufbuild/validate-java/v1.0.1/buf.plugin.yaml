@@ -2,7 +2,7 @@ version: v1
 name: buf.build/bufbuild/validate-java
 plugin_version: v1.0.1
 source_url: https://github.com/bufbuild/protoc-gen-validate
-description: Generates Java code to validate Protobuf messages using protoc-gen-validate constraints.
+description: Deprecated in favor of https://github.com/bufbuild/protovalidate-java which does not require code generation.
 deps:
   - plugin: buf.build/protocolbuffers/java:v23.0
 output_languages:
@@ -13,3 +13,4 @@ registry:
   maven:
     deps:
       - build.buf.protoc-gen-validate:pgv-java-stub:1.0.1
+deprecated: true
