@@ -1,3 +1,3 @@
-FROM debian:bookworm-20250929
+FROM debian:bookworm-20251020
 
 CMD echo this is a dummy file used to automate dependency upgrades for plugins
