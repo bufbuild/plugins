@@ -1,0 +1,19 @@
+# syntax=docker/dockerfile:1.19
+FROM swift:6.2.0-bookworm AS build
+
+RUN apt-get update \
+ && apt-get install -y libstdc++-12-dev unzip
+COPY --link extramoduleimports.patch /app/extramoduleimports.patch
+WORKDIR /app
+RUN git clone --depth 1 --branch 1.33.1 https://github.com/apple/swift-protobuf --recursive
+WORKDIR /app/swift-protobuf
+RUN git apply /app/extramoduleimports.patch
+RUN swift build -c release --static-swift-stdlib -Xlinker -s
+
+FROM gcr.io/distroless/cc-debian12:latest@sha256:0000f9dc0290f8eaf0ecceafbc35e803649087ea7879570fbc78372df7ac649b AS base
+
+FROM scratch
+COPY --link --from=base / /
+COPY --link --from=build /app/swift-protobuf/.build/release/protoc-gen-swift .
+USER nobody
+ENTRYPOINT [ "/protoc-gen-swift" ]
