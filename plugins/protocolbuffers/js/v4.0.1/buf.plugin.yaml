@@ -1,0 +1,18 @@
+version: v1
+name: buf.build/protocolbuffers/js
+plugin_version: v4.0.1
+source_url: https://github.com/protocolbuffers/protobuf-javascript
+description: Base types for JavaScript. Generates message and enum types.
+output_languages:
+  - javascript
+registry:
+  npm:
+    deps:
+      - package: 'google-protobuf'
+        version: ^4.0.1
+    import_style: commonjs
+  opts:
+    - import_style=commonjs
+    - binary
+spdx_license_id: BSD-3-Clause
+license_url: https://github.com/protocolbuffers/protobuf-javascript/blob/v4.0.1/LICENSE.md
