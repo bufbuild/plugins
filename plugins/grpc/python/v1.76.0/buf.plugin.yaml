@@ -16,4 +16,4 @@ registry:
     requires_python: ">=3.9"
     deps:
       # https://pypi.org/project/grpcio/
-      - "grpcio"
+      - "grpcio>=1.76.0"
