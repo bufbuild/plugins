@@ -16,9 +16,9 @@ registry:
       # https://github.com/neoeinstein/protoc-gen-prost/blob/protoc-gen-tonic-v0.5.0/protoc-gen-tonic/Cargo.toml#L29
       # https://github.com/neoeinstein/protoc-gen-prost/blob/protoc-gen-tonic-v0.5.0/Cargo.toml#L19
       - name: "tonic"
-        req: "0.12.0"
-        # https://github.com/hyperium/tonic/blob/v0.12.0/tonic/Cargo.toml#L29
+        req: "0.14.1"
+        # https://github.com/hyperium/tonic/blob/v0.14.1/tonic/Cargo.toml#L27
         default_features: true
-  # https://github.com/neoeinstein/protoc-gen-prost/blob/protoc-gen-tonic-v0.5.0/protoc-gen-tonic/README.md#options
+  # https://github.com/neoeinstein/protoc-gen-prost/tree/main/protoc-gen-tonic#options
   opts:
     - no_include=true

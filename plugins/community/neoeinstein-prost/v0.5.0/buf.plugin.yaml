@@ -14,13 +14,13 @@ registry:
       # Matching the versions of the prost crates used in this version of the plugin.
       # https://github.com/neoeinstein/protoc-gen-prost/blob/protoc-gen-prost-v0.5.0/Cargo.toml#L15
       - name: "prost"
-        req: "0.13.1"
-        # https://docs.rs/crate/prost/0.13.1/features
+        req: "0.14.1"
+        # https://docs.rs/crate/prost/0.14.1/features
         default_features: true
       # prost-types is necessary for any module using the WKTs.
       - name: "prost-types"
-        req: "0.13.1"
-        # https://docs.rs/crate/prost-types/0.13.1/features
+        req: "0.14.1"
+        # https://docs.rs/crate/prost-types/0.14.1/features
         default_features: true
   # https://github.com/neoeinstein/protoc-gen-prost/blob/protoc-gen-prost-v0.5.0/protoc-gen-prost/README.md#options
   opts:
