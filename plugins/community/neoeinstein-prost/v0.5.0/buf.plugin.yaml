@@ -28,5 +28,5 @@ registry:
     - file_descriptor_set
     # Change generation of bytes type fields into Rust `bytes::Bytes` types.
     # Dependency on `bytes` crate is added as a result of `default_features: true` on `prost` dependency.
-    # https://crates.io/crates/prost/0.13.1/dependencies
+    # https://crates.io/crates/prost/0.14.1/dependencies
     - bytes=.
