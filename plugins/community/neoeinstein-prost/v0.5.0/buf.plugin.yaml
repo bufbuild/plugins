@@ -30,3 +30,5 @@ registry:
     # Dependency on `bytes` crate is added as a result of `default_features: true` on `prost` dependency.
     # https://crates.io/crates/prost/0.14.1/dependencies
     - bytes=.
+    # Flatten the output dir, which matches the behavior of 0.4.0, and is expected by the BSR.
+    - flat_output_dir
