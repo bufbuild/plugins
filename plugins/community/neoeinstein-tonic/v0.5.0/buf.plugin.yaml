@@ -22,3 +22,5 @@ registry:
   # https://github.com/neoeinstein/protoc-gen-prost/tree/main/protoc-gen-tonic#options
   opts:
     - no_include=true
+    # Flatten the output dir, which matches the behavior of 0.4.0, and is expected by the BSR.
+    - flat_output_dir
