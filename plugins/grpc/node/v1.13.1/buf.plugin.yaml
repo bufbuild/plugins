@@ -1,0 +1,22 @@
+version: v1
+name: buf.build/grpc/node
+plugin_version: v1.13.1
+source_url: https://github.com/grpc/grpc-node
+integration_guide_url: https://grpc.io/docs/languages/node/quickstart
+description: Generates Node client and server stubs for the gRPC framework.
+deps:
+  - plugin: buf.build/protocolbuffers/js:v4.0.1
+output_languages:
+  - javascript
+registry:
+  npm:
+    import_style: commonjs
+    deps:
+    - package: '@grpc/grpc-js'
+      version: '^1.14.1'
+    - package: 'google-protobuf'
+      version: '^4.0.1'
+  opts:
+  - grpc_js
+spdx_license_id: Apache-2.0
+license_url: 'https://github.com/grpc/grpc-node/blob/grpc-tools%401.13.1/LICENSE'
