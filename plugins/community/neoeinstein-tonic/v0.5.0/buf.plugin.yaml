@@ -19,6 +19,8 @@ registry:
         req: "0.14.1"
         # https://github.com/hyperium/tonic/blob/v0.14.1/tonic/Cargo.toml#L27
         default_features: true
+      - name: "tonic-prost"
+        req: "0.14.1"
   # https://github.com/neoeinstein/protoc-gen-prost/tree/main/protoc-gen-tonic#options
   opts:
     - no_include=true
