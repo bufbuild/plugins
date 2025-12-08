@@ -1,6 +1,7 @@
 source:
   ignore_versions:
-    - v1.3.0 # Temporarily ignore version until a release is published.
+    # Temporarily ignore version until a release is published.
+    - v1.3.0
   github:
     owner: bufbuild
     repository: protoc-gen-validate

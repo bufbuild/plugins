@@ -11,6 +11,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
 	"time"
 
@@ -174,6 +175,12 @@ func run(ctx context.Context, root string) ([]createdPlugin, error) {
 				return nil, err
 			}
 			latestVersions[config.CacheKey()] = newVersion
+		}
+		// Some plugins share the same source but specify different ignore versions.
+		// Ensure we continue to only fetch the latest version once but still respect ignores.
+		if slices.Contains(config.Source.IgnoreVersions, newVersion) {
+			log.Printf("skipping source: %s: %v", config.Filename, newVersion)
+			continue
 		}
 		// example: plugins/grpc
 		pluginDir := filepath.Dir(config.Filename)
