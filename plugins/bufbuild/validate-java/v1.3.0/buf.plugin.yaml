@@ -1,0 +1,17 @@
+version: v1
+name: buf.build/bufbuild/validate-java
+plugin_version: v1.3.0
+source_url: https://github.com/bufbuild/protoc-gen-validate
+integration_guide_url: https://github.com/bufbuild/protoc-gen-validate/blob/main/docs.md#java
+description: Deprecated in favor of https://github.com/bufbuild/protovalidate-java which does not require code generation.
+deps:
+  - plugin: buf.build/protocolbuffers/java:v29.3
+output_languages:
+  - java
+spdx_license_id: Apache-2.0
+license_url: https://github.com/bufbuild/protoc-gen-validate/blob/v1.3.0/LICENSE
+registry:
+  maven:
+    deps:
+      - build.buf.protoc-gen-validate:pgv-java-stub:1.3.0
+deprecated: true
