@@ -5,7 +5,7 @@ source_url: https://github.com/bufbuild/protoc-gen-validate
 integration_guide_url: https://github.com/bufbuild/protoc-gen-validate/blob/main/docs.md#java
 description: Deprecated in favor of https://github.com/bufbuild/protovalidate-java which does not require code generation.
 deps:
-  - plugin: buf.build/protocolbuffers/java:v29.3
+  - plugin: buf.build/protocolbuffers/java:v33.2
 output_languages:
   - java
 spdx_license_id: Apache-2.0
