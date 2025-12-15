@@ -55,7 +55,7 @@ jobs:
         run: |
           go run ./internal/cmd/fetcher .
       - name: Archive plugin generated code
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: plugin-generated-code
           path: |
