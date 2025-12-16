@@ -67,6 +67,9 @@ func postProcessCreatedPlugins(ctx context.Context, plugins []createdPlugin) err
 		if err := recreateNPMPackageLock(ctx, plugin); err != nil {
 			return fmt.Errorf("failed to recreate package-lock.json for %s: %w", newPluginRef, err)
 		}
+		if err := recreateSwiftPackageResolved(ctx, plugin); err != nil {
+			return fmt.Errorf("failed to resolve Swift package for %s: %w", newPluginRef, err)
+		}
 	}
 	if err := runPluginTests(ctx, plugins); err != nil {
 		return fmt.Errorf("failed to run plugin tests: %w", err)
@@ -117,6 +120,85 @@ func recreateNPMPackageLock(ctx context.Context, plugin createdPlugin) error {
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	return cmd.Run()
+}
+
+// recreateSwiftPackageResolved resolves Swift package dependencies for plugins that use Swift packages.
+// It clones the git repository specified in the Dockerfile, runs 'swift package resolve',
+// and moves the generated Package.resolved file to the version directory.
+func recreateSwiftPackageResolved(ctx context.Context, plugin createdPlugin) (retErr error) {
+	versionDir := filepath.Join(plugin.pluginDir, plugin.newVersion)
+	packageResolved := filepath.Join(versionDir, "Package.resolved")
+	_, err := os.Stat(packageResolved)
+	if err != nil {
+		if !errors.Is(err, fs.ErrNotExist) {
+			return err
+		}
+		// no Package.resolved to update
+		return nil
+	}
+
+	// Read the Dockerfile to find the git clone command
+	dockerfile := filepath.Join(versionDir, "Dockerfile")
+	file, err := os.Open(dockerfile)
+	if err != nil {
+		return fmt.Errorf("failed to open Dockerfile: %w", err)
+	}
+	defer file.Close()
+
+	var gitCloneCmd string
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		line := scanner.Text()
+		if strings.Contains(line, "RUN git clone") {
+			// Strip the "RUN " prefix
+			gitCloneCmd = strings.TrimSpace(strings.TrimPrefix(line, "RUN "))
+			break
+		}
+	}
+	if err := scanner.Err(); err != nil {
+		return fmt.Errorf("failed to read Dockerfile: %w", err)
+	}
+	if gitCloneCmd == "" {
+		return errors.New("no 'RUN git clone' command found in Dockerfile")
+	}
+
+	log.Printf("resolving Swift package for %s/%s:%s", plugin.org, plugin.name, plugin.newVersion)
+
+	// Create a tempdir for cloning the repo
+	tmpDir, err := os.MkdirTemp("", "swift-repo-*")
+	if err != nil {
+		return fmt.Errorf("creating tmp dir: %w", err)
+	}
+	defer func() {
+		retErr = errors.Join(retErr, os.RemoveAll(tmpDir))
+	}()
+
+	// Execute the git clone command, cloning to the tmpDir
+	cmd := exec.CommandContext(ctx, "sh", "-c", gitCloneCmd, "--", tmpDir)
+	cmd.Dir = versionDir
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("failed to run git clone: %w", err)
+	}
+
+	// Run `swift package resolve` in the cloned directory
+	cmd = exec.CommandContext(ctx, "swift", "package", "resolve")
+	cmd.Dir = tmpDir
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("failed to run swift package resolve: %w", err)
+	}
+
+	// Move the Package.resolved file from the cloned directory to the version directory
+	src := filepath.Join(tmpDir, "Package.resolved")
+	dest := packageResolved
+	if err := os.Rename(src, dest); err != nil {
+		return fmt.Errorf("failed to move Package.resolved: %w", err)
+	}
+
+	return nil
 }
 
 // runPluginTests runs 'make test PLUGINS="org/name:v<new>"' in order to generate plugin.sum files.
