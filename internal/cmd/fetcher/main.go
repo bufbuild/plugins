@@ -125,7 +125,7 @@ func recreateNPMPackageLock(ctx context.Context, plugin createdPlugin) error {
 // recreateSwiftPackageResolved resolves Swift package dependencies for plugins that use Swift packages.
 // It clones the git repository specified in the Dockerfile, runs 'swift package resolve',
 // and moves the generated Package.resolved file to the version directory.
-func recreateSwiftPackageResolved(ctx context.Context, plugin createdPlugin) error {
+func recreateSwiftPackageResolved(ctx context.Context, plugin createdPlugin) (retErr error) {
 	versionDir := filepath.Join(plugin.pluginDir, plugin.newVersion)
 	packageResolved := filepath.Join(versionDir, "Package.resolved")
 	_, err := os.Stat(packageResolved)
@@ -164,8 +164,17 @@ func recreateSwiftPackageResolved(ctx context.Context, plugin createdPlugin) err
 
 	log.Printf("resolving Swift package for %s/%s:%s", plugin.org, plugin.name, plugin.newVersion)
 
-	// Execute the git clone command
-	cmd := exec.CommandContext(ctx, "sh", "-c", gitCloneCmd)
+	// Create a tempdir for cloning the repo
+	tmpDir, err := os.MkdirTemp("", "swift-repo-*")
+	if err != nil {
+		return fmt.Errorf("creating tmp dir: %w", err)
+	}
+	defer func() {
+		retErr = errors.Join(retErr, os.RemoveAll(tmpDir))
+	}()
+
+	// Execute the git clone command, cloning to the tmpDir
+	cmd := exec.CommandContext(ctx, "sh", "-c", gitCloneCmd, "--", tmpDir)
 	cmd.Dir = versionDir
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
@@ -173,25 +182,9 @@ func recreateSwiftPackageResolved(ctx context.Context, plugin createdPlugin) err
 		return fmt.Errorf("failed to run git clone: %w", err)
 	}
 
-	// Extract the repository name from the git clone command to determine the directory
-	parts := strings.Fields(gitCloneCmd)
-	var repoDir string
-	for _, part := range parts {
-		if strings.HasPrefix(part, "https://") {
-			// Extract directory name from URL (e.g., "repo.git" or "repo")
-			repoName := filepath.Base(part)
-			repoName = strings.TrimSuffix(repoName, ".git")
-			repoDir = filepath.Join(versionDir, repoName)
-			break
-		}
-	}
-	if repoDir == "" {
-		return errors.New("failed to determine repository directory from git clone command")
-	}
-
 	// Run `swift package resolve` in the cloned directory
 	cmd = exec.CommandContext(ctx, "swift", "package", "resolve")
-	cmd.Dir = repoDir
+	cmd.Dir = tmpDir
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {
@@ -199,15 +192,10 @@ func recreateSwiftPackageResolved(ctx context.Context, plugin createdPlugin) err
 	}
 
 	// Move the Package.resolved file from the cloned directory to the version directory
-	src := filepath.Join(repoDir, "Package.resolved")
+	src := filepath.Join(tmpDir, "Package.resolved")
 	dest := packageResolved
 	if err := os.Rename(src, dest); err != nil {
 		return fmt.Errorf("failed to move Package.resolved: %w", err)
-	}
-
-	// Remove the cloned repo
-	if err := os.RemoveAll(repoDir); err != nil {
-		return fmt.Errorf("removing cloned repo: %w", err)
 	}
 
 	return nil
