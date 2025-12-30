@@ -15,5 +15,5 @@ registry:
     deps:
       # https://github.com/nipunn1313/mypy-protobuf/tree/v4.0.0#requirements-to-run-typecheckers-on-stubs-generated-by-mypy-protobuf
       # > Earlier releases might work, but aren't tested.
-      - "types-protobuf >= 5.28"
-      - "protobuf >= 5.28.2"
+      - "types-protobuf >= 6.32"
+      - "protobuf >= 6.32"
