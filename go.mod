@@ -7,13 +7,13 @@ require (
 	buf.build/go/app v0.2.0
 	buf.build/go/interrupt v1.1.0
 	buf.build/go/standard v0.1.0
-	github.com/bufbuild/buf v1.62.1
+	github.com/bufbuild/buf v1.63.0
 	github.com/google/go-containerregistry v0.20.7
 	github.com/google/go-github/v72 v72.0.0
 	github.com/hashicorp/go-retryablehttp v0.7.8
 	github.com/spf13/pflag v1.0.10
 	github.com/stretchr/testify v1.11.1
-	golang.org/x/mod v0.31.0
+	golang.org/x/mod v0.32.0
 	golang.org/x/oauth2 v0.34.0
 	golang.org/x/sync v0.19.0
 	gopkg.in/yaml.v3 v3.0.1
