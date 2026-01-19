@@ -48,9 +48,14 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: |
-          go run ./cmd/download-plugins -since ${{ inputs.since }} downloads
+          go run ./cmd/download-plugins -all-archs -since ${{ inputs.since }} downloads
       - name: Upload To Release Bucket
-        run: gsutil -m rsync -r downloads gs://buf-plugins
+        run: |
+          mkdir -p downloads/amd64 downloads/arm64
+          find downloads -maxdepth 1 -name "*-arm64.zip" -exec mv {} downloads/arm64/ \;
+          find downloads -maxdepth 1 -name "*.zip" ! -name "*-arm64.zip" -exec mv {} downloads/amd64/ \;
+          gsutil -m rsync -r downloads/amd64 gs://buf-plugins
+          gsutil -m rsync -r downloads/arm64 gs://buf-plugins/arm64
       - name: Generate Github Token
         id: generate_issues_token
         uses: actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf # v2.2.1

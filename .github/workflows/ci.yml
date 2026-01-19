@@ -25,12 +25,11 @@ defaults:
     shell: bash
 
 jobs:
-  ci:
+  prepare:
     runs-on: ubuntu-latest-4-cores
+    outputs:
+      plugins: ${{ steps.set-plugins.outputs.plugins }}
     steps:
-    - name: set PLUGINS from workflow inputs
-      if: ${{ inputs.plugins }}
-      run: echo "PLUGINS=${{ inputs.plugins }}" >> $GITHUB_ENV
     - uses: actions/checkout@v6
       with:
         fetch-depth: 0
@@ -45,15 +44,37 @@ jobs:
       with:
         go-version: '1.25'
         check-latest: true
-    - name: Calculate changed plugins and set PLUGINS env var from last successful commit push
-      if: ${{ inputs.plugins == '' }}
+    - name: Calculate plugins to build
+      id: set-plugins
       env:
         BASE_REF: ${{ steps.last_successful_commit_push.outputs.base }}
       run: |
-        val=`go run ./internal/cmd/changed-plugins .`
-        if [[ -n "${val}" && -z "${PLUGINS}" ]]; then
-          echo "PLUGINS=${val}" >> $GITHUB_ENV
+        if [[ -n "${{ inputs.plugins }}" ]]; then
+          PLUGINS="${{ inputs.plugins }}"
+        else
+          PLUGINS=`go run ./internal/cmd/changed-plugins .`
         fi
+        echo "plugins=${PLUGINS}" >> $GITHUB_OUTPUT
+        echo "Building plugins: ${PLUGINS}"
+    - name: Run Go tests
+      run: go test -race -count=1 ./...
+
+  build:
+    needs: prepare
+    if: needs.prepare.outputs.plugins != ''
+    strategy:
+      matrix:
+        arch: [amd64, arm64]
+    runs-on: ${{ matrix.arch == 'arm64' && 'ubuntu-24.04-arm' || 'ubuntu-latest-4-cores' }}
+    steps:
+    - uses: actions/checkout@v6
+      with:
+        fetch-depth: 0
+    - name: Install Go
+      uses: actions/setup-go@v6
+      with:
+        go-version: '1.25'
+        check-latest: true
     - name: Get buf version
       shell: bash
       run: |
@@ -77,8 +98,12 @@ jobs:
         registry: ghcr.io
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
-    - name: Test
+    - name: Build and test Docker images
+      env:
+        PLUGINS: ${{ needs.prepare.outputs.plugins }}
       run: make test
     - name: Push to GHCR
       if: github.repository == 'bufbuild/plugins'
+      env:
+        PLUGINS: ${{ needs.prepare.outputs.plugins }}
       run: make dockerpush

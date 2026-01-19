@@ -28,6 +28,7 @@ import (
 	"github.com/google/go-github/v72/github"
 	"golang.org/x/mod/semver"
 
+	"github.com/bufbuild/plugins/internal/docker"
 	"github.com/bufbuild/plugins/internal/plugin"
 	"github.com/bufbuild/plugins/internal/release"
 )
@@ -186,46 +187,52 @@ func (c *command) calculateNewReleasePlugins(ctx context.Context, currentRelease
 		if err != nil {
 			return err
 		}
-		registryImage, imageID, err := fetchRegistryImageAndImageID(plugin)
-		if err != nil {
-			return err
-		}
-		identity := plugin.Identity
-		if registryImage == "" || imageID == "" {
-			log.Printf("unable to detect registry image and image ID for plugin %s/%s:%s", identity.Owner(), identity.Plugin(), plugin.PluginVersion)
-			return nil
-		}
-		key := pluginNameVersion{name: identity.Owner() + "/" + identity.Plugin(), version: plugin.PluginVersion}
-		pluginRelease := pluginNameVersionToRelease[key]
-		// Found existing release - only rebuild if changed image digest or buf.plugin.yaml digest
-		if pluginRelease.ImageID != imageID || pluginRelease.PluginYAMLDigest != pluginYamlDigest {
-			downloadURL := c.pluginDownloadURL(plugin, releaseName)
-			zipDigest, err := createPluginZip(ctx, tmpDir, plugin, registryImage, imageID)
+
+		// Process both amd64 and arm64
+		for _, arch := range []string{"amd64", "arm64"} {
+			registryImage, imageID, err := fetchRegistryImageAndImageID(plugin, arch)
 			if err != nil {
-				return err
+				log.Printf("unable to fetch %s for plugin %s/%s:%s: %v", arch, plugin.Identity.Owner(), plugin.Identity.Plugin(), plugin.PluginVersion, err)
+				continue
 			}
-			status := release.StatusUpdated
-			if pluginRelease.ImageID == "" {
-				status = release.StatusNew
+			identity := plugin.Identity
+			if registryImage == "" || imageID == "" {
+				log.Printf("unable to detect registry image and image ID for %s plugin %s/%s:%s", arch, identity.Owner(), identity.Plugin(), plugin.PluginVersion)
+				continue
 			}
-			newPlugins = append(newPlugins, release.PluginRelease{
-				PluginName:       fmt.Sprintf("%s/%s", identity.Owner(), identity.Plugin()),
-				PluginVersion:    plugin.PluginVersion,
-				PluginZipDigest:  zipDigest,
-				PluginYAMLDigest: pluginYamlDigest,
-				RegistryImage:    registryImage,
-				ImageID:          imageID,
-				ReleaseTag:       releaseName,
-				URL:              downloadURL,
-				LastUpdated:      now,
-				Status:           status,
-				Dependencies:     pluginDependencies(plugin),
-			})
-		} else {
-			log.Printf("plugin %s:%s unchanged", pluginRelease.PluginName, pluginRelease.PluginVersion)
-			pluginRelease.Status = release.StatusExisting
-			pluginRelease.Dependencies = pluginDependencies(plugin)
-			existingPlugins = append(existingPlugins, pluginRelease)
+			key := pluginNameVersion{name: identity.Owner() + "/" + identity.Plugin(), version: plugin.PluginVersion}
+			pluginRelease := pluginNameVersionToRelease[key]
+			// Found existing release - only rebuild if changed image digest or buf.plugin.yaml digest
+			if pluginRelease.ImageID != imageID || pluginRelease.PluginYAMLDigest != pluginYamlDigest {
+				downloadURL := c.pluginDownloadURL(plugin, releaseName, arch)
+				zipDigest, err := createPluginZip(ctx, tmpDir, plugin, registryImage, imageID, arch)
+				if err != nil {
+					return err
+				}
+				status := release.StatusUpdated
+				if pluginRelease.ImageID == "" {
+					status = release.StatusNew
+				}
+				newPlugins = append(newPlugins, release.PluginRelease{
+					PluginName:       fmt.Sprintf("%s/%s", identity.Owner(), identity.Plugin()),
+					PluginVersion:    plugin.PluginVersion,
+					PluginZipDigest:  zipDigest,
+					PluginYAMLDigest: pluginYamlDigest,
+					RegistryImage:    registryImage,
+					ImageID:          imageID,
+					ReleaseTag:       releaseName,
+					URL:              downloadURL,
+					LastUpdated:      now,
+					Arch:             arch,
+					Status:           status,
+					Dependencies:     pluginDependencies(plugin),
+				})
+			} else {
+				log.Printf("plugin %s:%s (%s) unchanged", pluginRelease.PluginName, pluginRelease.PluginVersion, arch)
+				pluginRelease.Status = release.StatusExisting
+				pluginRelease.Dependencies = pluginDependencies(plugin)
+				existingPlugins = append(existingPlugins, pluginRelease)
+			}
 		}
 		return nil
 	}); err != nil {
@@ -399,11 +406,11 @@ func signPluginReleases(dir string, privateKey minisign.PrivateKey) error {
 	return nil
 }
 
-func createPluginZip(ctx context.Context, basedir string, plugin *plugin.Plugin, registryImage string, imageID string) (string, error) {
+func createPluginZip(ctx context.Context, basedir string, plugin *plugin.Plugin, registryImage string, imageID string, arch string) (string, error) {
 	if err := pullImage(ctx, registryImage); err != nil {
 		return "", err
 	}
-	zipName := pluginZipName(plugin)
+	zipName := pluginZipName(plugin, arch)
 	pluginTempDir, err := os.MkdirTemp(basedir, strings.TrimSuffix(zipName, filepath.Ext(zipName)))
 	if err != nil {
 		return "", err
@@ -526,8 +533,8 @@ func calculateNextRelease(now time.Time, latestRelease *github.RepositoryRelease
 	return releaseName, nil
 }
 
-func (c *command) pluginDownloadURL(plugin *plugin.Plugin, releaseName string) string {
-	zipName := pluginZipName(plugin)
+func (c *command) pluginDownloadURL(plugin *plugin.Plugin, releaseName string, arch string) string {
+	zipName := pluginZipName(plugin, arch)
 	return fmt.Sprintf("https://github.com/%s/%s/releases/download/%s/%s", c.githubReleaseOwner, release.GithubRepoPlugins, releaseName, zipName)
 }
 
@@ -541,14 +548,16 @@ func (c *command) pluginReleasesURL(releaseName string) string {
 	)
 }
 
-func pluginZipName(plugin *plugin.Plugin) string {
+func pluginZipName(plugin *plugin.Plugin, arch string) string {
 	identity := plugin.Identity
-	return fmt.Sprintf("%s-%s-%s.zip", identity.Owner(), identity.Plugin(), plugin.PluginVersion)
+	if arch == "amd64" {
+		return fmt.Sprintf("%s-%s-%s.zip", identity.Owner(), identity.Plugin(), plugin.PluginVersion)
+	}
+	return fmt.Sprintf("%s-%s-%s-%s.zip", identity.Owner(), identity.Plugin(), plugin.PluginVersion, arch)
 }
 
-func fetchRegistryImageAndImageID(plugin *plugin.Plugin) (string, string, error) {
-	identity := plugin.Identity
-	imageName := fmt.Sprintf("ghcr.io/%s/plugins-%s-%s:%s", release.GithubOwnerBufbuild, identity.Owner(), identity.Plugin(), plugin.PluginVersion)
+func fetchRegistryImageAndImageID(plugin *plugin.Plugin, arch string) (string, string, error) {
+	imageName := docker.ImageNameForArch(plugin, fmt.Sprintf("ghcr.io/%s", release.GithubOwnerBufbuild), arch)
 	parsedName, err := name.ParseReference(imageName)
 	if err != nil {
 		return "", "", err

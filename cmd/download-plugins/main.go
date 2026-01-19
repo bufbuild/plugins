@@ -13,6 +13,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"time"
 
@@ -35,10 +36,12 @@ func run() error {
 		minisignPublicKey string
 		releaseTag        string
 		since             time.Duration
+		allArchs          bool
 	)
 	flag.StringVar(&minisignPublicKey, "minisign-public-key", "", "path to minisign public key file (default: bufbuild/plugins public key)")
 	flag.StringVar(&releaseTag, "release-tag", "", "release to download (default: latest release)")
 	flag.DurationVar(&since, "since", 0, "only download plugins created/modified since this time")
+	flag.BoolVar(&allArchs, "all-archs", false, "download plugins for all architectures instead of just current runtime arch")
 	flag.Parse()
 
 	if len(flag.Args()) != 1 {
@@ -99,6 +102,30 @@ func run() error {
 	}
 
 	for _, pluginRelease := range pluginReleases.Releases {
+		// Filter by architecture unless -all-archs is specified
+		if !allArchs {
+			// If Arch field is set, use it for filtering
+			if pluginRelease.Arch != "" {
+				if pluginRelease.Arch != runtime.GOARCH {
+					continue
+				}
+			} else {
+				// Fallback for older releases without Arch field
+				// We historically had non-suffixed amd64 images, and then added arm64 images with the -arm64
+				// suffix for the arch. Thus we need a bit of a conditional check to choose which ones we're doing.
+				if runtime.GOARCH == "amd64" {
+					if !strings.HasSuffix(pluginRelease.URL, ".zip") || strings.HasSuffix(pluginRelease.URL, "-arm64.zip") {
+						continue
+					}
+				} else {
+					archSuffix := fmt.Sprintf("-%s.zip", runtime.GOARCH)
+					if !strings.HasSuffix(pluginRelease.URL, archSuffix) {
+						continue
+					}
+				}
+			}
+		}
+
 		// Filter out plugins which aren't specified in PLUGINS env var
 		if includePlugins != nil {
 			var matched bool
