@@ -40,7 +40,6 @@ type PluginRelease struct {
 	ReleaseTag       string    `json:"release_tag"`    // GitHub release tag - i.e. 20221121.1
 	URL              string    `json:"url"`            // URL to GitHub release zip file for the plugin - i.e. https://github.com/bufbuild/plugins/releases/download/20221121.1/bufbuild-connect-go-v1.1.0.zip
 	LastUpdated      time.Time `json:"last_updated"`
-	Arch             string    `json:"arch"`           // architecture - amd64 or arm64
 	Status           Status    `json:"-"`
 	Dependencies     []string  `json:"dependencies,omitempty"` // direct dependencies on other plugins
 }
