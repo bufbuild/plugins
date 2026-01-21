@@ -61,9 +61,11 @@ linters:
         text: do not define dynamic errors
       # dupword reports several errors in .proto test fixtures
       # gosec reports a few minor issues in tests
+      # prealloc is not important in tests
       - linters:
           - dupword
           - gosec
+          - prealloc
         path: _test\.go
 formatters:
   enable:

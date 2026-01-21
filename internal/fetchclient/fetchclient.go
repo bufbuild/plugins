@@ -81,19 +81,28 @@ func (c *Client) Fetch(ctx context.Context, config *source.Config) (string, erro
 
 func (c *Client) fetch(ctx context.Context, config *source.Config) (string, error) {
 	ignoreVersions := xslices.ToStructMap(config.Source.IgnoreVersions)
+	maxVersion := config.Source.MaxVersion
+	if maxVersion != "" {
+		if !strings.HasPrefix(maxVersion, "v") {
+			maxVersion = "v" + maxVersion
+		}
+		if !semver.IsValid(maxVersion) {
+			return "", fmt.Errorf("%s: max_version is not a valid semver: %s", config.Filename, config.Source.MaxVersion)
+		}
+	}
 	switch {
 	case config.Source.GitHub != nil:
-		return c.fetchGithub(ctx, config.Source.GitHub.Owner, config.Source.GitHub.Repository, ignoreVersions)
+		return c.fetchGithub(ctx, config.Source.GitHub.Owner, config.Source.GitHub.Repository, ignoreVersions, maxVersion)
 	case config.Source.DartFlutter != nil:
-		return c.fetchDartFlutter(ctx, config.Source.DartFlutter.Name, ignoreVersions)
+		return c.fetchDartFlutter(ctx, config.Source.DartFlutter.Name, ignoreVersions, maxVersion)
 	case config.Source.GoProxy != nil:
-		return c.fetchGoProxy(ctx, config.Source.GoProxy.Name, ignoreVersions)
+		return c.fetchGoProxy(ctx, config.Source.GoProxy.Name, ignoreVersions, maxVersion)
 	case config.Source.NPMRegistry != nil:
-		return c.fetchNPMRegistry(ctx, config.Source.NPMRegistry.Name, ignoreVersions)
+		return c.fetchNPMRegistry(ctx, config.Source.NPMRegistry.Name, ignoreVersions, maxVersion)
 	case config.Source.Maven != nil:
-		return c.fetchMaven(ctx, config.Source.Maven.Group, config.Source.Maven.Name, ignoreVersions)
+		return c.fetchMaven(ctx, config.Source.Maven.Group, config.Source.Maven.Name, ignoreVersions, maxVersion)
 	case config.Source.Crates != nil:
-		return c.fetchCrate(ctx, config.Source.Crates.CrateName, ignoreVersions)
+		return c.fetchCrate(ctx, config.Source.Crates.CrateName, ignoreVersions, maxVersion)
 	}
 	return "", errors.New("failed to match a source")
 }
@@ -102,6 +111,7 @@ func (c *Client) fetchDartFlutter(
 	ctx context.Context,
 	name string,
 	ignoreVersions map[string]struct{},
+	maxVersion string,
 ) (string, error) {
 	request, err := http.NewRequestWithContext(
 		ctx,
@@ -132,7 +142,7 @@ func (c *Client) fetchDartFlutter(
 	if err := json.NewDecoder(response.Body).Decode(&data); err != nil {
 		return "", err
 	}
-	if len(ignoreVersions) == 0 {
+	if len(ignoreVersions) == 0 && maxVersion == "" {
 		return data.Latest.Version, nil
 	}
 	var latestVersion string
@@ -142,6 +152,9 @@ func (c *Client) fetchDartFlutter(
 			continue
 		}
 		if _, ok := ignoreVersions[version]; ok {
+			continue
+		}
+		if maxVersion != "" && semver.Compare(version, maxVersion) >= 0 {
 			continue
 		}
 		if latestVersion == "" || semver.Compare(latestVersion, version) < 0 {
@@ -155,7 +168,7 @@ func (c *Client) fetchDartFlutter(
 	return latestVersion, nil
 }
 
-func (c *Client) fetchCrate(ctx context.Context, name string, ignoreVersions map[string]struct{}) (string, error) {
+func (c *Client) fetchCrate(ctx context.Context, name string, ignoreVersions map[string]struct{}, maxVersion string) (string, error) {
 	request, err := http.NewRequestWithContext(
 		ctx,
 		http.MethodGet,
@@ -186,7 +199,7 @@ func (c *Client) fetchCrate(ctx context.Context, name string, ignoreVersions map
 	if err := json.NewDecoder(response.Body).Decode(&data); err != nil {
 		return "", err
 	}
-	var versions []string
+	versions := make([]string, 0, len(data.Versions))
 	for _, version := range data.Versions {
 		if version.Yanked {
 			// A yanked version a is a published crate's version that has been removed
@@ -197,9 +210,13 @@ func (c *Client) fetchCrate(ctx context.Context, name string, ignoreVersions map
 		if !ok {
 			continue
 		}
-		if _, ok := ignoreVersions[v]; !ok {
-			versions = append(versions, v)
+		if _, ok := ignoreVersions[v]; ok {
+			continue
 		}
+		if maxVersion != "" && semver.Compare(v, maxVersion) >= 0 {
+			continue
+		}
+		versions = append(versions, v)
 	}
 	if len(versions) == 0 {
 		return "", errors.New("no versions found")
@@ -208,9 +225,12 @@ func (c *Client) fetchCrate(ctx context.Context, name string, ignoreVersions map
 	return versions[len(versions)-1], nil
 }
 
-func (c *Client) fetchGoProxy(ctx context.Context, name string, ignoreVersions map[string]struct{}) (string, error) {
+func (c *Client) fetchGoProxy(ctx context.Context, name string, ignoreVersions map[string]struct{}, maxVersion string) (string, error) {
 	if len(ignoreVersions) > 0 {
 		return "", errors.New("ignore_versions not supported yet for go sources")
+	}
+	if maxVersion != "" {
+		return "", errors.New("max_version not supported yet for go sources")
 	}
 	request, err := http.NewRequestWithContext(
 		ctx,
@@ -239,7 +259,7 @@ func (c *Client) fetchGoProxy(ctx context.Context, name string, ignoreVersions m
 	return data.Version, nil
 }
 
-func (c *Client) fetchNPMRegistry(ctx context.Context, name string, ignoreVersions map[string]struct{}) (string, error) {
+func (c *Client) fetchNPMRegistry(ctx context.Context, name string, ignoreVersions map[string]struct{}, maxVersion string) (string, error) {
 	request, err := http.NewRequestWithContext(
 		ctx,
 		http.MethodGet,
@@ -273,6 +293,9 @@ func (c *Client) fetchNPMRegistry(ctx context.Context, name string, ignoreVersio
 		if _, ignored := ignoreVersions[semverVersion]; ignored {
 			continue
 		}
+		if maxVersion != "" && semver.Compare(semverVersion, maxVersion) >= 0 {
+			continue
+		}
 		if latestVersion == "" || semver.Compare(latestVersion, semverVersion) < 0 {
 			latestVersion = semverVersion
 		}
@@ -288,6 +311,7 @@ func (c *Client) fetchMaven(
 	group string,
 	name string,
 	ignoreVersions map[string]struct{},
+	maxVersion string,
 ) (string, error) {
 	groupComponents := strings.Split(group, ".")
 	targetURL, err := url.JoinPath(mavenURL, append(groupComponents, name, "maven-metadata.xml")...)
@@ -329,6 +353,9 @@ func (c *Client) fetchMaven(
 		if _, ok := ignoreVersions[v]; ok {
 			continue
 		}
+		if maxVersion != "" && semver.Compare(v, maxVersion) >= 0 {
+			continue
+		}
 		if latestVersion == "" || semver.Compare(latestVersion, v) < 0 {
 			latestVersion = v
 		}
@@ -344,6 +371,7 @@ func (c *Client) fetchGithub(
 	owner string,
 	repository string,
 	ignoreVersions map[string]struct{},
+	maxVersion string,
 ) (string, error) {
 	// With the GitHub API we have a few options:
 	//
@@ -368,9 +396,13 @@ func (c *Client) fetchGithub(
 				continue
 			}
 			if v, ok := ensureSemverPrefix(*tag.Name); ok {
-				if _, ok := ignoreVersions[v]; !ok {
-					versions = append(versions, v)
+				if _, ok := ignoreVersions[v]; ok {
+					continue
 				}
+				if maxVersion != "" && semver.Compare(v, maxVersion) >= 0 {
+					continue
+				}
+				versions = append(versions, v)
 			}
 		}
 		page = response.NextPage
