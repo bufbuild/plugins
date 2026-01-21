@@ -199,7 +199,7 @@ func (c *Client) fetchCrate(ctx context.Context, name string, ignoreVersions map
 	if err := json.NewDecoder(response.Body).Decode(&data); err != nil {
 		return "", err
 	}
-	var versions []string
+	versions := make([]string, 0, len(data.Versions))
 	for _, version := range data.Versions {
 		if version.Yanked {
 			// A yanked version a is a published crate's version that has been removed

@@ -8,7 +8,7 @@ DOCKER_BUILD_EXTRA_ARGS ?=
 DOCKER_BUILDER := bufbuild-plugins
 DOCKER_CACHE_DIR ?= $(TMP)/dockercache
 GO ?= go
-GOLANGCI_LINT_VERSION ?= v2.7.2
+GOLANGCI_LINT_VERSION ?= v2.8.0
 GOLANGCI_LINT := $(TMP)/golangci-lint-$(GOLANGCI_LINT_VERSION)
 
 GO_TEST_FLAGS ?= -race -count=1
