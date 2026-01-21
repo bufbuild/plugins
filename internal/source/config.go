@@ -47,6 +47,9 @@ type Source struct {
 	Crates      *CratesConfig      `yaml:"crates"`
 	// IgnoreVersions is a list of versions to ignore when fetching.
 	IgnoreVersions []string `yaml:"ignore_versions"`
+	// MaxVersion is an exclusive upper bound for versions. Versions >= this value will be ignored.
+	// Must be a valid semver version (e.g., "2.0.0").
+	MaxVersion string `yaml:"max_version"`
 }
 
 var _ Cacheable = (*Source)(nil)

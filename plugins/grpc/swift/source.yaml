@@ -2,3 +2,5 @@ source:
   github:
     owner: grpc
     repository: grpc-swift
+  # v2.x of the plugin is now packaged as grpc/swift-protobuf
+  max_version: 2.0.0
