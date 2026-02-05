@@ -12,5 +12,5 @@ mypy-extensions==1.0.0
 packaging==23.1
 pathspec==0.11.1
 platformdirs==3.5.3
-protobuf==4.23.2
+protobuf==5.29.6
 stringcase==1.2.0
