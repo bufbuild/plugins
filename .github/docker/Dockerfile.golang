@@ -1,3 +1,3 @@
-FROM golang:1.26rc3-bookworm
+FROM golang:1.25.7-bookworm
 
 CMD echo this is a dummy file used to automate dependency upgrades for plugins
