@@ -1,0 +1,7 @@
+version: v1
+name: buf.build/community/sudorandom-connect-openapi
+plugin_version: v0.25.1
+source_url: https://github.com/sudorandom/protoc-gen-connect-openapi
+description: Plugin for generating OpenAPIv3 from Protobufs matching the Connect RPC interface.
+spdx_license_id: MIT
+license_url: https://github.com/sudorandom/protoc-gen-connect-openapi/blob/v0.25.1/LICENSE
