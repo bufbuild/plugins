@@ -12,7 +12,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/bufbuild/plugins/internal/plugin"
 	"github.com/bufbuild/plugins/internal/source"
 )
 
@@ -195,7 +194,7 @@ type mockFetcher struct {
 	versions map[string]string // maps cache key (e.g., "github-owner-repo") -> version to return
 }
 
-func (m *mockFetcher) Fetch(ctx context.Context, config *source.Config) (string, error) {
+func (m *mockFetcher) Fetch(_ context.Context, config *source.Config) (string, error) {
 	key := config.CacheKey()
 	if version, ok := m.versions[key]; ok {
 		return version, nil
@@ -207,7 +206,7 @@ func (m *mockFetcher) Fetch(ctx context.Context, config *source.Config) (string,
 // setupTestRepository creates a complete test repository structure with:
 // - plugins/ directory with base-plugin and consumer-plugin
 // - source.yaml files for version detection
-// - .github/docker/ directory with base images
+// - .github/docker/ directory with base images.
 func setupTestRepository(t *testing.T, tmpDir string) {
 	t.Helper()
 
