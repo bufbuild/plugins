@@ -32,6 +32,11 @@ var (
 	errNoVersions          = errors.New("no versions found")
 )
 
+// Fetcher is an interface for fetching plugin versions from external sources.
+type Fetcher interface {
+	Fetch(ctx context.Context, config *source.Config) (string, error)
+}
+
 func main() {
 	if len(os.Args) != 2 {
 		_, _ = fmt.Fprintf(os.Stderr, "usage: %s <directory>\n", os.Args)
@@ -39,7 +44,8 @@ func main() {
 	}
 	root := os.Args[1]
 	ctx := interrupt.Handle(context.Background())
-	created, err := run(ctx, root)
+	client := fetchclient.New(ctx)
+	created, err := run(ctx, root, client)
 	if err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "failed to fetch versions: %v\n", err)
 		os.Exit(1)
@@ -295,7 +301,7 @@ type pluginToCreate struct {
 	newVersion      string
 }
 
-func run(ctx context.Context, root string) ([]createdPlugin, error) {
+func run(ctx context.Context, root string, fetcher Fetcher) ([]createdPlugin, error) {
 	now := time.Now()
 	defer func() {
 		log.Printf("finished running in: %.2fs\n", time.Since(now).Seconds())
@@ -331,7 +337,6 @@ func run(ctx context.Context, root string) ([]createdPlugin, error) {
 	}
 
 	// First pass: fetch all new versions and determine which plugins need updates
-	client := fetchclient.New(ctx)
 	latestVersions := make(map[string]string, len(configs))
 	pendingCreations := make(map[string]*pluginToCreate) // keyed by plugin directory
 
@@ -342,7 +347,7 @@ func run(ctx context.Context, root string) ([]createdPlugin, error) {
 		}
 		newVersion := latestVersions[config.CacheKey()]
 		if newVersion == "" {
-			newVersion, err = client.Fetch(ctx, config)
+			newVersion, err = fetcher.Fetch(ctx, config)
 			if err != nil {
 				if errors.Is(err, fetchclient.ErrSemverPrerelease) {
 					log.Printf("skipping source: %s: %v", config.Filename, err)
