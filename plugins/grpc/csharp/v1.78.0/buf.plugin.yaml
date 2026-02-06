@@ -17,4 +17,4 @@ registry:
       - netstandard2.0
     deps:
       - name: Grpc.Net.Common
-        version: 2.71.0
+        version: 2.76.0
