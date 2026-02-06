@@ -16,10 +16,13 @@ import (
 	"time"
 
 	"buf.build/go/interrupt"
+	"github.com/bufbuild/buf/private/bufpkg/bufremoteplugin/bufremotepluginconfig"
+	"github.com/bufbuild/buf/private/pkg/encoding"
 	"golang.org/x/mod/semver"
 
 	"github.com/bufbuild/plugins/internal/docker"
 	"github.com/bufbuild/plugins/internal/fetchclient"
+	"github.com/bufbuild/plugins/internal/plugin"
 	"github.com/bufbuild/plugins/internal/source"
 )
 
@@ -221,6 +224,70 @@ func runPluginTests(ctx context.Context, plugins []createdPlugin) error {
 	return cmd.Run()
 }
 
+// updatePluginDeps updates plugin dependencies in a buf.plugin.yaml file to their latest versions.
+// It parses the YAML content, finds any entries in the "deps:" section with "plugin:" fields,
+// and updates them to use the latest available version from latestVersions map.
+// For example, if the YAML contains:
+//
+//	deps:
+//	  - plugin: buf.build/protocolbuffers/go:v1.30.0
+//
+// and latestVersions maps "buf.build/protocolbuffers/go" to "v1.36.11",
+// the function will update it to:
+//
+//	deps:
+//	  - plugin: buf.build/protocolbuffers/go:v1.36.11
+//
+// It returns the modified content with updated dependency versions.
+func updatePluginDeps(content []byte, latestVersions map[string]string) ([]byte, error) {
+	var config bufremotepluginconfig.ExternalConfig
+	if err := encoding.UnmarshalJSONOrYAMLStrict(content, &config); err != nil {
+		return nil, fmt.Errorf("failed to parse buf.plugin.yaml: %w", err)
+	}
+
+	// Check if there are any plugin dependencies
+	if len(config.Deps) == 0 {
+		// No deps, return original content
+		return content, nil
+	}
+
+	modified := false
+	for i := range config.Deps {
+		dep := &config.Deps[i]
+		if dep.Plugin == "" {
+			continue
+		}
+
+		// Parse the plugin reference: buf.build/owner/name:version
+		pluginName, currentVersion, ok := strings.Cut(dep.Plugin, ":")
+		if !ok {
+			continue
+		}
+
+		// Look up the latest version for this plugin
+		if latestVersion, exists := latestVersions[pluginName]; exists && latestVersion != currentVersion {
+			oldPluginRef := dep.Plugin
+			newPluginRef := pluginName + ":" + latestVersion
+			dep.Plugin = newPluginRef
+			log.Printf("updating plugin dependency %s -> %s", oldPluginRef, newPluginRef)
+			modified = true
+		}
+	}
+
+	if !modified {
+		// No changes made, return original content
+		return content, nil
+	}
+
+	// Marshal back to YAML
+	updatedContent, err := encoding.MarshalYAML(&config)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal updated YAML: %w", err)
+	}
+
+	return updatedContent, nil
+}
+
 func run(ctx context.Context, root string) ([]createdPlugin, error) {
 	now := time.Now()
 	defer func() {
@@ -234,6 +301,21 @@ func run(ctx context.Context, root string) ([]createdPlugin, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	// Load all existing plugins to determine latest versions for dependency bumping
+	pluginsDir := filepath.Join(root, "plugins")
+	allPlugins, err := plugin.FindAll(pluginsDir)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load existing plugins: %w", err)
+	}
+	latestPluginVersions := make(map[string]string)
+	for _, p := range allPlugins {
+		current := latestPluginVersions[p.Name]
+		if current == "" || semver.Compare(current, p.PluginVersion) < 0 {
+			latestPluginVersions[p.Name] = p.PluginVersion
+		}
+	}
+
 	configs, err := source.GatherConfigs(root)
 	if err != nil {
 		return nil, err
@@ -277,7 +359,7 @@ func run(ctx context.Context, root string) ([]createdPlugin, error) {
 		if err != nil {
 			return nil, fmt.Errorf("failed to get latest known version from dir %s with error: %w", pluginDir, err)
 		}
-		if err := createPluginDir(pluginDir, previousVersion, newVersion, latestBaseImageVersions); err != nil {
+		if err := createPluginDir(pluginDir, previousVersion, newVersion, latestBaseImageVersions, latestPluginVersions); err != nil {
 			return nil, err
 		}
 		log.Printf("created %v/%v\n", pluginDir, newVersion)
@@ -301,6 +383,7 @@ func copyDirectory(
 	prevVersion string,
 	newVersion string,
 	latestBaseImages *docker.BaseImages,
+	latestPluginVersions map[string]string,
 ) (retErr error) {
 	entries, err := os.ReadDir(source)
 	if err != nil {
@@ -324,6 +407,7 @@ func copyDirectory(
 			prevVersion,
 			newVersion,
 			latestBaseImages,
+			latestPluginVersions,
 		); err != nil {
 			return err
 		}
@@ -336,6 +420,7 @@ func createPluginDir(
 	previousVersion string,
 	newVersion string,
 	latestBaseImages *docker.BaseImages,
+	latestPluginVersions map[string]string,
 ) (retErr error) {
 	if err := os.Mkdir(filepath.Join(dir, newVersion), 0755); err != nil {
 		return err
@@ -351,6 +436,7 @@ func createPluginDir(
 		previousVersion,
 		newVersion,
 		latestBaseImages,
+		latestPluginVersions,
 	)
 }
 
@@ -360,6 +446,7 @@ func copyFile(
 	prevVersion string,
 	newVersion string,
 	latestBaseImages *docker.BaseImages,
+	latestPluginVersions map[string]string,
 ) (retErr error) {
 	srcFile, err := os.Open(src)
 	if err != nil {
@@ -386,6 +473,28 @@ func copyFile(
 		}
 		return nil
 	}
+
+	// Special handling for buf.plugin.yaml to update plugin dependencies
+	if filename == "buf.plugin.yaml" {
+		content, err := io.ReadAll(srcFile)
+		if err != nil {
+			return fmt.Errorf("failed to read buf.plugin.yaml: %w", err)
+		}
+		// Update plugin dependencies to latest versions
+		content, err = updatePluginDeps(content, latestPluginVersions)
+		if err != nil {
+			return fmt.Errorf("failed to update plugin deps: %w", err)
+		}
+		// Now do the version string replacement
+		prevVersionStripped := strings.TrimPrefix(prevVersion, "v")
+		newVersionStripped := strings.TrimPrefix(newVersion, "v")
+		content = []byte(strings.ReplaceAll(string(content), prevVersionStripped, newVersionStripped))
+		if _, err := destFile.Write(content); err != nil {
+			return err
+		}
+		return nil
+	}
+
 	isDockerfile := strings.HasPrefix(filename, "Dockerfile")
 	prevVersion = strings.TrimPrefix(prevVersion, "v")
 	newVersion = strings.TrimPrefix(newVersion, "v")
