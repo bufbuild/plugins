@@ -1,6 +1,9 @@
 package main
 
 import (
+	"context"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -8,6 +11,8 @@ import (
 	"github.com/bufbuild/buf/private/pkg/encoding"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/bufbuild/plugins/internal/source"
 )
 
 func TestUpdatePluginDeps(t *testing.T) {
@@ -137,4 +142,157 @@ plugin_version: v1.0.0
 			}
 		})
 	}
+}
+
+// TestRunDependencyOrdering tests the end-to-end behavior of run() with dependency ordering.
+// It verifies that when creating multiple plugin versions in one run, they are processed
+// in dependency order and consumers reference the newly created dependency versions.
+func TestRunDependencyOrdering(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	tmpDir := t.TempDir()
+
+	// Setup: Create complete repository structure
+	setupTestRepository(t, tmpDir)
+
+	// Mock fetcher that returns new versions for our test plugins
+	// Cache keys are formatted as "github-owner-repository"
+	fetcher := &mockFetcher{
+		versions: map[string]string{
+			"github-test-base-plugin":     "v2.0.0",
+			"github-test-consumer-plugin": "v2.0.0",
+		},
+	}
+
+	// Run the fetcher
+	created, err := run(ctx, tmpDir, fetcher)
+	require.NoError(t, err)
+
+	// Verify plugins were created in dependency order
+	require.Len(t, created, 2, "should create 2 new plugin versions")
+	assert.Equal(t, "base-plugin", created[0].name, "base-plugin should be created first (no dependencies)")
+	assert.Equal(t, "v2.0.0", created[0].newVersion)
+	assert.Equal(t, "consumer-plugin", created[1].name, "consumer-plugin should be created second (depends on base-plugin)")
+	assert.Equal(t, "v2.0.0", created[1].newVersion)
+
+	// Verify consumer references the newly created base-plugin v2.0.0
+	consumerYAMLPath := filepath.Join(tmpDir, "plugins", "test", "consumer-plugin", "v2.0.0", "buf.plugin.yaml")
+	content, err := os.ReadFile(consumerYAMLPath)
+	require.NoError(t, err, "should be able to read created consumer plugin config")
+
+	var config bufremotepluginconfig.ExternalConfig
+	err = encoding.UnmarshalJSONOrYAMLStrict(content, &config)
+	require.NoError(t, err, "should be able to parse consumer plugin config")
+
+	require.Len(t, config.Deps, 1, "consumer should have one dependency")
+	assert.Equal(t, "buf.build/test/base-plugin:v2.0.0", config.Deps[0].Plugin,
+		"consumer should reference newly created base-plugin v2.0.0, not the old v1.0.0")
+}
+
+// mockFetcher returns predetermined versions for testing.
+type mockFetcher struct {
+	versions map[string]string // maps cache key (e.g., "github-owner-repo") -> version to return
+}
+
+func (m *mockFetcher) Fetch(_ context.Context, config *source.Config) (string, error) {
+	key := config.CacheKey()
+	if version, ok := m.versions[key]; ok {
+		return version, nil
+	}
+	// Return a default version if not in map
+	return "v1.0.0", nil
+}
+
+// setupTestRepository creates a complete test repository structure with:
+// - plugins/ directory with base-plugin and consumer-plugin
+// - source.yaml files for version detection
+// - .github/docker/ directory with base images.
+func setupTestRepository(t *testing.T, tmpDir string) {
+	t.Helper()
+
+	// Create base Docker images directory (required by run())
+	baseImageDir := filepath.Join(tmpDir, ".github", "docker")
+	require.NoError(t, os.MkdirAll(baseImageDir, 0755))
+
+	// Create required docker/dockerfile base image
+	dockerfileImage := `FROM docker/dockerfile:1.19
+`
+	require.NoError(t, os.WriteFile(filepath.Join(baseImageDir, "Dockerfile.dockerfile"), []byte(dockerfileImage), 0644))
+
+	// Create golang base image
+	golangImage := `FROM golang:1.22.0-bookworm
+`
+	require.NoError(t, os.WriteFile(filepath.Join(baseImageDir, "Dockerfile.golang"), []byte(golangImage), 0644))
+
+	// Setup base-plugin v1.0.0
+	basePluginDir := filepath.Join(tmpDir, "plugins", "test", "base-plugin")
+	require.NoError(t, os.MkdirAll(filepath.Join(basePluginDir, "v1.0.0"), 0755))
+
+	// Create source.yaml for base-plugin
+	baseSourceYAML := `source:
+  github:
+    owner: test
+    repository: base-plugin
+`
+	require.NoError(t, os.WriteFile(filepath.Join(basePluginDir, "source.yaml"), []byte(baseSourceYAML), 0644))
+
+	// Create buf.plugin.yaml for base-plugin v1.0.0
+	basePluginYAML := `version: v1
+name: buf.build/test/base-plugin
+plugin_version: v1.0.0
+output_languages:
+  - go
+`
+	require.NoError(t, os.WriteFile(
+		filepath.Join(basePluginDir, "v1.0.0", "buf.plugin.yaml"),
+		[]byte(basePluginYAML),
+		0644,
+	))
+
+	// Create Dockerfile for base-plugin v1.0.0
+	baseDockerfile := `FROM golang:1.22.0-bookworm
+COPY --from=base /binary /usr/local/bin/protoc-gen-base
+`
+	require.NoError(t, os.WriteFile(
+		filepath.Join(basePluginDir, "v1.0.0", "Dockerfile"),
+		[]byte(baseDockerfile),
+		0644,
+	))
+
+	// Setup consumer-plugin v1.0.0
+	consumerPluginDir := filepath.Join(tmpDir, "plugins", "test", "consumer-plugin")
+	require.NoError(t, os.MkdirAll(filepath.Join(consumerPluginDir, "v1.0.0"), 0755))
+
+	// Create source.yaml for consumer-plugin
+	consumerSourceYAML := `source:
+  github:
+    owner: test
+    repository: consumer-plugin
+`
+	require.NoError(t, os.WriteFile(filepath.Join(consumerPluginDir, "source.yaml"), []byte(consumerSourceYAML), 0644))
+
+	// Create buf.plugin.yaml for consumer-plugin v1.0.0 that depends on base-plugin v1.0.0
+	consumerPluginYAML := `version: v1
+name: buf.build/test/consumer-plugin
+plugin_version: v1.0.0
+deps:
+  - plugin: buf.build/test/base-plugin:v1.0.0
+output_languages:
+  - go
+`
+	require.NoError(t, os.WriteFile(
+		filepath.Join(consumerPluginDir, "v1.0.0", "buf.plugin.yaml"),
+		[]byte(consumerPluginYAML),
+		0644,
+	))
+
+	// Create Dockerfile for consumer-plugin v1.0.0
+	consumerDockerfile := `FROM golang:1.22.0-bookworm
+COPY --from=consumer /binary /usr/local/bin/protoc-gen-consumer
+`
+	require.NoError(t, os.WriteFile(
+		filepath.Join(consumerPluginDir, "v1.0.0", "Dockerfile"),
+		[]byte(consumerDockerfile),
+		0644,
+	))
 }
