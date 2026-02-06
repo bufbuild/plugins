@@ -288,6 +288,13 @@ func updatePluginDeps(content []byte, latestVersions map[string]string) ([]byte,
 	return updatedContent, nil
 }
 
+// pluginToCreate represents a plugin that needs a new version created.
+type pluginToCreate struct {
+	pluginDir       string
+	previousVersion string
+	newVersion      string
+}
+
 func run(ctx context.Context, root string) ([]createdPlugin, error) {
 	now := time.Now()
 	defer func() {
@@ -302,12 +309,14 @@ func run(ctx context.Context, root string) ([]createdPlugin, error) {
 		return nil, err
 	}
 
-	// Load all existing plugins to determine latest versions for dependency bumping
+	// Load all existing plugins (already sorted in dependency order by plugin.FindAll)
 	pluginsDir := filepath.Join(root, "plugins")
 	allPlugins, err := plugin.FindAll(pluginsDir)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load existing plugins: %w", err)
 	}
+
+	// Build initial map of latest plugin versions
 	latestPluginVersions := make(map[string]string)
 	for _, p := range allPlugins {
 		current := latestPluginVersions[p.Name]
@@ -320,9 +329,12 @@ func run(ctx context.Context, root string) ([]createdPlugin, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	// First pass: fetch all new versions and determine which plugins need updates
 	client := fetchclient.New(ctx)
 	latestVersions := make(map[string]string, len(configs))
-	created := make([]createdPlugin, 0, len(configs))
+	pendingCreations := make(map[string]*pluginToCreate) // keyed by plugin directory
+
 	for _, config := range configs {
 		if config.Source.Disabled {
 			log.Printf("skipping source: %s", config.Filename)
@@ -346,7 +358,6 @@ func run(ctx context.Context, root string) ([]createdPlugin, error) {
 			log.Printf("skipping source: %s: %v", config.Filename, newVersion)
 			continue
 		}
-		// example: plugins/grpc
 		pluginDir := filepath.Dir(config.Filename)
 		ok, err := checkDirExists(filepath.Join(pluginDir, newVersion))
 		if err != nil {
@@ -359,16 +370,40 @@ func run(ctx context.Context, root string) ([]createdPlugin, error) {
 		if err != nil {
 			return nil, fmt.Errorf("failed to get latest known version from dir %s with error: %w", pluginDir, err)
 		}
-		if err := createPluginDir(pluginDir, previousVersion, newVersion, latestBaseImageVersions, latestPluginVersions); err != nil {
-			return nil, err
-		}
-		log.Printf("created %v/%v\n", pluginDir, newVersion)
-		created = append(created, createdPlugin{
-			org:             filepath.Base(filepath.Dir(pluginDir)),
-			name:            filepath.Base(pluginDir),
+
+		pendingCreations[pluginDir] = &pluginToCreate{
 			pluginDir:       pluginDir,
 			previousVersion: previousVersion,
 			newVersion:      newVersion,
+		}
+	}
+
+	// Second pass: create plugins in dependency order (using the order from allPlugins)
+	// Update latestPluginVersions as we go so subsequent plugins reference new versions
+	created := make([]createdPlugin, 0, len(pendingCreations))
+	for _, p := range allPlugins {
+		// Extract the plugin directory from the plugin's path
+		// p.Path is the full path to buf.plugin.yaml, directory is two levels up (dir/version/buf.plugin.yaml)
+		pluginDir := filepath.Dir(filepath.Dir(p.Path))
+		pending, needsCreation := pendingCreations[pluginDir]
+		if !needsCreation {
+			continue
+		}
+
+		if err := createPluginDir(pending.pluginDir, pending.previousVersion, pending.newVersion, latestBaseImageVersions, latestPluginVersions); err != nil {
+			return nil, err
+		}
+		log.Printf("created %v/%v\n", pending.pluginDir, pending.newVersion)
+
+		// Update latestPluginVersions so subsequent plugins in this run can reference this new version
+		latestPluginVersions[p.Name] = pending.newVersion
+
+		created = append(created, createdPlugin{
+			org:             filepath.Base(filepath.Dir(pending.pluginDir)),
+			name:            filepath.Base(pending.pluginDir),
+			pluginDir:       pending.pluginDir,
+			previousVersion: pending.previousVersion,
+			newVersion:      pending.newVersion,
 		})
 	}
 	return created, nil
