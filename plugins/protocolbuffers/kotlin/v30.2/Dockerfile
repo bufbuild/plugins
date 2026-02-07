@@ -21,7 +21,7 @@ RUN bazelisk ${BAZEL_OPTS} build '//:protoc_lib'
 COPY --link BUILD kotlin.cc plugins/
 RUN bazelisk ${BAZEL_OPTS} build '//plugins:protoc-gen-kotlin.stripped'
 
-FROM maven:3.9.11-eclipse-temurin-25 AS maven-deps
+FROM maven:3.9.11-eclipse-temurin-21 AS maven-deps
 COPY <<EOF /tmp/pom.xml
 <project>
   <modelVersion>4.0.0</modelVersion>
