@@ -17,8 +17,57 @@ RUN arch=${TARGETARCH}; \
 
 FROM gcr.io/distroless/cc-debian12:latest@sha256:72344f7f909a8bf003c67f55687e6d51a441b49661af8f660aa7b285f00e57df AS base
 
+FROM maven:3.9.11-eclipse-temurin-25 AS maven-deps
+COPY <<EOF /tmp/pom.xml
+<project>
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>temp</groupId>
+  <artifactId>temp</artifactId>
+  <version>1.0</version>
+  <dependencies>
+    <dependency>
+      <groupId>build.buf</groupId>
+      <artifactId>protobuf-javalite</artifactId>
+      <version>4.33.5</version>
+    </dependency>
+    <dependency>
+      <groupId>com.google.protobuf</groupId>
+      <artifactId>protobuf-java</artifactId>
+      <version>4.33.5</version>
+    </dependency>
+    <dependency>
+      <groupId>com.google.protobuf</groupId>
+      <artifactId>protobuf-javalite</artifactId>
+      <version>4.33.5</version>
+    </dependency>
+    <dependency>
+      <groupId>io.grpc</groupId>
+      <artifactId>grpc-core</artifactId>
+      <version>1.79.0</version>
+    </dependency>
+    <dependency>
+      <groupId>io.grpc</groupId>
+      <artifactId>grpc-protobuf-lite</artifactId>
+      <version>1.79.0</version>
+    </dependency>
+    <dependency>
+      <groupId>io.grpc</groupId>
+      <artifactId>grpc-protobuf</artifactId>
+      <version>1.79.0</version>
+    </dependency>
+    <dependency>
+      <groupId>io.grpc</groupId>
+      <artifactId>grpc-stub</artifactId>
+      <version>1.79.0</version>
+    </dependency>
+  </dependencies>
+</project>
+EOF
+RUN cd /tmp && mvn -f pom.xml dependency:go-offline
+
 FROM scratch
 COPY --link --from=base / /
 COPY --link --from=build --chmod=0755 --chown=root:root /build/protoc-gen-grpc-java .
+COPY --from=maven-deps /root/.m2/repository /maven-repository
 USER nobody
 ENTRYPOINT [ "/protoc-gen-grpc-java" ]
