@@ -25,7 +25,7 @@ FROM gcr.io/distroless/cc-debian12:latest@sha256:85dac24dd2f03e841d986d5ed967385
 
 # TODO: Update the versions in the local cluster to latest instead or w/e, so we don't need this?
 
-FROM maven:3.9.11-eclipse-temurin-25 AS maven-deps
+FROM maven:3.9.11-eclipse-temurin-21 AS maven-deps
 COPY <<EOF /tmp/pom.xml
 <project>
   <modelVersion>4.0.0</modelVersion>
