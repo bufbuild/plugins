@@ -36,17 +36,17 @@ COPY <<EOF /tmp/pom.xml
     <dependency>
       <groupId>build.buf</groupId>
       <artifactId>protobuf-javalite</artifactId>
-      <version>4.33.5</version>
+      <version>4.30.2</version>
     </dependency>
     <dependency>
       <groupId>com.google.protobuf</groupId>
       <artifactId>protobuf-java</artifactId>
-      <version>4.33.5</version>
+      <version>4.30.2</version>
     </dependency>
     <dependency>
       <groupId>com.google.protobuf</groupId>
       <artifactId>protobuf-javalite</artifactId>
-      <version>4.33.5</version>
+      <version>4.30.2</version>
     </dependency>
     <dependency>
       <groupId>io.grpc</groupId>
