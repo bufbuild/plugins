@@ -1,15 +1,12 @@
 package main
 
 import (
-	"archive/zip"
 	"cmp"
-	"compress/flate"
 	"context"
 	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
-	"io"
 	"io/fs"
 	"log"
 	"os"
@@ -403,77 +400,11 @@ func createPluginZip(ctx context.Context, basedir string, plugin *plugin.Plugin,
 	if err := pullImage(ctx, registryImage); err != nil {
 		return "", err
 	}
-	zipName := pluginZipName(plugin)
-	pluginTempDir, err := os.MkdirTemp(basedir, strings.TrimSuffix(zipName, filepath.Ext(zipName)))
-	if err != nil {
-		return "", err
-	}
-	defer func() {
-		if err := os.RemoveAll(pluginTempDir); err != nil {
-			log.Printf("failed to remove %q: %v", pluginTempDir, err)
-		}
-	}()
-	if err := saveImageToDir(ctx, imageID, pluginTempDir); err != nil {
-		return "", err
-	}
-	log.Printf("creating %s", zipName)
-	zipFile := filepath.Join(basedir, zipName)
-	zf, err := os.OpenFile(zipFile, os.O_CREATE|os.O_RDWR|os.O_TRUNC, 0644)
-	if err != nil {
-		return "", err
-	}
-	defer func() {
-		if err := zf.Close(); err != nil && !errors.Is(err, os.ErrClosed) {
-			log.Printf("failed to close: %v", err)
-		}
-	}()
-	zw := zip.NewWriter(zf)
-	zw.RegisterCompressor(zip.Deflate, func(w io.Writer) (io.WriteCloser, error) {
-		return flate.NewWriter(w, flate.BestCompression)
-	})
-	if err := addFileToZip(zw, plugin.Path); err != nil {
-		return "", err
-	}
-	if err := addFileToZip(zw, filepath.Join(pluginTempDir, "image.tar")); err != nil {
-		return "", err
-	}
-	if err := zw.Close(); err != nil {
-		return "", err
-	}
-	if err := zf.Close(); err != nil {
-		return "", err
-	}
-	digest, err := release.CalculateDigest(zipFile)
+	digest, err := release.CreatePluginZip(ctx, basedir, plugin, imageID)
 	if err != nil {
 		return "", err
 	}
 	return digest, nil
-}
-
-func addFileToZip(zipWriter *zip.Writer, path string) error {
-	w, err := zipWriter.Create(filepath.Base(path))
-	if err != nil {
-		return err
-	}
-	r, err := os.Open(path)
-	if err != nil {
-		return err
-	}
-	defer func() {
-		if err := r.Close(); err != nil {
-			log.Printf("failed to close: %v", err)
-		}
-	}()
-	if _, err := io.Copy(w, r); err != nil {
-		return err
-	}
-	return nil
-}
-
-func saveImageToDir(ctx context.Context, imageRef string, dir string) error {
-	cmd := dockerCmd(ctx, "save", imageRef, "-o", "image.tar")
-	cmd.Dir = dir
-	return cmd.Run()
 }
 
 func createPluginReleases(dir string, plugins []release.PluginRelease) error {
@@ -527,7 +458,7 @@ func calculateNextRelease(now time.Time, latestRelease *github.RepositoryRelease
 }
 
 func (c *command) pluginDownloadURL(plugin *plugin.Plugin, releaseName string) string {
-	zipName := pluginZipName(plugin)
+	zipName := release.PluginZipName(plugin)
 	return fmt.Sprintf("https://github.com/%s/%s/releases/download/%s/%s", c.githubReleaseOwner, release.GithubRepoPlugins, releaseName, zipName)
 }
 
@@ -539,11 +470,6 @@ func (c *command) pluginReleasesURL(releaseName string) string {
 		releaseName,
 		release.PluginReleasesFile,
 	)
-}
-
-func pluginZipName(plugin *plugin.Plugin) string {
-	identity := plugin.Identity
-	return fmt.Sprintf("%s-%s-%s.zip", identity.Owner(), identity.Plugin(), plugin.PluginVersion)
 }
 
 func fetchRegistryImageAndImageID(plugin *plugin.Plugin) (string, string, error) {
