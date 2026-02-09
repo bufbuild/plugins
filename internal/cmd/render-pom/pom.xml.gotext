@@ -1,0 +1,66 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>build.buf.gensdk</groupId>
+  <artifactId>example</artifactId>
+  <version>1.0.0-SNAPSHOT</version>
+  <properties>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+  </properties>
+  <dependencies>
+    {{- range $dep := .Registry.Maven.Deps }}
+    <dependency>
+      <groupId>{{ $dep.GroupID | xml }}</groupId>
+      <artifactId>{{ $dep.ArtifactID | xml }}</artifactId>
+      <version>{{ $dep.Version | xml }}</version>
+      {{- with $dep.Classifier }}
+      <classifier>{{ . | xml }}</classifier>
+      {{- end }}
+      {{- with $dep.Extension }}
+      <type>{{ . | xml }}</type>
+      {{- end }}
+    </dependency>
+    {{- end }}
+    {{- range $runtime := .Registry.Maven.AdditionalRuntimes }}
+    <!-- {{ $runtime.Name }} -->
+    {{- range $dep := $runtime.Deps }}
+    <dependency>
+      <groupId>{{ $dep.GroupID | xml }}</groupId>
+      <artifactId>{{ $dep.ArtifactID | xml }}</artifactId>
+      <version>{{ $dep.Version | xml }}</version>
+      {{- with $dep.Classifier }}
+      <classifier>{{ . | xml }}</classifier>
+      {{- end }}
+      {{- with $dep.Extension }}
+      <type>{{ . | xml }}</type>
+      {{- end }}
+    </dependency>
+    {{- end }}
+    {{- end }}
+  </dependencies>
+  {{- $kotlinCompiler := .Registry.Maven.Compiler.Kotlin }}
+  {{- if $kotlinCompiler.Version }}
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.jetbrains.kotlin</groupId>
+        <artifactId>kotlin-maven-plugin</artifactId>
+        {{- with $kotlinCompiler.Version }}
+        <version>{{ . | xml }}</version>
+        {{- end }}
+        <configuration>
+          {{- with $kotlinCompiler.APIVersion }}
+          <apiVersion>{{ . | xml }}</apiVersion>
+          {{- end }}
+          {{- with $kotlinCompiler.JVMTarget }}
+          <jvmTarget>{{ . | xml }}</jvmTarget>
+          {{- end }}
+          {{- with $kotlinCompiler.LanguageVersion }}
+          <languageVersion>{{ . | xml }}</languageVersion>
+          {{- end }}
+        </configuration>
+      </plugin>
+    </plugins>
+  </build>
+  {{- end }}
+</project>
