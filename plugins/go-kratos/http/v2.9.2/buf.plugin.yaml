@@ -1,0 +1,8 @@
+version: v1
+name: buf.build/community/kratos-http
+plugin_version: v0.7.1
+source_url: https://github.com/go-kratos/kratos/tree/main/cmd/protoc-gen-go-http
+integration_guide_url: https://github.com/go-kratos/kratos#getting-started
+description: A protoc plugin that generates Kratos HTTP server/client stubs and routing code from protobuf services annotated with HTTP options.
+spdx_license_id: MIT
+license_url: https://github.com/go-kratos/kratos/blob/main/LICENSE
