@@ -117,8 +117,7 @@ func Walk(dir string, f func(plugin *Plugin) error) error {
 // sortByDependencyOrder sorts the passed in plugins such that each dependency comes before a plugin with dependencies.
 func sortByDependencyOrder(original []*Plugin) ([]*Plugin, error) {
 	// Make a defensive copy of the original list
-	plugins := make([]*Plugin, len(original))
-	copy(plugins, original)
+	plugins := slices.Clone(original)
 	resolved := make([]*Plugin, 0, len(plugins))
 	resolvedMap := make(map[string]struct{}, len(plugins))
 	for len(plugins) > 0 {

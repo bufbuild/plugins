@@ -67,6 +67,11 @@ linters:
           - gosec
           - prealloc
         path: _test\.go
+      # internal/plugin predates this rule; renaming would be disruptive
+      - linters:
+          - revive
+        path: internal/plugin/
+        text: "var-naming: avoid package names"
 formatters:
   enable:
     - gci
