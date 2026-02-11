@@ -511,10 +511,7 @@ func createProtocGenPlugin(t *testing.T, basedir string, plugin *plugin.Plugin) 
 	if len(fields) != 3 {
 		return fmt.Errorf("invalid plugin name: %v", plugin.Name)
 	}
-	dockerOrg := os.Getenv("DOCKER_ORG")
-	if len(dockerOrg) == 0 {
-		dockerOrg = "bufbuild"
-	}
+	dockerOrg := cmp.Or(os.Getenv("DOCKER_ORG"), "bufbuild")
 	return protocGenPluginTemplate.Execute(protocGenPlugin, map[string]any{
 		"ImageName": fmt.Sprintf("%s/plugins-%s-%s", dockerOrg, fields[1], fields[2]),
 		"Version":   plugin.PluginVersion,

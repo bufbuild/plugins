@@ -7,6 +7,7 @@ import (
 	"io"
 	"log"
 	"os"
+	"slices"
 	"strings"
 	"time"
 )
@@ -68,8 +69,7 @@ func CalculateDigest(path string) (string, error) {
 // The original slice is unmodified - it returns a copy in sorted order, or an error if there is a cycle or unmet dependency.
 func SortReleasesInDependencyOrder(original []PluginRelease) ([]PluginRelease, error) {
 	// Make a defensive copy of the original list
-	plugins := make([]PluginRelease, len(original))
-	copy(plugins, original)
+	plugins := slices.Clone(original)
 	resolved := make([]PluginRelease, 0, len(plugins))
 	resolvedMap := make(map[string]struct{}, len(plugins))
 	for len(plugins) > 0 {

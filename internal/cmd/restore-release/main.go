@@ -19,6 +19,7 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"slices"
 	"strings"
 
 	"buf.build/go/interrupt"
@@ -111,9 +112,7 @@ func pushImage(ctx context.Context, name string) error {
 }
 
 func dockerCmd(ctx context.Context, command string, args ...string) *exec.Cmd {
-	commandArgs := make([]string, 0, len(args)+1)
-	commandArgs = append(commandArgs, command)
-	commandArgs = append(commandArgs, args...)
+	commandArgs := slices.Concat([]string{command}, args)
 	cmd := exec.CommandContext(ctx, "docker", commandArgs...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr

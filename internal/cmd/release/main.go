@@ -236,9 +236,7 @@ func (c *command) calculateNewReleasePlugins(ctx context.Context, currentRelease
 		return nil, nil
 	}
 
-	plugins := make([]release.PluginRelease, 0, len(newPlugins)+len(existingPlugins))
-	plugins = append(plugins, newPlugins...)
-	plugins = append(plugins, existingPlugins...)
+	plugins := slices.Concat(newPlugins, existingPlugins)
 	sortPluginsByNameVersion(plugins)
 	return plugins, nil
 }
@@ -286,20 +284,20 @@ func sortPluginsByNameVersion(plugins []release.PluginRelease) {
 }
 
 func (c *command) createRelease(ctx context.Context, client *release.Client, releaseName string, plugins []release.PluginRelease, tmpDir string, privateKey minisign.PrivateKey) error {
-	releaseBody, err := c.createReleaseBody(releaseName, plugins, privateKey)
+	releaseBody, err := c.createReleaseBody(releaseName, plugins, privateKey) //nolint:staticcheck // SA4006 false positive with Go 1.26 new(value)
 	if err != nil {
 		return err
 	}
 	// Create GitHub release
 	repositoryReleaseParams := &github.RepositoryRelease{
-		TagName: github.Ptr(releaseName),
-		Name:    github.Ptr(releaseName),
-		Body:    github.Ptr(releaseBody),
+		TagName: new(releaseName),
+		Name:    new(releaseName),
+		Body:    new(releaseBody),
 		// Start release as a draft until all assets are uploaded
-		Draft: github.Ptr(true),
+		Draft: new(true),
 	}
 	if c.githubCommit != "" {
-		repositoryReleaseParams.TargetCommitish = github.Ptr(c.githubCommit)
+		repositoryReleaseParams.TargetCommitish = new(c.githubCommit)
 	}
 	repositoryRelease, err := client.CreateRelease(ctx, c.githubReleaseOwner, release.GithubRepoPlugins, repositoryReleaseParams)
 	if err != nil {
@@ -319,7 +317,7 @@ func (c *command) createRelease(ctx context.Context, client *release.Client, rel
 	}
 	// Publish release
 	if _, err := client.EditRelease(ctx, c.githubReleaseOwner, release.GithubRepoPlugins, repositoryRelease.GetID(), &github.RepositoryRelease{
-		Draft: github.Ptr(false),
+		Draft: new(false),
 	}); err != nil {
 		return err
 	}
