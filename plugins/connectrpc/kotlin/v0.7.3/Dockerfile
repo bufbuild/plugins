@@ -31,10 +31,52 @@ COPY <<EOF /tmp/pom.xml
     </dependency>
     <dependency>
       <groupId>com.connectrpc</groupId>
+      <artifactId>connect-kotlin</artifactId>
+      <version>0.7.3</version>
+    </dependency>
+    <dependency>
+      <groupId>com.connectrpc</groupId>
       <artifactId>connect-kotlin-google-javalite-ext</artifactId>
       <version>0.7.3</version>
     </dependency>
+    <dependency>
+      <groupId>com.connectrpc</groupId>
+      <artifactId>connect-kotlin-okhttp</artifactId>
+      <version>0.7.3</version>
+    </dependency>
+    <dependency>
+      <groupId>org.jetbrains.kotlin</groupId>
+      <artifactId>kotlin-compiler-embeddable</artifactId>
+      <version>2.1.0</version>
+    </dependency>
+    <dependency>
+      <groupId>org.jetbrains.kotlin</groupId>
+      <artifactId>kotlin-scripting-compiler</artifactId>
+      <version>2.1.0</version>
+    </dependency>
   </dependencies>
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.jetbrains.kotlin</groupId>
+        <artifactId>kotlin-maven-plugin</artifactId>
+        <version>2.1.0</version>
+        <configuration>
+          <apiVersion>1.8</apiVersion>
+        </configuration>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <version>3.12.1</version>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-source-plugin</artifactId>
+        <version>3.3.0</version>
+      </plugin>
+    </plugins>
+  </build>
 </project>
 EOF
 RUN cd /tmp && mvn -f pom.xml dependency:go-offline

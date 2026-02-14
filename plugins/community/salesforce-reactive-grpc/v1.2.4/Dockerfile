@@ -16,11 +16,6 @@ COPY <<EOF /tmp/pom.xml
   <version>1.0</version>
   <dependencies>
     <dependency>
-      <groupId>com.google.protobuf</groupId>
-      <artifactId>protobuf-java</artifactId>
-      <version>4.31.0</version>
-    </dependency>
-    <dependency>
       <groupId>com.salesforce.servicelibs</groupId>
       <artifactId>reactor-grpc-stub</artifactId>
       <version>1.2.4</version>
@@ -30,7 +25,26 @@ COPY <<EOF /tmp/pom.xml
       <artifactId>reactor-core</artifactId>
       <version>3.5.4</version>
     </dependency>
+    <dependency>
+      <groupId>com.google.protobuf</groupId>
+      <artifactId>protobuf-java</artifactId>
+      <version>4.31.0</version>
+    </dependency>
   </dependencies>
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <version>3.12.1</version>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-source-plugin</artifactId>
+        <version>3.3.0</version>
+      </plugin>
+    </plugins>
+  </build>
 </project>
 EOF
 RUN cd /tmp && mvn -f pom.xml dependency:go-offline

@@ -16,12 +16,13 @@ import (
 	"time"
 
 	"buf.build/go/interrupt"
-	"github.com/bufbuild/buf/private/bufpkg/bufremoteplugin/bufremotepluginconfig"
-	"github.com/bufbuild/buf/private/pkg/encoding"
 	"golang.org/x/mod/semver"
 
+	"github.com/bufbuild/buf/private/bufpkg/bufremoteplugin/bufremotepluginconfig"
+	"github.com/bufbuild/buf/private/pkg/encoding"
 	"github.com/bufbuild/plugins/internal/docker"
 	"github.com/bufbuild/plugins/internal/fetchclient"
+	"github.com/bufbuild/plugins/internal/maven"
 	"github.com/bufbuild/plugins/internal/plugin"
 	"github.com/bufbuild/plugins/internal/source"
 )
@@ -70,6 +71,9 @@ func postProcessCreatedPlugins(ctx context.Context, plugins []createdPlugin) err
 	}
 	for _, plugin := range plugins {
 		newPluginRef := fmt.Sprintf("%s/%s:%s", plugin.org, plugin.name, plugin.newVersion)
+		if err := regenerateMavenDeps(plugin); err != nil {
+			return fmt.Errorf("failed to regenerate maven deps for %s: %w", newPluginRef, err)
+		}
 		if err := runGoModTidy(ctx, plugin); err != nil {
 			return fmt.Errorf("failed to run go mod tidy for %s: %w", newPluginRef, err)
 		}
@@ -208,6 +212,71 @@ func recreateSwiftPackageResolved(ctx context.Context, plugin createdPlugin) (re
 	}
 
 	return nil
+}
+
+// regenerateMavenDeps regenerates the POM in the Dockerfile's maven-deps stage
+// from the plugin's buf.plugin.yaml. This ensures the POM always reflects the
+// actual Maven dependencies declared in the config, rather than relying on
+// version string replacement which can miss transitive dependency updates.
+func regenerateMavenDeps(plugin createdPlugin) error {
+	versionDir := filepath.Join(plugin.pluginDir, plugin.newVersion)
+	yamlPath := filepath.Join(versionDir, "buf.plugin.yaml")
+	pluginConfig, err := bufremotepluginconfig.ParseConfig(yamlPath)
+	if err != nil {
+		return err
+	}
+	if pluginConfig.Registry == nil || pluginConfig.Registry.Maven == nil {
+		return nil // not a Maven plugin
+	}
+	dockerfilePath := filepath.Join(versionDir, "Dockerfile")
+	dockerfileBytes, err := os.ReadFile(dockerfilePath)
+	if err != nil {
+		return err
+	}
+	dockerfile := string(dockerfileBytes)
+	if !strings.Contains(dockerfile, "maven-deps") {
+		return nil // no maven-deps stage to update
+	}
+	pom, err := maven.RenderDockerfilePOM(pluginConfig)
+	if err != nil {
+		return fmt.Errorf("rendering POM: %w", err)
+	}
+	updated, err := replacePOMInDockerfile(dockerfile, pom)
+	if err != nil {
+		return err
+	}
+	log.Printf("regenerated maven deps POM for %s/%s:%s",
+		plugin.org, plugin.name, plugin.newVersion)
+	return os.WriteFile(dockerfilePath, []byte(updated), 0644)
+}
+
+// replacePOMInDockerfile replaces the POM heredoc content between
+// "COPY <<EOF /tmp/pom.xml" and "EOF" in the maven-deps stage.
+func replacePOMInDockerfile(dockerfile, newPOM string) (string, error) {
+	const pomStart = "COPY <<EOF /tmp/pom.xml"
+	const pomEnd = "EOF"
+	startIdx := strings.Index(dockerfile, pomStart)
+	if startIdx < 0 {
+		return "", fmt.Errorf("could not find %q in Dockerfile", pomStart)
+	}
+	// Find the content start (after the COPY line)
+	contentStart := startIdx + len(pomStart) + 1 // +1 for newline
+	// Find the EOF line after the POM content
+	eofIdx := strings.Index(dockerfile[contentStart:], "\n"+pomEnd+"\n")
+	if eofIdx < 0 {
+		return "", fmt.Errorf("could not find closing EOF in Dockerfile")
+	}
+	eofIdx += contentStart
+	// Replace the POM content between the markers
+	var sb strings.Builder
+	sb.WriteString(dockerfile[:contentStart])
+	sb.WriteString(newPOM)
+	// Ensure newPOM ends with newline before EOF
+	if !strings.HasSuffix(newPOM, "\n") {
+		sb.WriteByte('\n')
+	}
+	sb.WriteString(dockerfile[eofIdx+1:]) // +1 to skip the \n before EOF
+	return sb.String(), nil
 }
 
 // runPluginTests runs 'make test PLUGINS="org/name:v<new>"' in order to generate plugin.sum files.

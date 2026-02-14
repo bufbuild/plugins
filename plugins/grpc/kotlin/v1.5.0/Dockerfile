@@ -28,7 +28,38 @@ COPY <<EOF /tmp/pom.xml
       <artifactId>kotlinx-coroutines-core-jvm</artifactId>
       <version>1.10.2</version>
     </dependency>
+    <dependency>
+      <groupId>org.jetbrains.kotlin</groupId>
+      <artifactId>kotlin-compiler-embeddable</artifactId>
+      <version>2.2.20</version>
+    </dependency>
+    <dependency>
+      <groupId>org.jetbrains.kotlin</groupId>
+      <artifactId>kotlin-scripting-compiler</artifactId>
+      <version>2.2.20</version>
+    </dependency>
   </dependencies>
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.jetbrains.kotlin</groupId>
+        <artifactId>kotlin-maven-plugin</artifactId>
+        <version>2.2.20</version>
+        <configuration>
+        </configuration>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <version>3.12.1</version>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-source-plugin</artifactId>
+        <version>3.3.0</version>
+      </plugin>
+    </plugins>
+  </build>
 </project>
 EOF
 RUN cd /tmp && mvn -f pom.xml dependency:go-offline

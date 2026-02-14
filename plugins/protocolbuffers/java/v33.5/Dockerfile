@@ -32,11 +32,6 @@ COPY <<EOF /tmp/pom.xml
   <version>1.0</version>
   <dependencies>
     <dependency>
-      <groupId>build.buf</groupId>
-      <artifactId>protobuf-javalite</artifactId>
-      <version>4.33.5</version>
-    </dependency>
-    <dependency>
       <groupId>com.google.protobuf</groupId>
       <artifactId>protobuf-java</artifactId>
       <version>4.33.5</version>
@@ -46,7 +41,26 @@ COPY <<EOF /tmp/pom.xml
       <artifactId>protobuf-javalite</artifactId>
       <version>4.33.5</version>
     </dependency>
+    <dependency>
+      <groupId>build.buf</groupId>
+      <artifactId>protobuf-javalite</artifactId>
+      <version>4.33.5</version>
+    </dependency>
   </dependencies>
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <version>3.12.1</version>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-source-plugin</artifactId>
+        <version>3.3.0</version>
+      </plugin>
+    </plugins>
+  </build>
 </project>
 EOF
 RUN cd /tmp && mvn -f pom.xml dependency:go-offline

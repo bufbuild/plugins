@@ -18,7 +18,51 @@ RUN bazel build '//:protoc_lib'
 COPY --link BUILD java.cc plugins/
 RUN bazel build '//plugins:protoc-gen-java.stripped'
 
+
+FROM maven:3.9.11-eclipse-temurin-25 AS maven-deps
+COPY <<EOF /tmp/pom.xml
+<project>
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>temp</groupId>
+  <artifactId>temp</artifactId>
+  <version>1.0</version>
+  <dependencies>
+    <dependency>
+      <groupId>com.google.protobuf</groupId>
+      <artifactId>protobuf-java</artifactId>
+      <version>4.26.0</version>
+    </dependency>
+    <dependency>
+      <groupId>com.google.protobuf</groupId>
+      <artifactId>protobuf-javalite</artifactId>
+      <version>4.26.0</version>
+    </dependency>
+    <dependency>
+      <groupId>build.buf</groupId>
+      <artifactId>protobuf-javalite</artifactId>
+      <version>4.26.0</version>
+    </dependency>
+  </dependencies>
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <version>3.12.1</version>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-source-plugin</artifactId>
+        <version>3.3.0</version>
+      </plugin>
+    </plugins>
+  </build>
+</project>
+EOF
+RUN cd /tmp && mvn -f pom.xml dependency:go-offline
+
 FROM gcr.io/distroless/cc-debian12:latest@sha256:e6ae66a5a343d7112167f9117c4e630cfffcd80db44e44302759ec13ddd2d22b
 COPY --from=build --link --chmod=0755 /build/bazel-bin/plugins/protoc-gen-java .
+COPY --from=maven-deps /root/.m2/repository /maven-repository
 USER nobody
 ENTRYPOINT ["/protoc-gen-java"]

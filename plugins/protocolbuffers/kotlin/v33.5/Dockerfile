@@ -33,13 +33,13 @@ COPY <<EOF /tmp/pom.xml
   <dependencies>
     <dependency>
       <groupId>com.google.protobuf</groupId>
-      <artifactId>protobuf-kotlin-lite</artifactId>
+      <artifactId>protobuf-kotlin</artifactId>
       <version>4.33.5</version>
     </dependency>
     <dependency>
-      <groupId>com.google.protobuf</groupId>
-      <artifactId>protobuf-kotlin</artifactId>
-      <version>4.33.5</version>
+      <groupId>org.jetbrains.kotlin</groupId>
+      <artifactId>kotlin-stdlib</artifactId>
+      <version>1.8.22</version>
     </dependency>
     <dependency>
       <groupId>org.jetbrains.kotlin</groupId>
@@ -47,11 +47,47 @@ COPY <<EOF /tmp/pom.xml
       <version>1.8.22</version>
     </dependency>
     <dependency>
+      <groupId>com.google.protobuf</groupId>
+      <artifactId>protobuf-kotlin-lite</artifactId>
+      <version>4.33.5</version>
+    </dependency>
+    <dependency>
       <groupId>org.jetbrains.kotlin</groupId>
       <artifactId>kotlin-stdlib</artifactId>
       <version>1.8.22</version>
     </dependency>
+    <dependency>
+      <groupId>org.jetbrains.kotlin</groupId>
+      <artifactId>kotlin-compiler-embeddable</artifactId>
+      <version>1.8.22</version>
+    </dependency>
+    <dependency>
+      <groupId>org.jetbrains.kotlin</groupId>
+      <artifactId>kotlin-scripting-compiler</artifactId>
+      <version>1.8.22</version>
+    </dependency>
   </dependencies>
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.jetbrains.kotlin</groupId>
+        <artifactId>kotlin-maven-plugin</artifactId>
+        <version>1.8.22</version>
+        <configuration>
+        </configuration>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <version>3.12.1</version>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-source-plugin</artifactId>
+        <version>3.3.0</version>
+      </plugin>
+    </plugins>
+  </build>
 </project>
 EOF
 RUN cd /tmp && mvn -f pom.xml dependency:go-offline

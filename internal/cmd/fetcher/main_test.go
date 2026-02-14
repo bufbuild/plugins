@@ -296,3 +296,126 @@ COPY --from=consumer /binary /usr/local/bin/protoc-gen-consumer
 		0644,
 	))
 }
+
+func TestReplacePOMInDockerfile(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name       string
+		dockerfile string
+		newPOM     string
+		want       string
+		wantErr    string
+	}{
+		{
+			name: "basic replacement",
+			dockerfile: `FROM maven:3.9.11-eclipse-temurin-25 AS maven-deps
+COPY <<EOF /tmp/pom.xml
+<project>
+  <groupId>old</groupId>
+</project>
+EOF
+RUN cd /tmp && mvn -f pom.xml dependency:go-offline
+`,
+			newPOM: `<project>
+  <groupId>new</groupId>
+</project>
+`,
+			want: `FROM maven:3.9.11-eclipse-temurin-25 AS maven-deps
+COPY <<EOF /tmp/pom.xml
+<project>
+  <groupId>new</groupId>
+</project>
+EOF
+RUN cd /tmp && mvn -f pom.xml dependency:go-offline
+`,
+		},
+		{
+			name: "new POM without trailing newline",
+			dockerfile: `FROM maven:3.9.11-eclipse-temurin-25 AS maven-deps
+COPY <<EOF /tmp/pom.xml
+<project>
+  <groupId>old</groupId>
+</project>
+EOF
+RUN cd /tmp && mvn -f pom.xml dependency:go-offline
+`,
+			newPOM: "<project>\n  <groupId>new</groupId>\n</project>",
+			want: `FROM maven:3.9.11-eclipse-temurin-25 AS maven-deps
+COPY <<EOF /tmp/pom.xml
+<project>
+  <groupId>new</groupId>
+</project>
+EOF
+RUN cd /tmp && mvn -f pom.xml dependency:go-offline
+`,
+		},
+		{
+			name: "preserves surrounding content",
+			dockerfile: `# syntax=docker/dockerfile:1.19
+FROM debian:bookworm AS build
+RUN echo hello
+
+FROM maven:3.9.11-eclipse-temurin-25 AS maven-deps
+COPY <<EOF /tmp/pom.xml
+<project>
+  <groupId>old</groupId>
+</project>
+EOF
+RUN cd /tmp && mvn -f pom.xml dependency:go-offline
+
+FROM scratch
+COPY --from=build /app .
+COPY --from=maven-deps /root/.m2/repository /maven-repository
+ENTRYPOINT ["/app"]
+`,
+			newPOM: "<project>\n  <groupId>replaced</groupId>\n</project>\n",
+			want: `# syntax=docker/dockerfile:1.19
+FROM debian:bookworm AS build
+RUN echo hello
+
+FROM maven:3.9.11-eclipse-temurin-25 AS maven-deps
+COPY <<EOF /tmp/pom.xml
+<project>
+  <groupId>replaced</groupId>
+</project>
+EOF
+RUN cd /tmp && mvn -f pom.xml dependency:go-offline
+
+FROM scratch
+COPY --from=build /app .
+COPY --from=maven-deps /root/.m2/repository /maven-repository
+ENTRYPOINT ["/app"]
+`,
+		},
+		{
+			name:       "missing COPY heredoc marker",
+			dockerfile: "FROM maven:3.9.11 AS maven-deps\nRUN echo hello\n",
+			newPOM:     "<project/>",
+			wantErr:    `could not find "COPY <<EOF /tmp/pom.xml" in Dockerfile`,
+		},
+		{
+			name: "missing closing EOF",
+			dockerfile: `FROM maven:3.9.11 AS maven-deps
+COPY <<EOF /tmp/pom.xml
+<project>
+  <groupId>old</groupId>
+</project>
+`,
+			newPOM:  "<project/>",
+			wantErr: "could not find closing EOF in Dockerfile",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			got, err := replacePOMInDockerfile(tt.dockerfile, tt.newPOM)
+			if tt.wantErr != "" {
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), tt.wantErr)
+				return
+			}
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}
