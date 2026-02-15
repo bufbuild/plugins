@@ -30,6 +30,26 @@ COPY <<EOF /tmp/pom.xml
       <version>0.4.0</version>
     </dependency>
     <dependency>
+      <groupId>com.google.protobuf</groupId>
+      <artifactId>protobuf-kotlin</artifactId>
+      <version>3.25.1</version>
+    </dependency>
+    <dependency>
+      <groupId>org.jetbrains.kotlin</groupId>
+      <artifactId>kotlin-stdlib</artifactId>
+      <version>1.8.22</version>
+    </dependency>
+    <dependency>
+      <groupId>org.jetbrains.kotlin</groupId>
+      <artifactId>kotlin-stdlib-jdk8</artifactId>
+      <version>1.8.22</version>
+    </dependency>
+    <dependency>
+      <groupId>com.google.protobuf</groupId>
+      <artifactId>protobuf-java</artifactId>
+      <version>3.25.1</version>
+    </dependency>
+    <dependency>
       <groupId>com.connectrpc</groupId>
       <artifactId>connect-kotlin</artifactId>
       <version>0.4.0</version>
@@ -43,6 +63,26 @@ COPY <<EOF /tmp/pom.xml
       <groupId>com.connectrpc</groupId>
       <artifactId>connect-kotlin-okhttp</artifactId>
       <version>0.4.0</version>
+    </dependency>
+    <dependency>
+      <groupId>com.google.protobuf</groupId>
+      <artifactId>protobuf-kotlin-lite</artifactId>
+      <version>3.25.1</version>
+    </dependency>
+    <dependency>
+      <groupId>org.jetbrains.kotlin</groupId>
+      <artifactId>kotlin-stdlib</artifactId>
+      <version>1.8.22</version>
+    </dependency>
+    <dependency>
+      <groupId>com.google.protobuf</groupId>
+      <artifactId>protobuf-javalite</artifactId>
+      <version>3.25.1</version>
+    </dependency>
+    <dependency>
+      <groupId>build.buf</groupId>
+      <artifactId>protobuf-javalite</artifactId>
+      <version>3.25.1</version>
     </dependency>
     <dependency>
       <groupId>org.jetbrains.kotlin</groupId>

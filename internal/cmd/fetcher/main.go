@@ -228,6 +228,15 @@ func regenerateMavenDeps(plugin createdPlugin) error {
 	if pluginConfig.Registry == nil || pluginConfig.Registry.Maven == nil {
 		return nil // not a Maven plugin
 	}
+	// Resolve Maven dependencies from plugin deps (top-level deps stanza)
+	// and merge them into the plugin's Maven config. This ensures the
+	// maven-deps Docker stage caches all dependencies needed for offline
+	// builds, including those from dependent plugins (e.g. Kotlin depending
+	// on Java brings in build.buf:protobuf-javalite for lite builds).
+	pluginsDir := filepath.Dir(filepath.Dir(plugin.pluginDir))
+	if err := mergeDepsMavenDeps(pluginConfig, pluginsDir); err != nil {
+		return fmt.Errorf("merging dep Maven dependencies: %w", err)
+	}
 	dockerfilePath := filepath.Join(versionDir, "Dockerfile")
 	dockerfileBytes, err := os.ReadFile(dockerfilePath)
 	if err != nil {
@@ -248,6 +257,78 @@ func regenerateMavenDeps(plugin createdPlugin) error {
 	log.Printf("regenerated maven deps POM for %s/%s:%s",
 		plugin.org, plugin.name, plugin.newVersion)
 	return os.WriteFile(dockerfilePath, []byte(updated), 0644)
+}
+
+// mergeDepsMavenDeps resolves Maven dependencies from the top-level deps
+// stanza in the plugin config and merges them into the plugin's Maven
+// registry config. Dependencies are resolved transitively so that all
+// Maven artifacts needed for offline builds are included in the POM.
+func mergeDepsMavenDeps(
+	pluginConfig *bufremotepluginconfig.Config,
+	pluginsDir string,
+) error {
+	if pluginConfig.Registry == nil || pluginConfig.Registry.Maven == nil {
+		return nil
+	}
+	visited := make(map[string]bool)
+	return mergeDepsMavenDepsRecursive(pluginConfig, pluginsDir, visited)
+}
+
+func mergeDepsMavenDepsRecursive(
+	pluginConfig *bufremotepluginconfig.Config,
+	pluginsDir string,
+	visited map[string]bool,
+) error {
+	for _, dep := range pluginConfig.Dependencies {
+		depKey := dep.IdentityString() + ":" + dep.Version()
+		if visited[depKey] {
+			continue
+		}
+		visited[depKey] = true
+		depPath := filepath.Join(
+			pluginsDir, dep.Owner(), dep.Plugin(),
+			dep.Version(), "buf.plugin.yaml",
+		)
+		depConfig, err := bufremotepluginconfig.ParseConfig(depPath)
+		if err != nil {
+			return fmt.Errorf("loading dep config %s: %w", depKey, err)
+		}
+		// Recursively resolve transitive dependencies first so
+		// that depConfig.Registry.Maven accumulates the full
+		// transitive closure before we merge into pluginConfig.
+		if err := mergeDepsMavenDepsRecursive(depConfig, pluginsDir, visited); err != nil {
+			return err
+		}
+		if depConfig.Registry == nil || depConfig.Registry.Maven == nil {
+			continue
+		}
+		depMaven := depConfig.Registry.Maven
+		pluginConfig.Registry.Maven.Deps = append(
+			pluginConfig.Registry.Maven.Deps, depMaven.Deps...,
+		)
+		// Merge additional runtimes: for matching runtime names,
+		// append deps; otherwise add the new runtime entry.
+		for _, depRuntime := range depMaven.AdditionalRuntimes {
+			merged := false
+			for i, runtime := range pluginConfig.Registry.Maven.AdditionalRuntimes {
+				if runtime.Name == depRuntime.Name {
+					pluginConfig.Registry.Maven.AdditionalRuntimes[i].Deps = append(
+						pluginConfig.Registry.Maven.AdditionalRuntimes[i].Deps,
+						depRuntime.Deps...,
+					)
+					merged = true
+					break
+				}
+			}
+			if !merged {
+				pluginConfig.Registry.Maven.AdditionalRuntimes = append(
+					pluginConfig.Registry.Maven.AdditionalRuntimes,
+					depRuntime,
+				)
+			}
+		}
+	}
+	return nil
 }
 
 // replacePOMInDockerfile replaces the POM heredoc content between

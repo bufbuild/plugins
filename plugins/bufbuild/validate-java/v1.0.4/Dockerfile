@@ -16,6 +16,21 @@ COPY <<EOF /tmp/pom.xml
       <artifactId>pgv-java-stub</artifactId>
       <version>1.0.4</version>
     </dependency>
+    <dependency>
+      <groupId>com.google.protobuf</groupId>
+      <artifactId>protobuf-java</artifactId>
+      <version>3.25.2</version>
+    </dependency>
+    <dependency>
+      <groupId>com.google.protobuf</groupId>
+      <artifactId>protobuf-javalite</artifactId>
+      <version>3.25.2</version>
+    </dependency>
+    <dependency>
+      <groupId>build.buf</groupId>
+      <artifactId>protobuf-javalite</artifactId>
+      <version>3.25.2</version>
+    </dependency>
   </dependencies>
   <build>
     <plugins>

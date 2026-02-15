@@ -40,6 +40,11 @@ COPY <<EOF /tmp/pom.xml
       <version>1.54.1</version>
     </dependency>
     <dependency>
+      <groupId>com.google.protobuf</groupId>
+      <artifactId>protobuf-java</artifactId>
+      <version>3.22.3</version>
+    </dependency>
+    <dependency>
       <groupId>io.grpc</groupId>
       <artifactId>grpc-core</artifactId>
       <version>1.54.1</version>
@@ -53,6 +58,11 @@ COPY <<EOF /tmp/pom.xml
       <groupId>io.grpc</groupId>
       <artifactId>grpc-stub</artifactId>
       <version>1.54.1</version>
+    </dependency>
+    <dependency>
+      <groupId>com.google.protobuf</groupId>
+      <artifactId>protobuf-javalite</artifactId>
+      <version>3.22.3</version>
     </dependency>
   </dependencies>
   <build>

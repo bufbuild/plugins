@@ -46,6 +46,11 @@ COPY <<EOF /tmp/pom.xml
     </dependency>
     <dependency>
       <groupId>com.google.protobuf</groupId>
+      <artifactId>protobuf-java</artifactId>
+      <version>3.24.1</version>
+    </dependency>
+    <dependency>
+      <groupId>com.google.protobuf</groupId>
       <artifactId>protobuf-kotlin-lite</artifactId>
       <version>3.24.1</version>
     </dependency>
@@ -53,6 +58,16 @@ COPY <<EOF /tmp/pom.xml
       <groupId>org.jetbrains.kotlin</groupId>
       <artifactId>kotlin-stdlib</artifactId>
       <version>1.8.22</version>
+    </dependency>
+    <dependency>
+      <groupId>com.google.protobuf</groupId>
+      <artifactId>protobuf-javalite</artifactId>
+      <version>3.24.1</version>
+    </dependency>
+    <dependency>
+      <groupId>build.buf</groupId>
+      <artifactId>protobuf-javalite</artifactId>
+      <version>3.24.1</version>
     </dependency>
     <dependency>
       <groupId>org.jetbrains.kotlin</groupId>

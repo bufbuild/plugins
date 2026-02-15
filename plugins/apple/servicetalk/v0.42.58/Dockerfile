@@ -39,6 +39,21 @@ COPY <<EOF /tmp/pom.xml
       <artifactId>protobuf-java</artifactId>
       <version>4.31.1</version>
     </dependency>
+    <dependency>
+      <groupId>com.google.protobuf</groupId>
+      <artifactId>protobuf-java</artifactId>
+      <version>4.31.1</version>
+    </dependency>
+    <dependency>
+      <groupId>com.google.protobuf</groupId>
+      <artifactId>protobuf-javalite</artifactId>
+      <version>4.31.1</version>
+    </dependency>
+    <dependency>
+      <groupId>build.buf</groupId>
+      <artifactId>protobuf-javalite</artifactId>
+      <version>4.31.1</version>
+    </dependency>
   </dependencies>
   <build>
     <plugins>
