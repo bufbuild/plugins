@@ -170,7 +170,7 @@ func TestRunDependencyOrdering(t *testing.T) {
 
 	// Run the fetcher
 	container := newTestContainer(t, tmpDir)
-	created, err := run(ctx, container, fetcher)
+	created, err := run(ctx, container, fetcher, &flags{})
 	require.NoError(t, err)
 
 	// Verify plugins were created in dependency order
