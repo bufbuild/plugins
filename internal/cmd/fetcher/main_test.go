@@ -2,11 +2,14 @@ package main
 
 import (
 	"context"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
+	"buf.build/go/app"
+	"buf.build/go/app/appext"
 	"github.com/bufbuild/buf/private/bufpkg/bufremoteplugin/bufremotepluginconfig"
 	"github.com/bufbuild/buf/private/pkg/encoding"
 	"github.com/stretchr/testify/assert"
@@ -103,7 +106,8 @@ plugin_version: v1.0.0
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			result, err := updatePluginDeps([]byte(tt.input), tt.latestVersions)
+			logger := slog.New(slog.NewTextHandler(testWriter{t}, &slog.HandlerOptions{Level: slog.LevelDebug}))
+			result, err := updatePluginDeps(logger, []byte(tt.input), tt.latestVersions)
 			if tt.wantErr {
 				assert.Error(t, err)
 				return
@@ -165,7 +169,8 @@ func TestRunDependencyOrdering(t *testing.T) {
 	}
 
 	// Run the fetcher
-	created, err := run(ctx, tmpDir, fetcher)
+	container := newTestContainer(t, tmpDir)
+	created, err := run(ctx, container, fetcher)
 	require.NoError(t, err)
 
 	// Verify plugins were created in dependency order
@@ -295,4 +300,23 @@ COPY --from=consumer /binary /usr/local/bin/protoc-gen-consumer
 		[]byte(consumerDockerfile),
 		0644,
 	))
+}
+
+type testWriter struct {
+	tb testing.TB
+}
+
+func (w testWriter) Write(p []byte) (int, error) {
+	w.tb.Helper()
+	w.tb.Log(strings.TrimRight(string(p), "\n"))
+	return len(p), nil
+}
+
+func newTestContainer(t *testing.T, root string) appext.Container {
+	t.Helper()
+	appContainer := app.NewContainer(map[string]string{}, os.Stdin, os.Stdout, os.Stderr, root)
+	nameContainer, err := appext.NewNameContainer(appContainer, "fetcher")
+	require.NoError(t, err)
+	logger := slog.New(slog.NewTextHandler(testWriter{t}, &slog.HandlerOptions{Level: slog.LevelDebug}))
+	return appext.NewContainer(nameContainer, logger)
 }
