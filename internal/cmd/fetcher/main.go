@@ -17,8 +17,7 @@ import (
 
 	"buf.build/go/app/appcmd"
 	"buf.build/go/app/appext"
-	"buf.build/go/interrupt"
-	"github.com/bufbuild/buf/private/bufpkg/bufremoteplugin/bufremotepluginconfig"
+"github.com/bufbuild/buf/private/bufpkg/bufremoteplugin/bufremotepluginconfig"
 	"github.com/bufbuild/buf/private/pkg/encoding"
 	"golang.org/x/mod/semver"
 
@@ -50,7 +49,6 @@ func newRootCommand(name string) *appcmd.Command {
 		Short: "Fetches latest plugin versions from external sources.",
 		Args:  appcmd.ExactArgs(1),
 		Run: builder.NewRunFunc(func(ctx context.Context, container appext.Container) error {
-			ctx = interrupt.Handle(ctx)
 			client := fetchclient.New(ctx)
 			created, err := run(ctx, container, client)
 			if err != nil {
