@@ -183,7 +183,7 @@ func recreateSwiftPackageResolved(ctx context.Context, plugin createdPlugin) (re
 	}()
 
 	// Execute the git clone command, cloning to the tmpDir
-	cmd := exec.CommandContext(ctx, "sh", "-c", gitCloneCmd, "--", tmpDir)
+	cmd := exec.CommandContext(ctx, "sh", "-c", gitCloneCmd+" -- "+tmpDir) //nolint:gosec // We control the arguments here.
 	cmd.Dir = versionDir
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
