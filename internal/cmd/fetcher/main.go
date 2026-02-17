@@ -17,7 +17,7 @@ import (
 
 	"buf.build/go/app/appcmd"
 	"buf.build/go/app/appext"
-"github.com/bufbuild/buf/private/bufpkg/bufremoteplugin/bufremotepluginconfig"
+	"github.com/bufbuild/buf/private/bufpkg/bufremoteplugin/bufremotepluginconfig"
 	"github.com/bufbuild/buf/private/pkg/encoding"
 	"golang.org/x/mod/semver"
 
