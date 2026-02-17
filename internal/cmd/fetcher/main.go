@@ -363,7 +363,11 @@ func run(ctx context.Context, root string, fetcher Fetcher) ([]createdPlugin, er
 			log.Printf("skipping source: %s: %v", config.Filename, newVersion)
 			continue
 		}
-		pluginDir := filepath.Dir(config.Filename)
+		// Convert to absolute path to match plugin.Walk behavior (which converts paths via filepath.Abs)
+		pluginDir, err := filepath.Abs(filepath.Dir(config.Filename))
+		if err != nil {
+			return nil, err
+		}
 		ok, err := checkDirExists(filepath.Join(pluginDir, newVersion))
 		if err != nil {
 			return nil, err
@@ -386,10 +390,21 @@ func run(ctx context.Context, root string, fetcher Fetcher) ([]createdPlugin, er
 	// Second pass: create plugins in dependency order (using the order from allPlugins)
 	// Update latestPluginVersions as we go so subsequent plugins reference new versions
 	created := make([]createdPlugin, 0, len(pendingCreations))
+	processedDirs := make(map[string]bool, len(pendingCreations))
 	for _, p := range allPlugins {
 		// Extract the plugin directory from the plugin's path
 		// p.Path is the full path to buf.plugin.yaml, directory is two levels up (dir/version/buf.plugin.yaml)
-		pluginDir := filepath.Dir(filepath.Dir(p.Path))
+		// Convert to absolute to match the keys in pendingCreations
+		pluginDir, err := filepath.Abs(filepath.Dir(filepath.Dir(p.Path)))
+		if err != nil {
+			return nil, err
+		}
+
+		// Skip if we've already processed this plugin directory (multiple versions of same plugin)
+		if processedDirs[pluginDir] {
+			continue
+		}
+
 		pending, needsCreation := pendingCreations[pluginDir]
 		if !needsCreation {
 			continue
@@ -399,6 +414,9 @@ func run(ctx context.Context, root string, fetcher Fetcher) ([]createdPlugin, er
 			return nil, err
 		}
 		log.Printf("created %v/%v\n", pending.pluginDir, pending.newVersion)
+
+		// Mark this directory as processed
+		processedDirs[pluginDir] = true
 
 		// Update latestPluginVersions so subsequent plugins in this run can reference this new version
 		latestPluginVersions[p.Name] = pending.newVersion
