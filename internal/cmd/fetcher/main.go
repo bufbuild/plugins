@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
-	"log"
+	"log/slog"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -15,6 +15,8 @@ import (
 	"strings"
 	"time"
 
+	"buf.build/go/app/appcmd"
+	"buf.build/go/app/appext"
 	"buf.build/go/interrupt"
 	"github.com/bufbuild/buf/private/bufpkg/bufremoteplugin/bufremotepluginconfig"
 	"github.com/bufbuild/buf/private/pkg/encoding"
@@ -38,21 +40,28 @@ type Fetcher interface {
 }
 
 func main() {
-	if len(os.Args) != 2 {
-		_, _ = fmt.Fprintf(os.Stderr, "usage: %s <directory>\n", os.Args)
-		os.Exit(2)
-	}
-	root := os.Args[1]
-	ctx := interrupt.Handle(context.Background())
-	client := fetchclient.New(ctx)
-	created, err := run(ctx, root, client)
-	if err != nil {
-		_, _ = fmt.Fprintf(os.Stderr, "failed to fetch versions: %v\n", err)
-		os.Exit(1)
-	}
-	if err := postProcessCreatedPlugins(ctx, created); err != nil {
-		_, _ = fmt.Fprintf(os.Stderr, "failed to run post-processing on plugins: %v\n", err)
-		os.Exit(1)
+	appcmd.Main(context.Background(), newRootCommand("fetcher"))
+}
+
+func newRootCommand(name string) *appcmd.Command {
+	builder := appext.NewBuilder(name)
+	return &appcmd.Command{
+		Use:   name + " <directory>",
+		Short: "Fetches latest plugin versions from external sources.",
+		Args:  appcmd.ExactArgs(1),
+		Run: builder.NewRunFunc(func(ctx context.Context, container appext.Container) error {
+			ctx = interrupt.Handle(ctx)
+			client := fetchclient.New(ctx)
+			created, err := run(ctx, container, client)
+			if err != nil {
+				return fmt.Errorf("failed to fetch versions: %w", err)
+			}
+			if err := postProcessCreatedPlugins(ctx, container.Logger(), created); err != nil {
+				return fmt.Errorf("failed to run post-processing on plugins: %w", err)
+			}
+			return nil
+		}),
+		BindPersistentFlags: builder.BindRoot,
 	}
 }
 
@@ -64,23 +73,27 @@ type createdPlugin struct {
 	newVersion      string
 }
 
-func postProcessCreatedPlugins(ctx context.Context, plugins []createdPlugin) error {
+func (p createdPlugin) String() string {
+	return fmt.Sprintf("%s/%s:%s", p.org, p.name, p.newVersion)
+}
+
+func postProcessCreatedPlugins(ctx context.Context, logger *slog.Logger, plugins []createdPlugin) error {
 	if len(plugins) == 0 {
 		return nil
 	}
 	for _, plugin := range plugins {
-		newPluginRef := fmt.Sprintf("%s/%s:%s", plugin.org, plugin.name, plugin.newVersion)
-		if err := runGoModTidy(ctx, plugin); err != nil {
+		newPluginRef := plugin.String()
+		if err := runGoModTidy(ctx, logger, plugin); err != nil {
 			return fmt.Errorf("failed to run go mod tidy for %s: %w", newPluginRef, err)
 		}
-		if err := recreateNPMPackageLock(ctx, plugin); err != nil {
+		if err := recreateNPMPackageLock(ctx, logger, plugin); err != nil {
 			return fmt.Errorf("failed to recreate package-lock.json for %s: %w", newPluginRef, err)
 		}
-		if err := recreateSwiftPackageResolved(ctx, plugin); err != nil {
+		if err := recreateSwiftPackageResolved(ctx, logger, plugin); err != nil {
 			return fmt.Errorf("failed to resolve Swift package for %s: %w", newPluginRef, err)
 		}
 	}
-	if err := runPluginTests(ctx, plugins); err != nil {
+	if err := runPluginTests(ctx, logger, plugins); err != nil {
 		return fmt.Errorf("failed to run plugin tests: %w", err)
 	}
 	return nil
@@ -88,7 +101,7 @@ func postProcessCreatedPlugins(ctx context.Context, plugins []createdPlugin) err
 
 // runGoModTidy runs 'go mod tidy' for plugins (like twirp-go) which don't use modules.
 // In order to get more reproducible builds, we check in a go.mod/go.sum file.
-func runGoModTidy(ctx context.Context, plugin createdPlugin) error {
+func runGoModTidy(ctx context.Context, logger *slog.Logger, plugin createdPlugin) error {
 	versionDir := filepath.Join(plugin.pluginDir, plugin.newVersion)
 	goMod := filepath.Join(versionDir, "go.mod")
 	_, err := os.Stat(goMod)
@@ -99,7 +112,7 @@ func runGoModTidy(ctx context.Context, plugin createdPlugin) error {
 		// no go.mod/go.sum to update
 		return nil
 	}
-	log.Printf("running go mod tidy for %s/%s:%s", plugin.org, plugin.name, plugin.newVersion)
+	logger.Info("running go mod tidy", slog.Any("plugin", plugin))
 	cmd := exec.CommandContext(ctx, "go", "mod", "tidy")
 	cmd.Dir = versionDir
 	cmd.Stdout = os.Stdout
@@ -109,7 +122,7 @@ func runGoModTidy(ctx context.Context, plugin createdPlugin) error {
 
 // recreateNPMPackageLock will remove an existing package-lock.json file and recreate it.
 // This will ensure that we correctly resolve any updated versions in package.json.
-func recreateNPMPackageLock(ctx context.Context, plugin createdPlugin) error {
+func recreateNPMPackageLock(ctx context.Context, logger *slog.Logger, plugin createdPlugin) error {
 	versionDir := filepath.Join(plugin.pluginDir, plugin.newVersion)
 	npmPackageLock := filepath.Join(versionDir, "package-lock.json")
 	_, err := os.Stat(npmPackageLock)
@@ -123,7 +136,7 @@ func recreateNPMPackageLock(ctx context.Context, plugin createdPlugin) error {
 	if err := os.Remove(npmPackageLock); err != nil {
 		return err
 	}
-	log.Printf("recreating package-lock.json for %s/%s:%s", plugin.org, plugin.name, plugin.newVersion)
+	logger.Info("recreating package-lock.json", slog.Any("plugin", plugin))
 	cmd := exec.CommandContext(ctx, "npm", "install")
 	cmd.Dir = versionDir
 	cmd.Stdout = os.Stdout
@@ -134,7 +147,7 @@ func recreateNPMPackageLock(ctx context.Context, plugin createdPlugin) error {
 // recreateSwiftPackageResolved resolves Swift package dependencies for plugins that use Swift packages.
 // It clones the git repository specified in the Dockerfile, runs 'swift package resolve',
 // and moves the generated Package.resolved file to the version directory.
-func recreateSwiftPackageResolved(ctx context.Context, plugin createdPlugin) (retErr error) {
+func recreateSwiftPackageResolved(ctx context.Context, logger *slog.Logger, plugin createdPlugin) (retErr error) {
 	versionDir := filepath.Join(plugin.pluginDir, plugin.newVersion)
 	packageResolved := filepath.Join(versionDir, "Package.resolved")
 	_, err := os.Stat(packageResolved)
@@ -171,7 +184,7 @@ func recreateSwiftPackageResolved(ctx context.Context, plugin createdPlugin) (re
 		return errors.New("no 'RUN git clone' command found in Dockerfile")
 	}
 
-	log.Printf("resolving Swift package for %s/%s:%s", plugin.org, plugin.name, plugin.newVersion)
+	logger.Info("resolving Swift package", slog.Any("plugin", plugin))
 
 	// Create a tempdir for cloning the repo
 	tmpDir, err := os.MkdirTemp("", "swift-repo-*")
@@ -211,17 +224,17 @@ func recreateSwiftPackageResolved(ctx context.Context, plugin createdPlugin) (re
 }
 
 // runPluginTests runs 'make test PLUGINS="org/name:v<new>"' in order to generate plugin.sum files.
-func runPluginTests(ctx context.Context, plugins []createdPlugin) error {
+func runPluginTests(ctx context.Context, logger *slog.Logger, plugins []createdPlugin) error {
 	pluginsEnv := make([]string, 0, len(plugins))
 	for _, plugin := range plugins {
-		pluginsEnv = append(pluginsEnv, fmt.Sprintf("%s/%s:%s", plugin.org, plugin.name, plugin.newVersion))
+		pluginsEnv = append(pluginsEnv, plugin.String())
 	}
 	env := os.Environ()
 	env = append(env, "ALLOW_EMPTY_PLUGIN_SUM=true")
 	start := time.Now()
-	log.Printf("starting running tests for %d plugins", len(plugins))
+	logger.Info("starting running tests", slog.Int("num_plugins", len(plugins)))
 	defer func() {
-		log.Printf("finished running tests in: %.2fs", time.Since(start).Seconds())
+		logger.Info("finished running tests", slog.Duration("duration", time.Since(start)))
 	}()
 	cmd := exec.CommandContext(ctx, "make", "test", fmt.Sprintf("PLUGINS=%s", strings.Join(pluginsEnv, ","))) //nolint:gosec
 	cmd.Env = env
@@ -245,7 +258,7 @@ func runPluginTests(ctx context.Context, plugins []createdPlugin) error {
 //	  - plugin: buf.build/protocolbuffers/go:v1.36.11
 //
 // It returns the modified content with updated dependency versions.
-func updatePluginDeps(content []byte, latestVersions map[string]string) ([]byte, error) {
+func updatePluginDeps(logger *slog.Logger, content []byte, latestVersions map[string]string) ([]byte, error) {
 	var config bufremotepluginconfig.ExternalConfig
 	if err := encoding.UnmarshalJSONOrYAMLStrict(content, &config); err != nil {
 		return nil, fmt.Errorf("failed to parse buf.plugin.yaml: %w", err)
@@ -275,7 +288,7 @@ func updatePluginDeps(content []byte, latestVersions map[string]string) ([]byte,
 			oldPluginRef := dep.Plugin
 			newPluginRef := pluginName + ":" + latestVersion
 			dep.Plugin = newPluginRef
-			log.Printf("updating plugin dependency %s -> %s", oldPluginRef, newPluginRef)
+			logger.Info("updating plugin dependency", slog.String("old", oldPluginRef), slog.String("new", newPluginRef))
 			modified = true
 		}
 	}
@@ -301,10 +314,12 @@ type pluginToCreate struct {
 	newVersion      string
 }
 
-func run(ctx context.Context, root string, fetcher Fetcher) ([]createdPlugin, error) {
+func run(ctx context.Context, container appext.Container, fetcher Fetcher) ([]createdPlugin, error) {
+	root := container.Arg(0)
+	logger := container.Logger()
 	now := time.Now()
 	defer func() {
-		log.Printf("finished running in: %.2fs\n", time.Since(now).Seconds())
+		logger.Info("finished running", slog.Duration("duration", time.Since(now)))
 	}()
 	baseImageDir, err := docker.FindBaseImageDir(root)
 	if err != nil {
@@ -342,7 +357,7 @@ func run(ctx context.Context, root string, fetcher Fetcher) ([]createdPlugin, er
 
 	for _, config := range configs {
 		if config.Source.Disabled {
-			log.Printf("skipping source: %s", config.Filename)
+			logger.Info("skipping source", slog.String("filename", config.Filename))
 			continue
 		}
 		newVersion := latestVersions[config.CacheKey()]
@@ -350,7 +365,7 @@ func run(ctx context.Context, root string, fetcher Fetcher) ([]createdPlugin, er
 			newVersion, err = fetcher.Fetch(ctx, config)
 			if err != nil {
 				if errors.Is(err, fetchclient.ErrSemverPrerelease) {
-					log.Printf("skipping source: %s: %v", config.Filename, err)
+					logger.Info("skipping source", slog.String("filename", config.Filename), slog.Any("error", err))
 					continue
 				}
 				return nil, err
@@ -360,7 +375,7 @@ func run(ctx context.Context, root string, fetcher Fetcher) ([]createdPlugin, er
 		// Some plugins share the same source but specify different ignore versions.
 		// Ensure we continue to only fetch the latest version once but still respect ignores.
 		if slices.Contains(config.Source.IgnoreVersions, newVersion) {
-			log.Printf("skipping source: %s: %v", config.Filename, newVersion)
+			logger.Info("skipping source", slog.String("filename", config.Filename), slog.String("version", newVersion))
 			continue
 		}
 		// Convert to absolute path to match plugin.Walk behavior (which converts paths via filepath.Abs)
@@ -410,10 +425,10 @@ func run(ctx context.Context, root string, fetcher Fetcher) ([]createdPlugin, er
 			continue
 		}
 
-		if err := createPluginDir(pending.pluginDir, pending.previousVersion, pending.newVersion, latestBaseImageVersions, latestPluginVersions); err != nil {
+		if err := createPluginDir(logger, pending.pluginDir, pending.previousVersion, pending.newVersion, latestBaseImageVersions, latestPluginVersions); err != nil {
 			return nil, err
 		}
-		log.Printf("created %v/%v\n", pending.pluginDir, pending.newVersion)
+		logger.Info("created", slog.String("path", fmt.Sprintf("%v/%v", pending.pluginDir, pending.newVersion)))
 
 		// Mark this directory as processed
 		processedDirs[pluginDir] = true
@@ -436,6 +451,7 @@ func run(ctx context.Context, root string, fetcher Fetcher) ([]createdPlugin, er
 // creating the target directory if it does not exist.
 // If the source directory contains subdirectories this function returns an error.
 func copyDirectory(
+	logger *slog.Logger,
 	source string,
 	target string,
 	prevVersion string,
@@ -460,6 +476,7 @@ func copyDirectory(
 			return fmt.Errorf("failed to copy directory. Expecting files only: %s", source)
 		}
 		if err := copyFile(
+			logger,
 			filepath.Join(source, file.Name()),
 			filepath.Join(target, file.Name()),
 			prevVersion,
@@ -474,6 +491,7 @@ func copyDirectory(
 }
 
 func createPluginDir(
+	logger *slog.Logger,
 	dir string,
 	previousVersion string,
 	newVersion string,
@@ -489,6 +507,7 @@ func createPluginDir(
 		}
 	}()
 	return copyDirectory(
+		logger,
 		filepath.Join(dir, previousVersion),
 		filepath.Join(dir, newVersion),
 		previousVersion,
@@ -499,6 +518,7 @@ func createPluginDir(
 }
 
 func copyFile(
+	logger *slog.Logger,
 	src string,
 	dest string,
 	prevVersion string,
@@ -539,7 +559,7 @@ func copyFile(
 			return fmt.Errorf("failed to read buf.plugin.yaml: %w", err)
 		}
 		// Update plugin dependencies to latest versions
-		content, err = updatePluginDeps(content, latestPluginVersions)
+		content, err = updatePluginDeps(logger, content, latestPluginVersions)
 		if err != nil {
 			return fmt.Errorf("failed to update plugin deps: %w", err)
 		}

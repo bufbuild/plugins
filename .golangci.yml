@@ -34,6 +34,8 @@ linters:
     godox:
       keywords:
         - FIXME
+    sloglint:
+      attr-only: true
     perfsprint:
       # Prefer sprintf for readability
       string-format: false
