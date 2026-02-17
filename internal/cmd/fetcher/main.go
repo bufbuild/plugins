@@ -19,6 +19,7 @@ import (
 	"buf.build/go/app/appext"
 	"github.com/bufbuild/buf/private/bufpkg/bufremoteplugin/bufremotepluginconfig"
 	"github.com/bufbuild/buf/private/pkg/encoding"
+	"github.com/spf13/pflag"
 	"golang.org/x/mod/semver"
 
 	"github.com/bufbuild/plugins/internal/docker"
@@ -33,6 +34,53 @@ var (
 	errNoVersions          = errors.New("no versions found")
 )
 
+type flags struct {
+	include []string
+}
+
+func (f *flags) Bind(flagSet *pflag.FlagSet) {
+	flagSet.StringArrayVar(
+		&f.include,
+		"include",
+		nil,
+		`Only fetch plugins matching these patterns (org or org/name). May be specified multiple times.`,
+	)
+}
+
+type pluginFilter struct {
+	orgs    map[string]struct{}
+	plugins map[string]struct{}
+}
+
+func newPluginFilter(includes []string) *pluginFilter {
+	if len(includes) == 0 {
+		return nil
+	}
+	f := &pluginFilter{
+		orgs:    make(map[string]struct{}),
+		plugins: make(map[string]struct{}),
+	}
+	for _, pattern := range includes {
+		if strings.Contains(pattern, "/") {
+			f.plugins[pattern] = struct{}{}
+		} else {
+			f.orgs[pattern] = struct{}{}
+		}
+	}
+	return f
+}
+
+func (f *pluginFilter) includes(org, name string) bool {
+	if f == nil {
+		return true
+	}
+	if _, ok := f.orgs[org]; ok {
+		return true
+	}
+	_, ok := f.plugins[org+"/"+name]
+	return ok
+}
+
 // Fetcher is an interface for fetching plugin versions from external sources.
 type Fetcher interface {
 	Fetch(ctx context.Context, config *source.Config) (string, error)
@@ -44,13 +92,14 @@ func main() {
 
 func newRootCommand(name string) *appcmd.Command {
 	builder := appext.NewBuilder(name)
+	f := &flags{}
 	return &appcmd.Command{
-		Use:   name + " <directory>",
+		Use:   name + " [directory]",
 		Short: "Fetches latest plugin versions from external sources.",
-		Args:  appcmd.ExactArgs(1),
+		Args:  appcmd.MaximumNArgs(1),
 		Run: builder.NewRunFunc(func(ctx context.Context, container appext.Container) error {
 			client := fetchclient.New(ctx)
-			created, err := run(ctx, container, client)
+			created, err := run(ctx, container, client, f)
 			if err != nil {
 				return fmt.Errorf("failed to fetch versions: %w", err)
 			}
@@ -59,6 +108,7 @@ func newRootCommand(name string) *appcmd.Command {
 			}
 			return nil
 		}),
+		BindFlags:           f.Bind,
 		BindPersistentFlags: builder.BindRoot,
 	}
 }
@@ -312,8 +362,17 @@ type pluginToCreate struct {
 	newVersion      string
 }
 
-func run(ctx context.Context, container appext.Container, fetcher Fetcher) ([]createdPlugin, error) {
-	root := container.Arg(0)
+func run(ctx context.Context, container appext.Container, fetcher Fetcher, f *flags) ([]createdPlugin, error) {
+	var root string
+	if container.NumArgs() > 0 {
+		root = container.Arg(0)
+	} else {
+		var err error
+		root, err = os.Getwd()
+		if err != nil {
+			return nil, err
+		}
+	}
 	logger := container.Logger()
 	now := time.Now()
 	defer func() {
@@ -350,12 +409,20 @@ func run(ctx context.Context, container appext.Container, fetcher Fetcher) ([]cr
 	}
 
 	// First pass: fetch all new versions and determine which plugins need updates
+	filter := newPluginFilter(f.include)
 	latestVersions := make(map[string]string, len(configs))
 	pendingCreations := make(map[string]*pluginToCreate) // keyed by plugin directory
 
 	for _, config := range configs {
 		if config.Source.Disabled {
 			logger.Info("skipping source", slog.String("filename", config.Filename))
+			continue
+		}
+		configDir := filepath.Dir(config.Filename)
+		pluginName := filepath.Base(configDir)
+		pluginOrg := filepath.Base(filepath.Dir(configDir))
+		if !filter.includes(pluginOrg, pluginName) {
+			logger.Debug("skipping source (not in --include list)", slog.String("filename", config.Filename))
 			continue
 		}
 		newVersion := latestVersions[config.CacheKey()]
