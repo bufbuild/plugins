@@ -39,14 +39,12 @@ func run(basedir string, dockerOrg string) error {
 		return nil // nothing to push
 	}
 	for _, includedPlugin := range includedPlugins {
-		output, err := docker.Push(ctx, includedPlugin, dockerOrg)
-		if err != nil {
+		if err := docker.Push(ctx, includedPlugin, dockerOrg); err != nil {
 			log.Printf(
-				"docker push of plugin %s:%s failed with err %v:\noutput:\n%s",
+				"docker push of plugin %s:%s failed: %v",
 				includedPlugin.Name,
 				includedPlugin.PluginVersion,
 				err,
-				string(output),
 			)
 			return err
 		}
