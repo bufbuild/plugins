@@ -7,11 +7,10 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"flag"
 	"fmt"
 	"io"
 	"io/fs"
-	"log"
+	"log/slog"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -21,11 +20,13 @@ import (
 	"time"
 
 	"aead.dev/minisign"
-	"buf.build/go/interrupt"
+	"buf.build/go/app/appcmd"
+	"buf.build/go/app/appext"
 	githubkeychain "github.com/google/go-containerregistry/pkg/authn/github"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
 	"github.com/google/go-github/v72/github"
+	"github.com/spf13/pflag"
 	"golang.org/x/mod/semver"
 
 	"github.com/bufbuild/plugins/internal/plugin"
@@ -36,42 +37,62 @@ type pluginNameVersion struct {
 	name, version string
 }
 
-func main() {
-	dryRun := flag.Bool("dry-run", false, "perform a dry-run (no GitHub modifications)")
-	githubCommit := flag.String("commit", "", "GitHub commit for the release")
-	githubReleaseOwner := flag.String(
+type flags struct {
+	dryRun             bool
+	githubCommit       string
+	githubReleaseOwner string
+	minisignPrivateKey string
+	minisignPublicKey  string
+}
+
+func (f *flags) Bind(flagSet *pflag.FlagSet) {
+	flagSet.BoolVar(&f.dryRun, "dry-run", false, "perform a dry-run (no GitHub modifications)")
+	flagSet.StringVar(&f.githubCommit, "commit", "", "GitHub commit for the release")
+	flagSet.StringVar(
+		&f.githubReleaseOwner,
 		"github-release-owner",
 		string(release.GithubOwnerBufbuild),
 		"GitHub release owner (set to personal account to test against a fork)",
 	)
-	minisignPrivateKey := flag.String("minisign-private-key", "", "path to minisign private key file")
-	minisignPublicKey := flag.String(
+	flagSet.StringVar(&f.minisignPrivateKey, "minisign-private-key", "", "path to minisign private key file")
+	flagSet.StringVar(
+		&f.minisignPublicKey,
 		"minisign-public-key",
 		"",
 		"path to public key used to verify the latest release's plugin-releases.json file (if different than private key)",
 	)
-	flag.Parse()
+}
 
-	if len(flag.Args()) != 1 {
-		_, _ = fmt.Fprintln(flag.CommandLine.Output(), "usage: release <directory>")
-		flag.PrintDefaults()
-		os.Exit(2)
-	}
-	root := flag.Args()[0]
-	cmd := &command{
-		minisignPrivateKey: *minisignPrivateKey,
-		minisignPublicKey:  *minisignPublicKey,
-		githubCommit:       *githubCommit,
-		githubReleaseOwner: release.GithubOwner(*githubReleaseOwner),
-		dryRun:             *dryRun,
-		rootDir:            root,
-	}
-	if err := cmd.run(); err != nil {
-		log.Fatalln(err.Error())
+func main() {
+	appcmd.Main(context.Background(), newRootCommand("release"))
+}
+
+func newRootCommand(name string) *appcmd.Command {
+	builder := appext.NewBuilder(name)
+	f := &flags{}
+	return &appcmd.Command{
+		Use:   name + " <directory>",
+		Short: "Creates a GitHub release for changed plugins.",
+		Args:  appcmd.ExactArgs(1),
+		Run: builder.NewRunFunc(func(ctx context.Context, container appext.Container) error {
+			cmd := &command{
+				logger:             container.Logger(),
+				minisignPrivateKey: f.minisignPrivateKey,
+				minisignPublicKey:  f.minisignPublicKey,
+				githubCommit:       f.githubCommit,
+				githubReleaseOwner: release.GithubOwner(f.githubReleaseOwner),
+				dryRun:             f.dryRun,
+				rootDir:            container.Arg(0),
+			}
+			return cmd.run(ctx)
+		}),
+		BindFlags:           f.Bind,
+		BindPersistentFlags: builder.BindRoot,
 	}
 }
 
 type command struct {
+	logger             *slog.Logger
 	minisignPrivateKey string
 	minisignPublicKey  string
 	githubCommit       string
@@ -80,20 +101,19 @@ type command struct {
 	rootDir            string
 }
 
-func (c *command) run() error {
-	ctx := interrupt.Handle(context.Background())
+func (c *command) run(ctx context.Context) error {
 	// Create temporary directory
 	tmpDir, err := os.MkdirTemp("", "plugins-release")
 	if err != nil {
 		return fmt.Errorf("failed to create temporary directory: %w", err)
 	}
-	log.Printf("created tmp dir: %s", tmpDir)
+	c.logger.InfoContext(ctx, "created tmp dir", slog.String("dir", tmpDir))
 	defer func() {
 		if c.dryRun {
 			return
 		}
 		if err := os.RemoveAll(tmpDir); err != nil {
-			log.Printf("failed to remove %q: %v", tmpDir, err)
+			c.logger.WarnContext(ctx, "failed to remove tmp dir", slog.String("dir", tmpDir), slog.Any("error", err))
 		}
 	}()
 	client := release.NewClient()
@@ -118,7 +138,7 @@ func (c *command) run() error {
 		return fmt.Errorf("failed to determine latest plugin releases: %w", err)
 	}
 	if releases == nil {
-		log.Printf("no current release found")
+		c.logger.InfoContext(ctx, "no current release found")
 		releases = &release.PluginReleases{}
 	}
 
@@ -134,9 +154,9 @@ func (c *command) run() error {
 	}
 	if len(plugins) == 0 {
 		if tagName := latestRelease.GetTagName(); tagName != "" {
-			log.Printf("no changes to plugins since %v", tagName)
+			c.logger.InfoContext(ctx, "no changes to plugins since release", slog.String("tag", tagName))
 		} else {
-			log.Printf("no changes to plugins - not creating initial release")
+			c.logger.InfoContext(ctx, "no changes to plugins - not creating initial release")
 		}
 		return nil
 	}
@@ -144,7 +164,7 @@ func (c *command) run() error {
 		return fmt.Errorf("failed to create %s: %w", release.PluginReleasesFile, err)
 	}
 
-	if err := signPluginReleases(tmpDir, privateKey); err != nil {
+	if err := signPluginReleases(ctx, c.logger, tmpDir, privateKey); err != nil {
 		return fmt.Errorf("failed to sign %q: %w", filepath.Join(tmpDir, release.PluginReleasesFile), err)
 	}
 
@@ -156,8 +176,8 @@ func (c *command) run() error {
 		if err := os.WriteFile(filepath.Join(tmpDir, "RELEASE.md"), []byte(releaseBody), 0644); err != nil { //nolint:gosec
 			return err
 		}
-		log.Printf("skipping GitHub release creation in dry-run mode")
-		log.Printf("release assets created in %q", tmpDir)
+		c.logger.InfoContext(ctx, "skipping GitHub release creation in dry-run mode")
+		c.logger.InfoContext(ctx, "release assets created", slog.String("dir", tmpDir))
 		return nil
 	}
 	if err := c.createRelease(ctx, client, releaseName, plugins, tmpDir, privateKey); err != nil {
@@ -192,7 +212,11 @@ func (c *command) calculateNewReleasePlugins(ctx context.Context, currentRelease
 		}
 		identity := plugin.Identity
 		if registryImage == "" || imageID == "" {
-			log.Printf("unable to detect registry image and image ID for plugin %s/%s:%s", identity.Owner(), identity.Plugin(), plugin.PluginVersion)
+			c.logger.InfoContext(ctx, "unable to detect registry image and image ID",
+				slog.String("owner", identity.Owner()),
+				slog.String("plugin", identity.Plugin()),
+				slog.String("version", plugin.PluginVersion),
+			)
 			return nil
 		}
 		key := pluginNameVersion{name: identity.Owner() + "/" + identity.Plugin(), version: plugin.PluginVersion}
@@ -200,13 +224,17 @@ func (c *command) calculateNewReleasePlugins(ctx context.Context, currentRelease
 		// Found existing release - only rebuild if changed image digest or buf.plugin.yaml digest
 		if pluginRelease.ImageID != imageID || pluginRelease.PluginYAMLDigest != pluginYamlDigest {
 			downloadURL := c.pluginDownloadURL(plugin, releaseName)
-			zipDigest, err := createPluginZip(ctx, tmpDir, plugin, registryImage, imageID)
+			zipDigest, err := createPluginZip(ctx, c.logger, tmpDir, plugin, registryImage, imageID)
 			if err != nil {
 				return err
 			}
 			status := release.StatusUpdated
 			if pluginRelease.ImageID == "" {
 				status = release.StatusNew
+			}
+			deps, err := pluginDependencies(plugin)
+			if err != nil {
+				return err
 			}
 			newPlugins = append(newPlugins, release.PluginRelease{
 				PluginName:       fmt.Sprintf("%s/%s", identity.Owner(), identity.Plugin()),
@@ -219,12 +247,19 @@ func (c *command) calculateNewReleasePlugins(ctx context.Context, currentRelease
 				URL:              downloadURL,
 				LastUpdated:      now,
 				Status:           status,
-				Dependencies:     pluginDependencies(plugin),
+				Dependencies:     deps,
 			})
 		} else {
-			log.Printf("plugin %s:%s unchanged", pluginRelease.PluginName, pluginRelease.PluginVersion)
+			c.logger.InfoContext(ctx, "plugin unchanged",
+				slog.String("name", pluginRelease.PluginName),
+				slog.String("version", pluginRelease.PluginVersion),
+			)
 			pluginRelease.Status = release.StatusExisting
-			pluginRelease.Dependencies = pluginDependencies(plugin)
+			deps, err := pluginDependencies(plugin)
+			if err != nil {
+				return err
+			}
+			pluginRelease.Dependencies = deps
 			existingPlugins = append(existingPlugins, pluginRelease)
 		}
 		return nil
@@ -241,19 +276,19 @@ func (c *command) calculateNewReleasePlugins(ctx context.Context, currentRelease
 	return plugins, nil
 }
 
-func pluginDependencies(plugin *plugin.Plugin) []string {
+func pluginDependencies(plugin *plugin.Plugin) ([]string, error) {
 	if len(plugin.Deps) == 0 {
-		return nil
+		return nil, nil
 	}
 	deps := make([]string, len(plugin.Deps))
 	for i, dep := range plugin.Deps {
 		if dep.Revision != 0 {
-			log.Fatalf("unsupported plugin dependency revision: %v", dep.Revision)
+			return nil, fmt.Errorf("unsupported plugin dependency revision: %v", dep.Revision)
 		}
 		deps[i] = dep.Plugin
 	}
 	slices.Sort(deps)
-	return deps
+	return deps, nil
 }
 
 func (c *command) loadMinisignPublicKeyFromFileOrPrivateKey(privateKey minisign.PrivateKey) (minisign.PublicKey, error) {
@@ -310,7 +345,7 @@ func (c *command) createRelease(ctx context.Context, client *release.Client, rel
 		if d.IsDir() {
 			return nil
 		}
-		log.Printf("uploading: %s", d.Name())
+		c.logger.InfoContext(ctx, "uploading", slog.String("file", d.Name()))
 		return client.UploadReleaseAsset(ctx, c.githubReleaseOwner, release.GithubRepoPlugins, repositoryRelease.GetID(), path)
 	}); err != nil {
 		return err
@@ -379,13 +414,13 @@ func (c *command) createReleaseBody(name string, plugins []release.PluginRelease
 	return sb.String(), nil
 }
 
-func signPluginReleases(dir string, privateKey minisign.PrivateKey) error {
+func signPluginReleases(ctx context.Context, logger *slog.Logger, dir string, privateKey minisign.PrivateKey) error {
 	releasesFile := filepath.Join(dir, release.PluginReleasesFile)
 	if privateKey.Equal(minisign.PrivateKey{}) { // Private key not initialized
-		log.Printf("skipping signing of %s", releasesFile)
+		logger.InfoContext(ctx, "skipping signing", slog.String("file", releasesFile))
 		return nil
 	}
-	log.Printf("signing: %s", releasesFile)
+	logger.InfoContext(ctx, "signing", slog.String("file", releasesFile))
 	releasesFileBytes, err := os.ReadFile(releasesFile)
 	if err != nil {
 		return err
@@ -397,8 +432,15 @@ func signPluginReleases(dir string, privateKey minisign.PrivateKey) error {
 	return nil
 }
 
-func createPluginZip(ctx context.Context, basedir string, plugin *plugin.Plugin, registryImage string, imageID string) (string, error) {
-	if err := pullImage(ctx, registryImage); err != nil {
+func createPluginZip(
+	ctx context.Context,
+	logger *slog.Logger,
+	basedir string,
+	plugin *plugin.Plugin,
+	registryImage string,
+	imageID string,
+) (string, error) {
+	if err := pullImage(ctx, logger, registryImage); err != nil {
 		return "", err
 	}
 	zipName := pluginZipName(plugin)
@@ -408,13 +450,13 @@ func createPluginZip(ctx context.Context, basedir string, plugin *plugin.Plugin,
 	}
 	defer func() {
 		if err := os.RemoveAll(pluginTempDir); err != nil {
-			log.Printf("failed to remove %q: %v", pluginTempDir, err)
+			logger.WarnContext(ctx, "failed to remove tmp dir", slog.String("dir", pluginTempDir), slog.Any("error", err))
 		}
 	}()
 	if err := saveImageToDir(ctx, imageID, pluginTempDir); err != nil {
 		return "", err
 	}
-	log.Printf("creating %s", zipName)
+	logger.InfoContext(ctx, "creating zip", slog.String("name", zipName))
 	zipFile := filepath.Join(basedir, zipName)
 	zf, err := os.OpenFile(zipFile, os.O_CREATE|os.O_RDWR|os.O_TRUNC, 0644)
 	if err != nil {
@@ -422,7 +464,7 @@ func createPluginZip(ctx context.Context, basedir string, plugin *plugin.Plugin,
 	}
 	defer func() {
 		if err := zf.Close(); err != nil && !errors.Is(err, os.ErrClosed) {
-			log.Printf("failed to close: %v", err)
+			logger.WarnContext(ctx, "failed to close zip file", slog.Any("error", err))
 		}
 	}()
 	zw := zip.NewWriter(zf)
@@ -448,7 +490,7 @@ func createPluginZip(ctx context.Context, basedir string, plugin *plugin.Plugin,
 	return digest, nil
 }
 
-func addFileToZip(zipWriter *zip.Writer, path string) error {
+func addFileToZip(zipWriter *zip.Writer, path string) (retErr error) {
 	w, err := zipWriter.Create(filepath.Base(path))
 	if err != nil {
 		return err
@@ -458,9 +500,7 @@ func addFileToZip(zipWriter *zip.Writer, path string) error {
 		return err
 	}
 	defer func() {
-		if err := r.Close(); err != nil {
-			log.Printf("failed to close: %v", err)
-		}
+		retErr = errors.Join(retErr, r.Close())
 	}()
 	if _, err := io.Copy(w, r); err != nil {
 		return err
@@ -474,24 +514,22 @@ func saveImageToDir(ctx context.Context, imageRef string, dir string) error {
 	return cmd.Run()
 }
 
-func createPluginReleases(dir string, plugins []release.PluginRelease) error {
+func createPluginReleases(dir string, plugins []release.PluginRelease) (retErr error) {
 	f, err := os.OpenFile(filepath.Join(dir, release.PluginReleasesFile), os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
 	if err != nil {
 		return err
 	}
 	defer func() {
-		if err := f.Close(); err != nil {
-			log.Printf("failed to close: %v", err)
-		}
+		retErr = errors.Join(retErr, f.Close())
 	}()
 	encoder := json.NewEncoder(f)
 	encoder.SetIndent("", "  ")
 	return encoder.Encode(&release.PluginReleases{Releases: plugins})
 }
 
-func pullImage(ctx context.Context, name string) error {
-	log.Printf("pulling image: %s", name)
-	return dockerCmd(ctx, "pull", name).Run()
+func pullImage(ctx context.Context, logger *slog.Logger, imageName string) error {
+	logger.InfoContext(ctx, "pulling image", slog.String("name", imageName))
+	return dockerCmd(ctx, "pull", imageName).Run()
 }
 
 func dockerCmd(ctx context.Context, command string, args ...string) *exec.Cmd {
