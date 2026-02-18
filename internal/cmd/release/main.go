@@ -224,7 +224,7 @@ func (c *command) calculateNewReleasePlugins(ctx context.Context, currentRelease
 		// Found existing release - only rebuild if changed image digest or buf.plugin.yaml digest
 		if pluginRelease.ImageID != imageID || pluginRelease.PluginYAMLDigest != pluginYamlDigest {
 			downloadURL := c.pluginDownloadURL(plugin, releaseName)
-			zipDigest, err := createPluginZip(ctx, c.logger, tmpDir, plugin, registryImage, imageID)
+			zipDigest, err := createPluginZip(ctx, c.logger, tmpDir, plugin, registryImage)
 			if err != nil {
 				return err
 			}
@@ -438,7 +438,6 @@ func createPluginZip(
 	basedir string,
 	plugin *plugin.Plugin,
 	registryImage string,
-	imageID string,
 ) (string, error) {
 	if err := pullImage(ctx, logger, registryImage); err != nil {
 		return "", err
@@ -453,7 +452,7 @@ func createPluginZip(
 			logger.WarnContext(ctx, "failed to remove tmp dir", slog.String("dir", pluginTempDir), slog.Any("error", err))
 		}
 	}()
-	if err := saveImageToDir(ctx, imageID, pluginTempDir); err != nil {
+	if err := saveImageToDir(ctx, registryImage, pluginTempDir); err != nil {
 		return "", err
 	}
 	logger.InfoContext(ctx, "creating zip", slog.String("name", zipName))
