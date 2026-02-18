@@ -36,6 +36,7 @@ linters:
         - FIXME
     sloglint:
       attr-only: true
+      context: all
     perfsprint:
       # Prefer sprintf for readability
       string-format: false

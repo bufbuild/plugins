@@ -107,7 +107,7 @@ plugin_version: v1.0.0
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			logger := slog.New(slog.NewTextHandler(testWriter{t}, &slog.HandlerOptions{Level: slog.LevelDebug}))
-			result, err := updatePluginDeps(logger, []byte(tt.input), tt.latestVersions)
+			result, err := updatePluginDeps(t.Context(), logger, []byte(tt.input), tt.latestVersions)
 			if tt.wantErr {
 				assert.Error(t, err)
 				return
