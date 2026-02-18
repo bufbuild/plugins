@@ -453,7 +453,7 @@ func createPluginZip(
 			logger.WarnContext(ctx, "failed to remove tmp dir", slog.String("dir", pluginTempDir), slog.Any("error", err))
 		}
 	}()
-	if err := saveImageToDir(ctx, imageID, pluginTempDir); err != nil {
+	if err := saveImageToDir(ctx, registryImage, pluginTempDir); err != nil {
 		return "", err
 	}
 	logger.InfoContext(ctx, "creating zip", slog.String("name", zipName))
