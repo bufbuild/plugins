@@ -103,6 +103,44 @@ plugin_version: v1.0.0
 		},
 	}
 
+	// Regression test: updating deps must not re-marshal the full config, which would
+	// introduce empty fields for zero-value nested structs and strip YAML comments.
+	t.Run("preserves formatting and comments without adding empty fields", func(t *testing.T) {
+		t.Parallel()
+		input := `version: v1
+name: buf.build/test/grpc-go
+plugin_version: v1.5.1
+deps:
+  - plugin: buf.build/protocolbuffers/go:v1.35.0
+registry:
+  go:
+    # https://pkg.go.dev/google.golang.org/grpc
+    min_version: "1.21"
+    deps:
+      - module: google.golang.org/grpc
+        version: v1.70.0
+  opts:
+    - paths=source_relative
+`
+		latestVersions := map[string]string{
+			"buf.build/protocolbuffers/go": "v1.36.11",
+		}
+		logger := slog.New(slog.NewTextHandler(testWriter{t}, &slog.HandlerOptions{Level: slog.LevelDebug}))
+		result, err := updatePluginDeps(t.Context(), logger, []byte(input), latestVersions)
+		require.NoError(t, err)
+
+		output := string(result)
+		// Dep version should be updated.
+		assert.Contains(t, output, "buf.build/protocolbuffers/go:v1.36.11")
+		// Comment in the registry section should be preserved.
+		assert.Contains(t, output, "# https://pkg.go.dev/google.golang.org/grpc")
+		// No empty fields should have been introduced.
+		assert.NotContains(t, output, "npm:")
+		assert.NotContains(t, output, "maven:")
+		assert.NotContains(t, output, "source_url: \"\"")
+		assert.NotContains(t, output, "description: \"\"")
+	})
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()

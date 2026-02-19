@@ -294,8 +294,8 @@ func runPluginTests(ctx context.Context, logger *slog.Logger, plugins []createdP
 }
 
 // updatePluginDeps updates plugin dependencies in a buf.plugin.yaml file to their latest versions.
-// It parses the YAML content, finds any entries in the "deps:" section with "plugin:" fields,
-// and updates them to use the latest available version from latestVersions map.
+// It parses the YAML content to find deps entries, then uses text replacement to update
+// version references in-place, preserving the original formatting and comments.
 // For example, if the YAML contains:
 //
 //	deps:
@@ -320,9 +320,10 @@ func updatePluginDeps(ctx context.Context, logger *slog.Logger, content []byte, 
 		return content, nil
 	}
 
-	modified := false
-	for i := range config.Deps {
-		dep := &config.Deps[i]
+	// Use text replacement rather than re-marshaling the struct to avoid introducing
+	// empty fields from zero-value nested structs in ExternalConfig.
+	result := string(content)
+	for _, dep := range config.Deps {
 		if dep.Plugin == "" {
 			continue
 		}
@@ -334,27 +335,18 @@ func updatePluginDeps(ctx context.Context, logger *slog.Logger, content []byte, 
 		}
 
 		// Look up the latest version for this plugin
-		if latestVersion, exists := latestVersions[pluginName]; exists && latestVersion != currentVersion {
-			oldPluginRef := dep.Plugin
-			newPluginRef := pluginName + ":" + latestVersion
-			dep.Plugin = newPluginRef
-			logger.InfoContext(ctx, "updating plugin dependency", slog.String("old", oldPluginRef), slog.String("new", newPluginRef))
-			modified = true
+		latestVersion, exists := latestVersions[pluginName]
+		if !exists || latestVersion == currentVersion {
+			continue
 		}
+
+		oldPluginRef := dep.Plugin
+		newPluginRef := pluginName + ":" + latestVersion
+		logger.InfoContext(ctx, "updating plugin dependency", slog.String("old", oldPluginRef), slog.String("new", newPluginRef))
+		result = strings.ReplaceAll(result, oldPluginRef, newPluginRef)
 	}
 
-	if !modified {
-		// No changes made, return original content
-		return content, nil
-	}
-
-	// Marshal back to YAML
-	updatedContent, err := encoding.MarshalYAML(&config)
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshal updated YAML: %w", err)
-	}
-
-	return updatedContent, nil
+	return []byte(result), nil
 }
 
 // pluginToCreate represents a plugin that needs a new version created.
