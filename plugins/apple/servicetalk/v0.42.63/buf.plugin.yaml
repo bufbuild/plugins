@@ -17,6 +17,6 @@ registry:
       - io.servicetalk:servicetalk-grpc-api:0.42.63
       - io.servicetalk:servicetalk-grpc-protobuf:0.42.63
       # Add direct dependency on newer protobuf
-      - com.google.protobuf:protobuf-java:4.33.3
+      - com.google.protobuf:protobuf-java:4.33.5
   opts:
     - javaDocs=false
