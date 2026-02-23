@@ -69,9 +69,11 @@ jobs:
           branch: fetch-versions
           delete-branch: true
           title: "Found new plugin versions"
-          body: "New plugin versions found. Please review."
+          body: ""
           assignees: mfridman, pkwarren, stefanvanburen
           token: ${{ steps.generate_token.outputs.token }}
+          author: ${{ steps.generate_token.outputs.app-slug }}[bot] <${{ steps.generate_token.outputs.app-slug }}[bot]@users.noreply.github.com>
+          committer: ${{ steps.generate_token.outputs.app-slug }}[bot] <${{ steps.generate_token.outputs.app-slug }}[bot]@users.noreply.github.com>
       - name: Generate Github Token
         id: generate_issues_token
         uses: actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf # v2.2.1
