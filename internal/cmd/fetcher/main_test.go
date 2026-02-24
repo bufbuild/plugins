@@ -191,7 +191,7 @@ registry:
 // in dependency order and consumers reference the newly created dependency versions.
 func TestRunDependencyOrdering(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
+	ctx := t.Context()
 	tmpDir := t.TempDir()
 
 	// Setup: Create complete repository structure

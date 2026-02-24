@@ -37,6 +37,9 @@ linters:
     sloglint:
       attr-only: true
       context: all
+    usetesting:
+      context-background: true
+      context-todo: true
     perfsprint:
       # Prefer sprintf for readability
       string-format: false
