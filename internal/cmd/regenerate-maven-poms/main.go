@@ -1,33 +1,46 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
 
+	"buf.build/go/app"
+	"buf.build/go/app/appcmd"
 	"github.com/bufbuild/buf/private/bufpkg/bufremoteplugin/bufremotepluginconfig"
 	"github.com/bufbuild/plugins/internal/maven"
 )
 
 func main() {
-	if len(os.Args) < 2 {
-		fmt.Fprintf(os.Stderr, "usage: %s <plugin-dir> [<plugin-dir>...]\n", os.Args[0])
-		os.Exit(1)
-	}
+	appcmd.Main(context.Background(), newCommand("regenerate-maven-poms"))
+}
 
-	for _, pluginDir := range os.Args[1:] {
-		if err := regenerateMavenDeps(pluginDir); err != nil {
-			fmt.Fprintf(os.Stderr, "failed to regenerate %s: %v\n", pluginDir, err)
-			os.Exit(1)
-		}
-		fmt.Printf("regenerated: %s\n", pluginDir)
+func newCommand(name string) *appcmd.Command {
+	return &appcmd.Command{
+		Use:   name + " <plugin-dir> [<plugin-dir>...]",
+		Short: "Regenerates maven-deps POM and Dockerfile stage for Java/Kotlin plugins",
+		Args:  appcmd.MinimumNArgs(1),
+		Run: func(_ context.Context, container app.Container) error {
+			for i := range container.NumArgs() {
+				pluginDir := container.Arg(i)
+				if err := regenerateMavenDeps(pluginDir); err != nil {
+					return fmt.Errorf("failed to regenerate %s: %w", pluginDir, err)
+				}
+				fmt.Fprintf(container.Stdout(), "regenerated: %s\n", pluginDir)
+			}
+			return nil
+		},
 	}
 }
 
 func regenerateMavenDeps(pluginDir string) error {
 	yamlPath := filepath.Join(pluginDir, "buf.plugin.yaml")
+	if _, err := os.Stat(yamlPath); err != nil {
+		return nil // no buf.plugin.yaml, skip
+	}
 	pluginConfig, err := bufremotepluginconfig.ParseConfig(yamlPath)
 	if err != nil {
 		return err
