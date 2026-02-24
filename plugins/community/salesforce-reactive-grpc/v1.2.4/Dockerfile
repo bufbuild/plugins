@@ -63,7 +63,6 @@ COPY <<EOF /tmp/pom.xml
     </dependency>
   </dependencies>
 </project>
-
 EOF
 RUN cd /tmp && mvn -f pom.xml dependency:go-offline
 

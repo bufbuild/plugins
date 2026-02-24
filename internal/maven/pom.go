@@ -54,16 +54,6 @@ func RenderPOM(pluginConfig *bufremotepluginconfig.Config) (string, error) {
 	return pom, nil
 }
 
-// RenderDockerfilePOM generates a simplified POM suitable for inlining in a
-// Dockerfile heredoc. It uses temp groupId/artifactId and injects build
-// plugins for caching compiler dependencies.
-//
-// Deprecated: Use RenderPOM instead. This function is kept for compatibility
-// but now returns the same output as RenderPOM.
-func RenderDockerfilePOM(pluginConfig *bufremotepluginconfig.Config) (string, error) {
-	return RenderPOM(pluginConfig)
-}
-
 func xmlEscape(raw string) (string, error) {
 	var b strings.Builder
 	if err := xml.EscapeText(&b, []byte(raw)); err != nil {

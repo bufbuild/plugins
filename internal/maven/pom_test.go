@@ -236,6 +236,7 @@ func TestXMLEscape_SpecialCharacters(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.input, func(t *testing.T) {
+			t.Parallel()
 			result, err := xmlEscape(tt.input)
 			require.NoError(t, err)
 			assert.Equal(t, tt.expected, result)

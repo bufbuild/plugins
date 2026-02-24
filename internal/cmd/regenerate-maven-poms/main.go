@@ -2,15 +2,17 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
-	"regexp"
+	"slices"
 	"strings"
 
 	"buf.build/go/app"
 	"buf.build/go/app/appcmd"
 	"github.com/bufbuild/buf/private/bufpkg/bufremoteplugin/bufremotepluginconfig"
+
 	"github.com/bufbuild/plugins/internal/maven"
 )
 
@@ -23,10 +25,10 @@ func newCommand(name string) *appcmd.Command {
 		Use:   name + " <plugin-dir> [<plugin-dir>...]",
 		Short: "Regenerates maven-deps POM and Dockerfile stage for Java/Kotlin plugins",
 		Args:  appcmd.MinimumNArgs(1),
-		Run: func(_ context.Context, container app.Container) error {
+		Run: func(ctx context.Context, container app.Container) error {
 			for i := range container.NumArgs() {
 				pluginDir := container.Arg(i)
-				if err := regenerateMavenDeps(pluginDir); err != nil {
+				if err := regenerateMavenDeps(ctx, pluginDir); err != nil {
 					return fmt.Errorf("failed to regenerate %s: %w", pluginDir, err)
 				}
 				fmt.Fprintf(container.Stdout(), "regenerated: %s\n", pluginDir)
@@ -36,9 +38,9 @@ func newCommand(name string) *appcmd.Command {
 	}
 }
 
-func regenerateMavenDeps(pluginDir string) error {
+func regenerateMavenDeps(ctx context.Context, pluginDir string) error {
 	yamlPath := filepath.Join(pluginDir, "buf.plugin.yaml")
-	if _, err := os.Stat(yamlPath); err != nil {
+	if !fileExists(yamlPath) {
 		return nil // no buf.plugin.yaml, skip
 	}
 	pluginConfig, err := bufremotepluginconfig.ParseConfig(yamlPath)
@@ -56,7 +58,7 @@ func regenerateMavenDeps(pluginDir string) error {
 	if err := maven.MergeTransitiveDeps(pluginConfig, pluginsDir); err != nil {
 		return fmt.Errorf("merging transitive deps: %w", err)
 	}
-	maven.DeduplicateAllDeps(pluginConfig.Registry.Maven)
+	maven.DeduplicateAllDeps(ctx, pluginConfig.Registry.Maven)
 
 	pom, err := maven.RenderPOM(pluginConfig)
 	if err != nil {
@@ -72,8 +74,7 @@ func regenerateMavenDeps(pluginDir string) error {
 
 	var updated string
 	if strings.Contains(dockerfile, "maven-deps") {
-		// Update the existing maven-deps stage POM.
-		updated, err = replacePOM(dockerfile, pom)
+		updated, err = maven.ReplacePOMInDockerfile(dockerfile, pom)
 		if err != nil {
 			return fmt.Errorf("replacing POM: %w", err)
 		}
@@ -85,17 +86,7 @@ func regenerateMavenDeps(pluginDir string) error {
 		}
 	}
 
-	return os.WriteFile(dockerfilePath, []byte(updated), 0644)
-}
-
-// replacePOM replaces the POM XML between COPY <<EOF and EOF in the Dockerfile.
-func replacePOM(dockerfile, newPOM string) (string, error) {
-	// Match from "COPY <<EOF /tmp/pom.xml" to "EOF"
-	re := regexp.MustCompile(`(?s)(COPY <<EOF /tmp/pom\.xml\n).*?\n(EOF)`)
-	if !re.MatchString(dockerfile) {
-		return "", fmt.Errorf("could not find POM heredoc in Dockerfile")
-	}
-	return re.ReplaceAllString(dockerfile, "${1}"+newPOM+"\n${2}"), nil
+	return os.WriteFile(dockerfilePath, []byte(updated), 0644) //nolint:gosec // Dockerfiles should be world-readable.
 }
 
 // insertMavenDepsStage inserts a new maven-deps stage into a Dockerfile that
@@ -113,7 +104,7 @@ func insertMavenDepsStage(dockerfile, pom string) (string, error) {
 		}
 	}
 	if lastFromIdx < 0 {
-		return "", fmt.Errorf("no FROM line found in Dockerfile")
+		return "", errors.New("no FROM line found in Dockerfile")
 	}
 
 	// Build the maven-deps stage lines. The POM ends with "\n\n" from the
@@ -123,14 +114,16 @@ func insertMavenDepsStage(dockerfile, pom string) (string, error) {
 	if len(pomLines) > 0 && pomLines[len(pomLines)-1] == "" {
 		pomLines = pomLines[:len(pomLines)-1]
 	}
-	mavenDepsLines := []string{
-		"FROM maven:3.9.11-eclipse-temurin-25 AS maven-deps",
-		"COPY <<EOF /tmp/pom.xml",
-	}
-	mavenDepsLines = append(mavenDepsLines, pomLines...)
-	mavenDepsLines = append(mavenDepsLines,
-		"EOF",
-		"RUN cd /tmp && mvn -f pom.xml dependency:go-offline",
+	mavenDepsLines := slices.Concat(
+		[]string{
+			"FROM maven:3.9.11-eclipse-temurin-25 AS maven-deps",
+			"COPY <<EOF /tmp/pom.xml",
+		},
+		pomLines,
+		[]string{
+			"EOF",
+			"RUN cd /tmp && mvn -f pom.xml dependency:go-offline",
+		},
 	)
 
 	// Find the insertion point: strip trailing blank lines before the last FROM
@@ -168,16 +161,11 @@ func insertMavenDepsStage(dockerfile, pom string) (string, error) {
 	}
 
 	copyLine := "COPY --from=maven-deps /root/.m2/repository /maven-repository"
-	var finalLines []string
 	if copyInsertAt < 0 {
-		finalLines = append(newLines, copyLine)
-	} else {
-		finalLines = make([]string, 0, len(newLines)+1)
-		finalLines = append(finalLines, newLines[:copyInsertAt]...)
-		finalLines = append(finalLines, copyLine)
-		finalLines = append(finalLines, newLines[copyInsertAt:]...)
+		newLines = append(newLines, copyLine)
+		return strings.Join(newLines, "\n"), nil
 	}
-
+	finalLines := slices.Concat(newLines[:copyInsertAt], []string{copyLine}, newLines[copyInsertAt:])
 	return strings.Join(finalLines, "\n"), nil
 }
 
@@ -193,4 +181,9 @@ func isCopyInsertTarget(line string) bool {
 		strings.HasPrefix(upper, "CMD[") ||
 		strings.HasPrefix(upper, "ENTRYPOINT ") ||
 		strings.HasPrefix(upper, "ENTRYPOINT[")
+}
+
+func fileExists(path string) bool {
+	_, err := os.Stat(path)
+	return err == nil
 }

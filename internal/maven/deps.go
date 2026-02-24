@@ -1,8 +1,9 @@
 package maven
 
 import (
+	"context"
 	"fmt"
-	"log"
+	"log/slog"
 	"path/filepath"
 
 	"github.com/bufbuild/buf/private/bufpkg/bufremoteplugin/bufremotepluginconfig"
@@ -80,47 +81,30 @@ func mergeTransitiveDepsRecursive(
 	return nil
 }
 
-// DeduplicateDeps removes duplicate Maven dependencies by
-// groupId:artifactId[:classifier]. The first occurrence wins (parent plugin's
-// version takes priority since it was appended first). A warning is logged
-// when two entries share the same coordinate but differ in version.
-func DeduplicateDeps(deps []bufremotepluginconfig.MavenDependencyConfig) []bufremotepluginconfig.MavenDependencyConfig {
-	seen := make(map[string]string) // key -> version of first occurrence
-	var result []bufremotepluginconfig.MavenDependencyConfig
-	for _, dep := range deps {
-		key := dep.GroupID + ":" + dep.ArtifactID
-		if dep.Classifier != "" {
-			key += ":" + dep.Classifier
-		}
-		if existingVersion, ok := seen[key]; ok {
-			if existingVersion != dep.Version {
-				log.Printf("WARNING: duplicate Maven dependency %s (keeping %s, discarding %s)", key, existingVersion, dep.Version)
-			}
-			continue
-		}
-		seen[key] = dep.Version
-		result = append(result, dep)
-	}
-	return result
-}
-
 // DeduplicateAllDeps deduplicates across the main Deps and all
 // AdditionalRuntimes Deps using a shared seen set. This ensures the
 // flat <dependencies> block in the rendered POM contains no duplicates.
-func DeduplicateAllDeps(mavenConfig *bufremotepluginconfig.MavenRegistryConfig) {
+func DeduplicateAllDeps(
+	ctx context.Context,
+	mavenConfig *bufremotepluginconfig.MavenRegistryConfig,
+) {
 	if mavenConfig == nil {
 		return
 	}
 	seen := make(map[string]string)
-	mavenConfig.Deps = deduplicateWithSeen(mavenConfig.Deps, seen)
+	mavenConfig.Deps = deduplicateWithSeen(ctx, mavenConfig.Deps, seen)
 	for i := range mavenConfig.AdditionalRuntimes {
 		mavenConfig.AdditionalRuntimes[i].Deps = deduplicateWithSeen(
-			mavenConfig.AdditionalRuntimes[i].Deps, seen,
+			ctx, mavenConfig.AdditionalRuntimes[i].Deps, seen,
 		)
 	}
 }
 
-func deduplicateWithSeen(deps []bufremotepluginconfig.MavenDependencyConfig, seen map[string]string) []bufremotepluginconfig.MavenDependencyConfig {
+func deduplicateWithSeen(
+	ctx context.Context,
+	deps []bufremotepluginconfig.MavenDependencyConfig,
+	seen map[string]string,
+) []bufremotepluginconfig.MavenDependencyConfig {
 	var result []bufremotepluginconfig.MavenDependencyConfig
 	for _, dep := range deps {
 		key := dep.GroupID + ":" + dep.ArtifactID
@@ -129,7 +113,11 @@ func deduplicateWithSeen(deps []bufremotepluginconfig.MavenDependencyConfig, see
 		}
 		if existingVersion, ok := seen[key]; ok {
 			if existingVersion != dep.Version {
-				log.Printf("WARNING: duplicate Maven dependency %s (keeping %s, discarding %s)", key, existingVersion, dep.Version)
+				slog.WarnContext(ctx, "duplicate Maven dependency",
+					slog.String("key", key),
+					slog.String("keeping", existingVersion),
+					slog.String("discarding", dep.Version),
+				)
 			}
 			continue
 		}

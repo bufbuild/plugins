@@ -441,10 +441,10 @@ ENTRYPOINT ["/app"]
 
 	// Run regenerateMavenDeps on the consumer plugin
 	logger := slog.New(slog.NewTextHandler(testWriter{t}, &slog.HandlerOptions{Level: slog.LevelDebug}))
-	err := regenerateMavenDeps(logger, createdPlugin{
-		org:       "test",
-		name:      "consumer-plugin",
-		pluginDir: filepath.Join(tmpDir, "plugins", "test", "consumer-plugin"),
+	err := regenerateMavenDeps(context.Background(), logger, createdPlugin{
+		org:        "test",
+		name:       "consumer-plugin",
+		pluginDir:  filepath.Join(tmpDir, "plugins", "test", "consumer-plugin"),
 		newVersion: "v1.0.0",
 	})
 	require.NoError(t, err)
@@ -540,7 +540,7 @@ registry:
 	assert.Contains(t, artifactIDs, "grandparent-dep")
 }
 
-func TestDeduplicateMavenDeps(t *testing.T) {
+func TestDeduplicateAllDeps(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		name string
@@ -598,8 +598,11 @@ func TestDeduplicateMavenDeps(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			got := maven.DeduplicateDeps(tt.deps)
-			assert.Equal(t, tt.want, got)
+			config := &bufremotepluginconfig.MavenRegistryConfig{
+				Deps: tt.deps,
+			}
+			maven.DeduplicateAllDeps(context.Background(), config)
+			assert.Equal(t, tt.want, config.Deps)
 		})
 	}
 }
@@ -737,7 +740,7 @@ COPY <<EOF /tmp/pom.xml
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			got, err := replacePOMInDockerfile(tt.dockerfile, tt.newPOM)
+			got, err := maven.ReplacePOMInDockerfile(tt.dockerfile, tt.newPOM)
 			if tt.wantErr != "" {
 				require.Error(t, err)
 				assert.Contains(t, err.Error(), tt.wantErr)
