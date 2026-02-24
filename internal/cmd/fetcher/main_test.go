@@ -15,6 +15,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/bufbuild/plugins/internal/maven"
 	"github.com/bufbuild/plugins/internal/source"
 )
 
@@ -357,4 +358,393 @@ func newTestContainer(t *testing.T, root string) appext.Container {
 	require.NoError(t, err)
 	logger := slog.New(slog.NewTextHandler(testWriter{t}, &slog.HandlerOptions{Level: slog.LevelDebug}))
 	return appext.NewContainer(nameContainer, logger)
+}
+
+func TestRegenerateMavenDepsWithPluginDeps(t *testing.T) {
+	t.Parallel()
+	tmpDir := t.TempDir()
+
+	// Setup: base-plugin has Maven deps including an additional lite runtime.
+	baseDir := filepath.Join(tmpDir, "plugins", "test", "base-plugin", "v1.0.0")
+	require.NoError(t, os.MkdirAll(baseDir, 0755))
+	baseYAML := `version: v1
+name: buf.build/test/base-plugin
+plugin_version: v1.0.0
+output_languages:
+  - java
+registry:
+  maven:
+    deps:
+      - com.google.protobuf:protobuf-java:4.33.5
+    additional_runtimes:
+      - name: lite
+        deps:
+          - com.google.protobuf:protobuf-javalite:4.33.5
+          - build.buf:protobuf-javalite:4.33.5
+        opts: [lite]
+`
+	require.NoError(t, os.WriteFile(filepath.Join(baseDir, "buf.plugin.yaml"), []byte(baseYAML), 0644))
+
+	// Setup: consumer-plugin depends on base-plugin and has its own Maven
+	// deps plus a lite runtime. The Dockerfile has a maven-deps stage.
+	consumerDir := filepath.Join(tmpDir, "plugins", "test", "consumer-plugin", "v1.0.0")
+	require.NoError(t, os.MkdirAll(consumerDir, 0755))
+	consumerYAML := `version: v1
+name: buf.build/test/consumer-plugin
+plugin_version: v1.0.0
+deps:
+  - plugin: buf.build/test/base-plugin:v1.0.0
+output_languages:
+  - kotlin
+registry:
+  maven:
+    compiler:
+      kotlin:
+        version: 1.8.22
+    deps:
+      - com.google.protobuf:protobuf-kotlin:4.33.5
+    additional_runtimes:
+      - name: lite
+        deps:
+          - com.google.protobuf:protobuf-kotlin-lite:4.33.5
+        opts: [lite]
+`
+	require.NoError(t, os.WriteFile(filepath.Join(consumerDir, "buf.plugin.yaml"), []byte(consumerYAML), 0644))
+
+	dockerfile := `# syntax=docker/dockerfile:1.19
+FROM debian:bookworm AS build
+RUN echo hello
+
+FROM maven:3.9.11-eclipse-temurin-25 AS maven-deps
+COPY <<EOF /tmp/pom.xml
+<project>
+  <groupId>temp</groupId>
+  <artifactId>temp</artifactId>
+  <version>1.0</version>
+  <dependencies>
+    <dependency>
+      <groupId>com.google.protobuf</groupId>
+      <artifactId>protobuf-kotlin</artifactId>
+      <version>4.33.5</version>
+    </dependency>
+  </dependencies>
+</project>
+EOF
+RUN cd /tmp && mvn -f pom.xml dependency:go-offline
+
+FROM scratch
+COPY --from=build /app .
+COPY --from=maven-deps /root/.m2/repository /maven-repository
+ENTRYPOINT ["/app"]
+`
+	require.NoError(t, os.WriteFile(filepath.Join(consumerDir, "Dockerfile"), []byte(dockerfile), 0644))
+
+	// Run regenerateMavenDeps on the consumer plugin
+	logger := slog.New(slog.NewTextHandler(testWriter{t}, &slog.HandlerOptions{Level: slog.LevelDebug}))
+	err := regenerateMavenDeps(logger, createdPlugin{
+		org:       "test",
+		name:      "consumer-plugin",
+		pluginDir: filepath.Join(tmpDir, "plugins", "test", "consumer-plugin"),
+		newVersion: "v1.0.0",
+	})
+	require.NoError(t, err)
+
+	// Read the updated Dockerfile and verify it includes deps from base-plugin
+	updatedBytes, err := os.ReadFile(filepath.Join(consumerDir, "Dockerfile"))
+	require.NoError(t, err)
+	updated := string(updatedBytes)
+
+	// Consumer's own deps should be present
+	assert.Contains(t, updated, "protobuf-kotlin")
+	assert.Contains(t, updated, "protobuf-kotlin-lite")
+
+	// Base plugin's main deps should be merged in
+	assert.Contains(t, updated, "protobuf-java")
+
+	// Base plugin's lite runtime deps should be merged into the
+	// matching lite runtime section
+	assert.Contains(t, updated, "protobuf-javalite")
+	assert.Contains(t, updated, "build.buf")
+}
+
+func TestMergeDepsMavenDepsTransitive(t *testing.T) {
+	t.Parallel()
+	tmpDir := t.TempDir()
+
+	// Setup: grandparent -> parent -> child chain
+	grandparentDir := filepath.Join(tmpDir, "plugins", "test", "grandparent", "v1.0.0")
+	require.NoError(t, os.MkdirAll(grandparentDir, 0755))
+	grandparentYAML := `version: v1
+name: buf.build/test/grandparent
+plugin_version: v1.0.0
+output_languages:
+  - java
+registry:
+  maven:
+    deps:
+      - org.example:grandparent-dep:1.0.0
+`
+	require.NoError(t, os.WriteFile(filepath.Join(grandparentDir, "buf.plugin.yaml"), []byte(grandparentYAML), 0644))
+
+	parentDir := filepath.Join(tmpDir, "plugins", "test", "parent", "v1.0.0")
+	require.NoError(t, os.MkdirAll(parentDir, 0755))
+	parentYAML := `version: v1
+name: buf.build/test/parent
+plugin_version: v1.0.0
+deps:
+  - plugin: buf.build/test/grandparent:v1.0.0
+output_languages:
+  - java
+registry:
+  maven:
+    deps:
+      - org.example:parent-dep:1.0.0
+`
+	require.NoError(t, os.WriteFile(filepath.Join(parentDir, "buf.plugin.yaml"), []byte(parentYAML), 0644))
+
+	childDir := filepath.Join(tmpDir, "plugins", "test", "child", "v1.0.0")
+	require.NoError(t, os.MkdirAll(childDir, 0755))
+	childYAML := `version: v1
+name: buf.build/test/child
+plugin_version: v1.0.0
+deps:
+  - plugin: buf.build/test/parent:v1.0.0
+output_languages:
+  - java
+registry:
+  maven:
+    deps:
+      - org.example:child-dep:1.0.0
+`
+	require.NoError(t, os.WriteFile(filepath.Join(childDir, "buf.plugin.yaml"), []byte(childYAML), 0644))
+
+	// Parse the child plugin config
+	childConfig, err := bufremotepluginconfig.ParseConfig(
+		filepath.Join(childDir, "buf.plugin.yaml"),
+	)
+	require.NoError(t, err)
+
+	// Merge transitive deps
+	pluginsDir := filepath.Join(tmpDir, "plugins")
+	err = maven.MergeTransitiveDeps(childConfig, pluginsDir)
+	require.NoError(t, err)
+
+	// Child should now have all three deps: child-dep, parent-dep,
+	// grandparent-dep (transitive through parent)
+	var artifactIDs []string
+	for _, dep := range childConfig.Registry.Maven.Deps {
+		artifactIDs = append(artifactIDs, dep.ArtifactID)
+	}
+	assert.Contains(t, artifactIDs, "child-dep")
+	assert.Contains(t, artifactIDs, "parent-dep")
+	assert.Contains(t, artifactIDs, "grandparent-dep")
+}
+
+func TestDeduplicateMavenDeps(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name string
+		deps []bufremotepluginconfig.MavenDependencyConfig
+		want []bufremotepluginconfig.MavenDependencyConfig
+	}{
+		{
+			name: "no duplicates",
+			deps: []bufremotepluginconfig.MavenDependencyConfig{
+				{GroupID: "com.example", ArtifactID: "a", Version: "1.0"},
+				{GroupID: "com.example", ArtifactID: "b", Version: "1.0"},
+			},
+			want: []bufremotepluginconfig.MavenDependencyConfig{
+				{GroupID: "com.example", ArtifactID: "a", Version: "1.0"},
+				{GroupID: "com.example", ArtifactID: "b", Version: "1.0"},
+			},
+		},
+		{
+			name: "exact duplicate removed",
+			deps: []bufremotepluginconfig.MavenDependencyConfig{
+				{GroupID: "com.example", ArtifactID: "a", Version: "1.0"},
+				{GroupID: "com.example", ArtifactID: "a", Version: "1.0"},
+			},
+			want: []bufremotepluginconfig.MavenDependencyConfig{
+				{GroupID: "com.example", ArtifactID: "a", Version: "1.0"},
+			},
+		},
+		{
+			name: "version conflict keeps first",
+			deps: []bufremotepluginconfig.MavenDependencyConfig{
+				{GroupID: "com.example", ArtifactID: "a", Version: "1.0"},
+				{GroupID: "com.example", ArtifactID: "a", Version: "2.0"},
+			},
+			want: []bufremotepluginconfig.MavenDependencyConfig{
+				{GroupID: "com.example", ArtifactID: "a", Version: "1.0"},
+			},
+		},
+		{
+			name: "different classifiers are distinct",
+			deps: []bufremotepluginconfig.MavenDependencyConfig{
+				{GroupID: "com.example", ArtifactID: "a", Version: "1.0", Classifier: "sources"},
+				{GroupID: "com.example", ArtifactID: "a", Version: "1.0"},
+			},
+			want: []bufremotepluginconfig.MavenDependencyConfig{
+				{GroupID: "com.example", ArtifactID: "a", Version: "1.0", Classifier: "sources"},
+				{GroupID: "com.example", ArtifactID: "a", Version: "1.0"},
+			},
+		},
+		{
+			name: "nil input",
+			deps: nil,
+			want: nil,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			got := maven.DeduplicateDeps(tt.deps)
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}
+
+func TestReplacePOMInDockerfile(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name       string
+		dockerfile string
+		newPOM     string
+		want       string
+		wantErr    string
+	}{
+		{
+			name: "basic replacement",
+			dockerfile: `FROM maven:3.9.11-eclipse-temurin-25 AS maven-deps
+COPY <<EOF /tmp/pom.xml
+<project>
+  <groupId>old</groupId>
+</project>
+EOF
+RUN cd /tmp && mvn -f pom.xml dependency:go-offline
+`,
+			newPOM: `<project>
+  <groupId>new</groupId>
+</project>
+`,
+			want: `FROM maven:3.9.11-eclipse-temurin-25 AS maven-deps
+COPY <<EOF /tmp/pom.xml
+<project>
+  <groupId>new</groupId>
+</project>
+EOF
+RUN cd /tmp && mvn -f pom.xml dependency:go-offline
+`,
+		},
+		{
+			name: "new POM without trailing newline",
+			dockerfile: `FROM maven:3.9.11-eclipse-temurin-25 AS maven-deps
+COPY <<EOF /tmp/pom.xml
+<project>
+  <groupId>old</groupId>
+</project>
+EOF
+RUN cd /tmp && mvn -f pom.xml dependency:go-offline
+`,
+			newPOM: "<project>\n  <groupId>new</groupId>\n</project>",
+			want: `FROM maven:3.9.11-eclipse-temurin-25 AS maven-deps
+COPY <<EOF /tmp/pom.xml
+<project>
+  <groupId>new</groupId>
+</project>
+EOF
+RUN cd /tmp && mvn -f pom.xml dependency:go-offline
+`,
+		},
+		{
+			name: "preserves surrounding content",
+			dockerfile: `# syntax=docker/dockerfile:1.19
+FROM debian:bookworm AS build
+RUN echo hello
+
+FROM maven:3.9.11-eclipse-temurin-25 AS maven-deps
+COPY <<EOF /tmp/pom.xml
+<project>
+  <groupId>old</groupId>
+</project>
+EOF
+RUN cd /tmp && mvn -f pom.xml dependency:go-offline
+
+FROM scratch
+COPY --from=build /app .
+COPY --from=maven-deps /root/.m2/repository /maven-repository
+ENTRYPOINT ["/app"]
+`,
+			newPOM: "<project>\n  <groupId>replaced</groupId>\n</project>\n",
+			want: `# syntax=docker/dockerfile:1.19
+FROM debian:bookworm AS build
+RUN echo hello
+
+FROM maven:3.9.11-eclipse-temurin-25 AS maven-deps
+COPY <<EOF /tmp/pom.xml
+<project>
+  <groupId>replaced</groupId>
+</project>
+EOF
+RUN cd /tmp && mvn -f pom.xml dependency:go-offline
+
+FROM scratch
+COPY --from=build /app .
+COPY --from=maven-deps /root/.m2/repository /maven-repository
+ENTRYPOINT ["/app"]
+`,
+		},
+		{
+			name:       "missing COPY heredoc marker",
+			dockerfile: "FROM maven:3.9.11 AS maven-deps\nRUN echo hello\n",
+			newPOM:     "<project/>",
+			wantErr:    `could not find "COPY <<EOF /tmp/pom.xml" in Dockerfile`,
+		},
+		{
+			name: "missing closing EOF",
+			dockerfile: `FROM maven:3.9.11 AS maven-deps
+COPY <<EOF /tmp/pom.xml
+<project>
+  <groupId>old</groupId>
+</project>
+`,
+			newPOM:  "<project/>",
+			wantErr: "could not find closing EOF for POM heredoc in Dockerfile",
+		},
+		{
+			name: "nested heredoc before POM EOF",
+			dockerfile: "FROM maven:3.9.11 AS maven-deps\n" +
+				"COPY <<EOF /tmp/pom.xml\n" +
+				"<project>\n" +
+				"  <groupId>old</groupId>\n" +
+				"</project>\n" +
+				"EOF\n" +
+				"RUN cat <<EOF > /tmp/other.txt\n" +
+				"some other content\n" +
+				"EOF\n",
+			newPOM: "<project>\n  <groupId>new</groupId>\n</project>\n",
+			want: "FROM maven:3.9.11 AS maven-deps\n" +
+				"COPY <<EOF /tmp/pom.xml\n" +
+				"<project>\n" +
+				"  <groupId>new</groupId>\n" +
+				"</project>\n" +
+				"EOF\n" +
+				"RUN cat <<EOF > /tmp/other.txt\n" +
+				"some other content\n" +
+				"EOF\n",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			got, err := replacePOMInDockerfile(tt.dockerfile, tt.newPOM)
+			if tt.wantErr != "" {
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), tt.wantErr)
+				return
+			}
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, got)
+		})
+	}
 }

@@ -8,8 +8,43 @@ RUN curl -fsSL -o servicetalk-grpc-protoc.jar https://repo1.maven.org/maven2/io/
 
 FROM gcr.io/distroless/java21-debian12:latest@sha256:f34fd3e4e2d7a246d764d0614f5e6ffb3a735930723fac4cfc25a72798950262 AS base
 
+FROM maven:3.9.11-eclipse-temurin-25 AS maven-deps
+COPY <<EOF /tmp/pom.xml
+<project>
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>temp</groupId>
+  <artifactId>temp</artifactId>
+  <version>1.0</version>
+  <dependencies>
+    <dependency>
+      <groupId>io.servicetalk</groupId>
+      <artifactId>servicetalk-data-protobuf</artifactId>
+      <version>0.42.63</version>
+    </dependency>
+    <dependency>
+      <groupId>io.servicetalk</groupId>
+      <artifactId>servicetalk-grpc-api</artifactId>
+      <version>0.42.63</version>
+    </dependency>
+    <dependency>
+      <groupId>io.servicetalk</groupId>
+      <artifactId>servicetalk-grpc-protobuf</artifactId>
+      <version>0.42.63</version>
+    </dependency>
+    <dependency>
+      <groupId>com.google.protobuf</groupId>
+      <artifactId>protobuf-java</artifactId>
+      <version>4.33.5</version>
+    </dependency>
+  </dependencies>
+</project>
+
+EOF
+RUN cd /tmp && mvn -f pom.xml dependency:go-offline
+
 FROM scratch
 COPY --from=base --link / /
 COPY --from=build --link --chmod=0755 --chown=root:root /app/servicetalk-grpc-protoc.jar .
+COPY --from=maven-deps /root/.m2/repository /maven-repository
 USER nobody
 ENTRYPOINT [ "/usr/bin/java", "-jar", "/servicetalk-grpc-protoc.jar"]

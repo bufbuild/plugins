@@ -1,0 +1,75 @@
+<project>
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>temp</groupId>
+  <artifactId>temp</artifactId>
+  <version>1.0</version>
+  {{- $kotlinCompiler := .Registry.Maven.Compiler.Kotlin }}
+  <dependencies>
+    {{- range $dep := .Registry.Maven.Deps }}
+    <dependency>
+      <groupId>{{ $dep.GroupID | xml }}</groupId>
+      <artifactId>{{ $dep.ArtifactID | xml }}</artifactId>
+      <version>{{ $dep.Version | xml }}</version>
+      {{- with $dep.Classifier }}
+      <classifier>{{ . | xml }}</classifier>
+      {{- end }}
+      {{- with $dep.Extension }}
+      <type>{{ . | xml }}</type>
+      {{- end }}
+    </dependency>
+    {{- end }}
+    {{- range $runtime := .Registry.Maven.AdditionalRuntimes }}
+    <!-- {{ $runtime.Name }} -->
+    {{- range $dep := $runtime.Deps }}
+    <dependency>
+      <groupId>{{ $dep.GroupID | xml }}</groupId>
+      <artifactId>{{ $dep.ArtifactID | xml }}</artifactId>
+      <version>{{ $dep.Version | xml }}</version>
+      {{- with $dep.Classifier }}
+      <classifier>{{ . | xml }}</classifier>
+      {{- end }}
+      {{- with $dep.Extension }}
+      <type>{{ . | xml }}</type>
+      {{- end }}
+    </dependency>
+    {{- end }}
+    {{- end }}
+    {{- if $kotlinCompiler.Version }}
+    <!-- kotlin-maven-plugin dynamic dependencies (not resolved by go-offline) -->
+    <dependency>
+      <groupId>org.jetbrains.kotlin</groupId>
+      <artifactId>kotlin-compiler-embeddable</artifactId>
+      <version>{{ $kotlinCompiler.Version | xml }}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.jetbrains.kotlin</groupId>
+      <artifactId>kotlin-scripting-compiler</artifactId>
+      <version>{{ $kotlinCompiler.Version | xml }}</version>
+    </dependency>
+    {{- end }}
+  </dependencies>
+  {{- if $kotlinCompiler.Version }}
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.jetbrains.kotlin</groupId>
+        <artifactId>kotlin-maven-plugin</artifactId>
+        {{- with $kotlinCompiler.Version }}
+        <version>{{ . | xml }}</version>
+        {{- end }}
+        <configuration>
+          {{- with $kotlinCompiler.APIVersion }}
+          <apiVersion>{{ . | xml }}</apiVersion>
+          {{- end }}
+          {{- with $kotlinCompiler.JVMTarget }}
+          <jvmTarget>{{ . | xml }}</jvmTarget>
+          {{- end }}
+          {{- with $kotlinCompiler.LanguageVersion }}
+          <languageVersion>{{ . | xml }}</languageVersion>
+          {{- end }}
+        </configuration>
+      </plugin>
+    </plugins>
+  </build>
+  {{- end }}
+</project>
