@@ -1,9 +1,7 @@
 package maven
 
 import (
-	"context"
 	"fmt"
-	"log/slog"
 	"path/filepath"
 
 	"github.com/bufbuild/buf/private/bufpkg/bufremoteplugin/bufremotepluginconfig"
@@ -84,27 +82,35 @@ func mergeTransitiveDepsRecursive(
 // DeduplicateAllDeps deduplicates across the main Deps and all
 // AdditionalRuntimes Deps using a shared seen set. This ensures the
 // flat <dependencies> block in the rendered POM contains no duplicates.
+// Returns an error if two entries share the same groupId:artifactId
+// coordinate but differ in version.
 func DeduplicateAllDeps(
-	ctx context.Context,
 	mavenConfig *bufremotepluginconfig.MavenRegistryConfig,
-) {
+) error {
 	if mavenConfig == nil {
-		return
+		return nil
 	}
 	seen := make(map[string]string)
-	mavenConfig.Deps = deduplicateWithSeen(ctx, mavenConfig.Deps, seen)
-	for i := range mavenConfig.AdditionalRuntimes {
-		mavenConfig.AdditionalRuntimes[i].Deps = deduplicateWithSeen(
-			ctx, mavenConfig.AdditionalRuntimes[i].Deps, seen,
-		)
+	var err error
+	mavenConfig.Deps, err = deduplicateWithSeen(mavenConfig.Deps, seen)
+	if err != nil {
+		return err
 	}
+	for i := range mavenConfig.AdditionalRuntimes {
+		mavenConfig.AdditionalRuntimes[i].Deps, err = deduplicateWithSeen(
+			mavenConfig.AdditionalRuntimes[i].Deps, seen,
+		)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func deduplicateWithSeen(
-	ctx context.Context,
 	deps []bufremotepluginconfig.MavenDependencyConfig,
 	seen map[string]string,
-) []bufremotepluginconfig.MavenDependencyConfig {
+) ([]bufremotepluginconfig.MavenDependencyConfig, error) {
 	var result []bufremotepluginconfig.MavenDependencyConfig
 	for _, dep := range deps {
 		key := dep.GroupID + ":" + dep.ArtifactID
@@ -113,10 +119,9 @@ func deduplicateWithSeen(
 		}
 		if existingVersion, ok := seen[key]; ok {
 			if existingVersion != dep.Version {
-				slog.WarnContext(ctx, "duplicate Maven dependency",
-					slog.String("key", key),
-					slog.String("keeping", existingVersion),
-					slog.String("discarding", dep.Version),
+				return nil, fmt.Errorf(
+					"duplicate Maven dependency %s with conflicting versions: %s vs %s",
+					key, existingVersion, dep.Version,
 				)
 			}
 			continue
@@ -124,5 +129,5 @@ func deduplicateWithSeen(
 		seen[key] = dep.Version
 		result = append(result, dep)
 	}
-	return result
+	return result, nil
 }

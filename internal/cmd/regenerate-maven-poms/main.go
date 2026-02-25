@@ -25,10 +25,10 @@ func newCommand(name string) *appcmd.Command {
 		Use:   name + " <plugin-dir> [<plugin-dir>...]",
 		Short: "Regenerates maven-deps POM and Dockerfile stage for Java/Kotlin plugins",
 		Args:  appcmd.MinimumNArgs(1),
-		Run: func(ctx context.Context, container app.Container) error {
+		Run: func(_ context.Context, container app.Container) error {
 			for i := range container.NumArgs() {
 				pluginDir := container.Arg(i)
-				if err := regenerateMavenDeps(ctx, pluginDir); err != nil {
+				if err := regenerateMavenDeps(pluginDir); err != nil {
 					return fmt.Errorf("failed to regenerate %s: %w", pluginDir, err)
 				}
 				fmt.Fprintf(container.Stdout(), "regenerated: %s\n", pluginDir)
@@ -38,7 +38,7 @@ func newCommand(name string) *appcmd.Command {
 	}
 }
 
-func regenerateMavenDeps(ctx context.Context, pluginDir string) error {
+func regenerateMavenDeps(pluginDir string) error {
 	yamlPath := filepath.Join(pluginDir, "buf.plugin.yaml")
 	if !fileExists(yamlPath) {
 		return nil // no buf.plugin.yaml, skip
@@ -58,7 +58,9 @@ func regenerateMavenDeps(ctx context.Context, pluginDir string) error {
 	if err := maven.MergeTransitiveDeps(pluginConfig, pluginsDir); err != nil {
 		return fmt.Errorf("merging transitive deps: %w", err)
 	}
-	maven.DeduplicateAllDeps(ctx, pluginConfig.Registry.Maven)
+	if err := maven.DeduplicateAllDeps(pluginConfig.Registry.Maven); err != nil {
+		return fmt.Errorf("deduplicating deps: %w", err)
+	}
 
 	pom, err := maven.RenderPOM(pluginConfig)
 	if err != nil {

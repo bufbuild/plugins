@@ -543,9 +543,10 @@ registry:
 func TestDeduplicateAllDeps(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
-		name string
-		deps []bufremotepluginconfig.MavenDependencyConfig
-		want []bufremotepluginconfig.MavenDependencyConfig
+		name    string
+		deps    []bufremotepluginconfig.MavenDependencyConfig
+		want    []bufremotepluginconfig.MavenDependencyConfig
+		wantErr string
 	}{
 		{
 			name: "no duplicates",
@@ -569,14 +570,12 @@ func TestDeduplicateAllDeps(t *testing.T) {
 			},
 		},
 		{
-			name: "version conflict keeps first",
+			name: "version conflict returns error",
 			deps: []bufremotepluginconfig.MavenDependencyConfig{
 				{GroupID: "com.example", ArtifactID: "a", Version: "1.0"},
 				{GroupID: "com.example", ArtifactID: "a", Version: "2.0"},
 			},
-			want: []bufremotepluginconfig.MavenDependencyConfig{
-				{GroupID: "com.example", ArtifactID: "a", Version: "1.0"},
-			},
+			wantErr: "duplicate Maven dependency com.example:a with conflicting versions",
 		},
 		{
 			name: "different classifiers are distinct",
@@ -601,7 +600,13 @@ func TestDeduplicateAllDeps(t *testing.T) {
 			config := &bufremotepluginconfig.MavenRegistryConfig{
 				Deps: tt.deps,
 			}
-			maven.DeduplicateAllDeps(context.Background(), config)
+			err := maven.DeduplicateAllDeps(config)
+			if tt.wantErr != "" {
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), tt.wantErr)
+				return
+			}
+			require.NoError(t, err)
 			assert.Equal(t, tt.want, config.Deps)
 		})
 	}

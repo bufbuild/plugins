@@ -300,7 +300,9 @@ func regenerateMavenDeps(ctx context.Context, logger *slog.Logger, plugin create
 	if err := maven.MergeTransitiveDeps(pluginConfig, pluginsDir); err != nil {
 		return fmt.Errorf("merging dep Maven dependencies: %w", err)
 	}
-	maven.DeduplicateAllDeps(ctx, pluginConfig.Registry.Maven)
+	if err := maven.DeduplicateAllDeps(pluginConfig.Registry.Maven); err != nil {
+		return fmt.Errorf("deduplicating deps: %w", err)
+	}
 	dockerfilePath := filepath.Join(versionDir, "Dockerfile")
 	dockerfileBytes, err := os.ReadFile(dockerfilePath)
 	if err != nil {
