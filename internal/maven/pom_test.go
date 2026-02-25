@@ -1,6 +1,7 @@
 package maven
 
 import (
+	"encoding/xml"
 	"os"
 	"path/filepath"
 	"strings"
@@ -11,13 +12,56 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestRenderPOM_BasicJavaPlugin(t *testing.T) {
-	t.Parallel()
+// pomProject mirrors the Maven POM structure for test assertions.
+type pomProject struct {
+	XMLName      xml.Name        `xml:"project"`
+	ModelVersion string          `xml:"modelVersion"`
+	GroupID      string          `xml:"groupId"`
+	ArtifactID   string          `xml:"artifactId"`
+	Version      string          `xml:"version"`
+	Dependencies []pomDependency `xml:"dependencies>dependency"`
+	Build        *pomBuild       `xml:"build"`
+}
 
-	// Create temporary config file
-	tmpDir := t.TempDir()
-	yamlPath := filepath.Join(tmpDir, "buf.plugin.yaml")
-	yamlContent := `version: v1
+type pomDependency struct {
+	GroupID    string `xml:"groupId"`
+	ArtifactID string `xml:"artifactId"`
+	Version    string `xml:"version"`
+	Classifier string `xml:"classifier"`
+	Type       string `xml:"type"`
+}
+
+type pomBuild struct {
+	Plugins []pomPlugin `xml:"plugins>plugin"`
+}
+
+type pomPlugin struct {
+	GroupID       string            `xml:"groupId"`
+	ArtifactID    string            `xml:"artifactId"`
+	Version       string            `xml:"version"`
+	Configuration *pomConfiguration `xml:"configuration"`
+}
+
+type pomConfiguration struct {
+	APIVersion      string `xml:"apiVersion"`
+	JVMTarget       string `xml:"jvmTarget"`
+	LanguageVersion string `xml:"languageVersion"`
+}
+
+func TestRenderPOM(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name    string
+		yaml    string
+		wantErr string
+		// check runs assertions against the parsed POM. XML comments
+		// are not preserved by encoding/xml, so rawPOM is provided
+		// for comment checks.
+		check func(t *testing.T, p pomProject, rawPOM string)
+	}{
+		{
+			name: "basic Java plugin",
+			yaml: `version: v1
 name: buf.build/test/plugin
 plugin_version: v1.0.0
 output_languages:
@@ -26,26 +70,18 @@ registry:
   maven:
     deps:
       - com.google.protobuf:protobuf-java:4.33.5
-`
-	require.NoError(t, os.WriteFile(yamlPath, []byte(yamlContent), 0644))
-
-	config, err := bufremotepluginconfig.ParseConfig(yamlPath)
-	require.NoError(t, err)
-
-	pom, err := RenderPOM(config)
-	require.NoError(t, err)
-
-	assert.Contains(t, pom, "<groupId>com.google.protobuf</groupId>")
-	assert.Contains(t, pom, "<artifactId>protobuf-java</artifactId>")
-	assert.Contains(t, pom, "<version>4.33.5</version>")
-}
-
-func TestRenderPOM_XMLEscaping(t *testing.T) {
-	t.Parallel()
-
-	tmpDir := t.TempDir()
-	yamlPath := filepath.Join(tmpDir, "buf.plugin.yaml")
-	yamlContent := `version: v1
+`,
+			check: func(t *testing.T, p pomProject, _ string) { //nolint:thelper
+				require.Len(t, p.Dependencies, 1)
+				dep := p.Dependencies[0]
+				assert.Equal(t, "com.google.protobuf", dep.GroupID)
+				assert.Equal(t, "protobuf-java", dep.ArtifactID)
+				assert.Equal(t, "4.33.5", dep.Version)
+			},
+		},
+		{
+			name: "XML escaping round-trips correctly",
+			yaml: `version: v1
 name: buf.build/test/plugin
 plugin_version: v1.0.0
 output_languages:
@@ -54,25 +90,17 @@ registry:
   maven:
     deps:
       - com.test:artifact<>&:1.0.0
-`
-	require.NoError(t, os.WriteFile(yamlPath, []byte(yamlContent), 0644))
-
-	config, err := bufremotepluginconfig.ParseConfig(yamlPath)
-	require.NoError(t, err)
-
-	pom, err := RenderPOM(config)
-	require.NoError(t, err)
-
-	assert.Contains(t, pom, "artifact&lt;&gt;&amp;")
-	assert.NotContains(t, pom, "artifact<>&")
-}
-
-func TestRenderPOM_KotlinCompiler(t *testing.T) {
-	t.Parallel()
-
-	tmpDir := t.TempDir()
-	yamlPath := filepath.Join(tmpDir, "buf.plugin.yaml")
-	yamlContent := `version: v1
+`,
+			check: func(t *testing.T, p pomProject, _ string) { //nolint:thelper
+				require.Len(t, p.Dependencies, 1)
+				// encoding/xml decodes entities, so the parsed value
+				// should match the original unescaped input.
+				assert.Equal(t, "artifact<>&", p.Dependencies[0].ArtifactID)
+			},
+		},
+		{
+			name: "Kotlin compiler plugin configuration",
+			yaml: `version: v1
 name: buf.build/test/kotlin-plugin
 plugin_version: v1.0.0
 output_languages:
@@ -86,28 +114,23 @@ registry:
         language_version: "1.8"
         api_version: "1.8"
     deps: []
-`
-	require.NoError(t, os.WriteFile(yamlPath, []byte(yamlContent), 0644))
-
-	config, err := bufremotepluginconfig.ParseConfig(yamlPath)
-	require.NoError(t, err)
-
-	pom, err := RenderPOM(config)
-	require.NoError(t, err)
-
-	assert.Contains(t, pom, "<artifactId>kotlin-maven-plugin</artifactId>")
-	assert.Contains(t, pom, "<version>1.8.22</version>")
-	assert.Contains(t, pom, "<jvmTarget>1.8</jvmTarget>")
-	assert.Contains(t, pom, "<languageVersion>1.8</languageVersion>")
-	assert.Contains(t, pom, "<apiVersion>1.8</apiVersion>")
-}
-
-func TestRenderPOM_AdditionalRuntimes(t *testing.T) {
-	t.Parallel()
-
-	tmpDir := t.TempDir()
-	yamlPath := filepath.Join(tmpDir, "buf.plugin.yaml")
-	yamlContent := `version: v1
+`,
+			check: func(t *testing.T, p pomProject, _ string) { //nolint:thelper
+				require.NotNil(t, p.Build)
+				require.Len(t, p.Build.Plugins, 1)
+				plugin := p.Build.Plugins[0]
+				assert.Equal(t, "org.jetbrains.kotlin", plugin.GroupID)
+				assert.Equal(t, "kotlin-maven-plugin", plugin.ArtifactID)
+				assert.Equal(t, "1.8.22", plugin.Version)
+				require.NotNil(t, plugin.Configuration)
+				assert.Equal(t, "1.8", plugin.Configuration.JVMTarget)
+				assert.Equal(t, "1.8", plugin.Configuration.LanguageVersion)
+				assert.Equal(t, "1.8", plugin.Configuration.APIVersion)
+			},
+		},
+		{
+			name: "additional runtimes",
+			yaml: `version: v1
 name: buf.build/test/plugin
 plugin_version: v1.0.0
 output_languages:
@@ -121,51 +144,28 @@ registry:
         deps:
           - com.google.protobuf:protobuf-javalite:4.33.5
         opts: [lite]
-`
-	require.NoError(t, os.WriteFile(yamlPath, []byte(yamlContent), 0644))
-
-	config, err := bufremotepluginconfig.ParseConfig(yamlPath)
-	require.NoError(t, err)
-
-	pom, err := RenderPOM(config)
-	require.NoError(t, err)
-
-	assert.Contains(t, pom, "<!-- lite -->")
-	assert.Contains(t, pom, "protobuf-javalite")
-}
-
-func TestRenderPOM_ClassifierAndExtension(t *testing.T) {
-	t.Parallel()
-	t.Skip("Classifier/extension format in YAML unknown - no real-world examples in codebase")
-}
-
-func TestRenderPOM_NoMavenConfig(t *testing.T) {
-	t.Parallel()
-
-	tmpDir := t.TempDir()
-	yamlPath := filepath.Join(tmpDir, "buf.plugin.yaml")
-	yamlContent := `version: v1
+`,
+			check: func(t *testing.T, p pomProject, rawPOM string) { //nolint:thelper
+				require.Len(t, p.Dependencies, 2)
+				assert.Equal(t, "protobuf-java", p.Dependencies[0].ArtifactID)
+				assert.Equal(t, "protobuf-javalite", p.Dependencies[1].ArtifactID)
+				// XML comments are not preserved by encoding/xml.
+				assert.Contains(t, rawPOM, "<!-- lite -->")
+			},
+		},
+		{
+			name: "no Maven config returns error",
+			yaml: `version: v1
 name: buf.build/test/plugin
 plugin_version: v1.0.0
 output_languages:
   - go
-`
-	require.NoError(t, os.WriteFile(yamlPath, []byte(yamlContent), 0644))
-
-	config, err := bufremotepluginconfig.ParseConfig(yamlPath)
-	require.NoError(t, err)
-
-	_, err = RenderPOM(config)
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "no Maven registry configured")
-}
-
-func TestRenderPOM_EmptyDeps(t *testing.T) {
-	t.Parallel()
-
-	tmpDir := t.TempDir()
-	yamlPath := filepath.Join(tmpDir, "buf.plugin.yaml")
-	yamlContent := `version: v1
+`,
+			wantErr: "no Maven registry configured",
+		},
+		{
+			name: "empty deps renders valid structure",
+			yaml: `version: v1
 name: buf.build/test/plugin
 plugin_version: v1.0.0
 output_languages:
@@ -173,29 +173,18 @@ output_languages:
 registry:
   maven:
     deps: []
-`
-	require.NoError(t, os.WriteFile(yamlPath, []byte(yamlContent), 0644))
-
-	config, err := bufremotepluginconfig.ParseConfig(yamlPath)
-	require.NoError(t, err)
-
-	pom, err := RenderPOM(config)
-	require.NoError(t, err)
-
-	// Should still generate valid POM structure
-	assert.Contains(t, pom, "<modelVersion>4.0.0</modelVersion>")
-	assert.Contains(t, pom, "<groupId>temp</groupId>")
-	assert.Contains(t, pom, "<artifactId>temp</artifactId>")
-}
-
-func TestRenderPOM_MalformedXMLDetected(t *testing.T) {
-	t.Parallel()
-
-	// A runtime name containing "--" produces an invalid XML comment
-	// (<!-- foo--bar --> is not well-formed XML).
-	tmpDir := t.TempDir()
-	yamlPath := filepath.Join(tmpDir, "buf.plugin.yaml")
-	yamlContent := `version: v1
+`,
+			check: func(t *testing.T, p pomProject, _ string) { //nolint:thelper
+				assert.Equal(t, "4.0.0", p.ModelVersion)
+				assert.Equal(t, "temp", p.GroupID)
+				assert.Equal(t, "temp", p.ArtifactID)
+				assert.Equal(t, "1.0", p.Version)
+				assert.Empty(t, p.Dependencies)
+			},
+		},
+		{
+			name: "malformed XML detected",
+			yaml: `version: v1
 name: buf.build/test/plugin
 plugin_version: v1.0.0
 output_languages:
@@ -209,18 +198,56 @@ registry:
         deps:
           - com.google.protobuf:protobuf-javalite:4.33.5
         opts: [lite]
-`
-	require.NoError(t, os.WriteFile(yamlPath, []byte(yamlContent), 0644))
-
-	config, err := bufremotepluginconfig.ParseConfig(yamlPath)
-	require.NoError(t, err)
-
-	_, err = RenderPOM(config)
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "generated POM is not well-formed XML")
+`,
+			wantErr: "generated POM is not well-formed XML",
+		},
+		{
+			name: "Kotlin dynamic dependencies",
+			yaml: `version: v1
+name: buf.build/test/kotlin-plugin
+plugin_version: v1.0.0
+output_languages:
+  - kotlin
+registry:
+  maven:
+    compiler:
+      kotlin:
+        version: 1.9.0
+    deps: []
+`,
+			check: func(t *testing.T, p pomProject, rawPOM string) { //nolint:thelper
+				require.Len(t, p.Dependencies, 2)
+				assert.Equal(t, "kotlin-compiler-embeddable", p.Dependencies[0].ArtifactID)
+				assert.Equal(t, "1.9.0", p.Dependencies[0].Version)
+				assert.Equal(t, "kotlin-scripting-compiler", p.Dependencies[1].ArtifactID)
+				assert.Equal(t, "1.9.0", p.Dependencies[1].Version)
+				assert.Contains(t, rawPOM, "<!-- kotlin-maven-plugin dynamic dependencies")
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			tmpDir := t.TempDir()
+			yamlPath := filepath.Join(tmpDir, "buf.plugin.yaml")
+			require.NoError(t, os.WriteFile(yamlPath, []byte(tt.yaml), 0644))
+			config, err := bufremotepluginconfig.ParseConfig(yamlPath)
+			require.NoError(t, err)
+			pom, err := RenderPOM(config)
+			if tt.wantErr != "" {
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), tt.wantErr)
+				return
+			}
+			require.NoError(t, err)
+			var project pomProject
+			require.NoError(t, xml.NewDecoder(strings.NewReader(pom)).Decode(&project))
+			tt.check(t, project, pom)
+		})
+	}
 }
 
-func TestXMLEscape_SpecialCharacters(t *testing.T) {
+func TestXMLEscape(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		input    string
@@ -233,7 +260,6 @@ func TestXMLEscape_SpecialCharacters(t *testing.T) {
 		{"'single'", "&#39;single&#39;"},
 		{"<>&\"'", "&lt;&gt;&amp;&#34;&#39;"},
 	}
-
 	for _, tt := range tests {
 		t.Run(tt.input, func(t *testing.T) {
 			t.Parallel()
@@ -242,65 +268,4 @@ func TestXMLEscape_SpecialCharacters(t *testing.T) {
 			assert.Equal(t, tt.expected, result)
 		})
 	}
-}
-
-func TestRenderPOM_KotlinDynamicDependencies(t *testing.T) {
-	t.Parallel()
-
-	tmpDir := t.TempDir()
-	yamlPath := filepath.Join(tmpDir, "buf.plugin.yaml")
-	yamlContent := `version: v1
-name: buf.build/test/kotlin-plugin
-plugin_version: v1.0.0
-output_languages:
-  - kotlin
-registry:
-  maven:
-    compiler:
-      kotlin:
-        version: 1.9.0
-    deps: []
-`
-	require.NoError(t, os.WriteFile(yamlPath, []byte(yamlContent), 0644))
-
-	config, err := bufremotepluginconfig.ParseConfig(yamlPath)
-	require.NoError(t, err)
-
-	pom, err := RenderPOM(config)
-	require.NoError(t, err)
-
-	// Verify dynamic Kotlin dependencies are included
-	assert.Contains(t, pom, "<!-- kotlin-maven-plugin dynamic dependencies")
-	assert.Contains(t, pom, "kotlin-compiler-embeddable")
-	assert.Contains(t, pom, "kotlin-scripting-compiler")
-	assert.Contains(t, pom, "<version>1.9.0</version>")
-}
-
-func TestRenderPOM_ValidXMLStructure(t *testing.T) {
-	t.Parallel()
-
-	tmpDir := t.TempDir()
-	yamlPath := filepath.Join(tmpDir, "buf.plugin.yaml")
-	yamlContent := `version: v1
-name: buf.build/test/plugin
-plugin_version: v1.0.0
-output_languages:
-  - java
-registry:
-  maven:
-    deps:
-      - com.test:test:1.0.0
-`
-	require.NoError(t, os.WriteFile(yamlPath, []byte(yamlContent), 0644))
-
-	config, err := bufremotepluginconfig.ParseConfig(yamlPath)
-	require.NoError(t, err)
-
-	pom, err := RenderPOM(config)
-	require.NoError(t, err)
-
-	// Verify well-formed XML structure
-	assert.True(t, strings.HasPrefix(strings.TrimSpace(pom), "<project>"))
-	assert.True(t, strings.HasSuffix(strings.TrimSpace(pom), "</project>"))
-	assert.Contains(t, pom, "</dependencies>")
 }
