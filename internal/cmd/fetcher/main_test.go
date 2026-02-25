@@ -441,7 +441,7 @@ ENTRYPOINT ["/app"]
 
 	// Run regenerateMavenDeps on the consumer plugin
 	logger := slog.New(slog.NewTextHandler(testWriter{t}, &slog.HandlerOptions{Level: slog.LevelDebug}))
-	err := regenerateMavenDeps(context.Background(), logger, createdPlugin{
+	err := regenerateMavenDeps(t.Context(), logger, createdPlugin{
 		org:        "test",
 		name:       "consumer-plugin",
 		pluginDir:  filepath.Join(tmpDir, "plugins", "test", "consumer-plugin"),
