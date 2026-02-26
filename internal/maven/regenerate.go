@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/bufbuild/buf/private/bufpkg/bufremoteplugin/bufremotepluginconfig"
 )
@@ -51,5 +52,32 @@ func RegenerateMavenDeps(pluginVersionDir, pluginsDir string) error {
 	if err != nil {
 		return fmt.Errorf("ensuring maven-deps stage: %w", err)
 	}
-	return os.WriteFile(dockerfilePath, []byte(updated), 0644) //nolint:gosec
+	if err := os.WriteFile(dockerfilePath, []byte(updated), 0644); err != nil { //nolint:gosec
+		return fmt.Errorf("writing Dockerfile: %w", err)
+	}
+	dockerignorePath := filepath.Join(pluginVersionDir, ".dockerignore")
+	if err := ensureDockerignoreAllowsPOM(dockerignorePath); err != nil {
+		return fmt.Errorf("updating .dockerignore: %w", err)
+	}
+	return nil
+}
+
+// ensureDockerignoreAllowsPOM adds "!pom.xml" to the .dockerignore if it
+// exists and doesn't already allow pom.xml. The pom.xml must be present in
+// the build context for the maven-deps COPY instruction to succeed.
+func ensureDockerignoreAllowsPOM(path string) error {
+	content, err := os.ReadFile(path)
+	if errors.Is(err, os.ErrNotExist) {
+		return nil
+	} else if err != nil {
+		return err
+	}
+	const pomRule = "!pom.xml"
+	for _, line := range strings.Split(string(content), "\n") {
+		if strings.TrimSpace(line) == pomRule {
+			return nil
+		}
+	}
+	updated := strings.TrimRight(string(content), "\n") + "\n" + pomRule + "\n"
+	return os.WriteFile(path, []byte(updated), 0644) //nolint:gosec
 }
