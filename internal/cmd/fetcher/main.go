@@ -132,7 +132,7 @@ func postProcessCreatedPlugins(ctx context.Context, logger *slog.Logger, plugins
 	}
 	for _, plugin := range plugins {
 		newPluginRef := plugin.String()
-		if err := regenerateMavenDeps(ctx, logger, plugin); err != nil {
+		if err := regenerateMavenDeps(plugin); err != nil {
 			return fmt.Errorf("failed to regenerate maven deps for %s: %w", newPluginRef, err)
 		}
 		if err := runGoModTidy(ctx, logger, plugin); err != nil {
@@ -277,51 +277,12 @@ func recreateSwiftPackageResolved(ctx context.Context, logger *slog.Logger, plug
 	return nil
 }
 
-// regenerateMavenDeps regenerates the POM in the Dockerfile's maven-deps stage
-// from the plugin's buf.plugin.yaml. This ensures the POM always reflects the
-// actual Maven dependencies declared in the config, rather than relying on
-// version string replacement which can miss transitive dependency updates.
-func regenerateMavenDeps(ctx context.Context, logger *slog.Logger, plugin createdPlugin) error {
+// regenerateMavenDeps regenerates the pom.xml and Dockerfile's maven-deps
+// stage from the plugin's buf.plugin.yaml.
+func regenerateMavenDeps(plugin createdPlugin) error {
 	versionDir := filepath.Join(plugin.pluginDir, plugin.newVersion)
-	yamlPath := filepath.Join(versionDir, "buf.plugin.yaml")
-	pluginConfig, err := bufremotepluginconfig.ParseConfig(yamlPath)
-	if err != nil {
-		return err
-	}
-	if pluginConfig.Registry == nil || pluginConfig.Registry.Maven == nil {
-		return nil // not a Maven plugin
-	}
-	// Resolve Maven dependencies from plugin deps (top-level deps stanza)
-	// and merge them into the plugin's Maven config. This ensures the
-	// maven-deps Docker stage caches all dependencies needed for offline
-	// builds, including those from dependent plugins (e.g. Kotlin depending
-	// on Java brings in build.buf:protobuf-javalite for lite builds).
 	pluginsDir := filepath.Dir(filepath.Dir(plugin.pluginDir))
-	if err := maven.MergeTransitiveDeps(pluginConfig, pluginsDir); err != nil {
-		return fmt.Errorf("merging dep Maven dependencies: %w", err)
-	}
-	if err := maven.DeduplicateAllDeps(pluginConfig.Registry.Maven); err != nil {
-		return fmt.Errorf("deduplicating deps: %w", err)
-	}
-	dockerfilePath := filepath.Join(versionDir, "Dockerfile")
-	dockerfileBytes, err := os.ReadFile(dockerfilePath)
-	if err != nil {
-		return err
-	}
-	dockerfile := string(dockerfileBytes)
-	if !strings.Contains(dockerfile, "maven-deps") {
-		return nil // no maven-deps stage to update
-	}
-	pom, err := maven.RenderPOM(pluginConfig)
-	if err != nil {
-		return fmt.Errorf("rendering POM: %w", err)
-	}
-	updated, err := maven.ReplacePOMInDockerfile(dockerfile, pom)
-	if err != nil {
-		return err
-	}
-	logger.InfoContext(ctx, "regenerated maven deps POM", slog.Any("plugin", plugin))
-	return os.WriteFile(dockerfilePath, []byte(updated), 0644) //nolint:gosec // Dockerfiles should be world-readable.
+	return maven.RegenerateMavenDeps(versionDir, pluginsDir)
 }
 
 // runPluginTests runs 'make test PLUGINS="org/name:v<new>"' in order to generate plugin.sum files.

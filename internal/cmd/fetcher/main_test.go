@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/xml"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -415,33 +416,14 @@ registry:
 FROM debian:bookworm AS build
 RUN echo hello
 
-FROM maven:3.9.11-eclipse-temurin-25 AS maven-deps
-COPY <<EOF /tmp/pom.xml
-<project>
-  <groupId>temp</groupId>
-  <artifactId>temp</artifactId>
-  <version>1.0</version>
-  <dependencies>
-    <dependency>
-      <groupId>com.google.protobuf</groupId>
-      <artifactId>protobuf-kotlin</artifactId>
-      <version>4.33.5</version>
-    </dependency>
-  </dependencies>
-</project>
-EOF
-RUN cd /tmp && mvn -f pom.xml dependency:go-offline
-
 FROM scratch
 COPY --from=build /app .
-COPY --from=maven-deps /root/.m2/repository /maven-repository
 ENTRYPOINT ["/app"]
 `
 	require.NoError(t, os.WriteFile(filepath.Join(consumerDir, "Dockerfile"), []byte(dockerfile), 0644))
 
 	// Run regenerateMavenDeps on the consumer plugin
-	logger := slog.New(slog.NewTextHandler(testWriter{t}, &slog.HandlerOptions{Level: slog.LevelDebug}))
-	err := regenerateMavenDeps(t.Context(), logger, createdPlugin{
+	err := regenerateMavenDeps(createdPlugin{
 		org:        "test",
 		name:       "consumer-plugin",
 		pluginDir:  filepath.Join(tmpDir, "plugins", "test", "consumer-plugin"),
@@ -449,22 +431,30 @@ ENTRYPOINT ["/app"]
 	})
 	require.NoError(t, err)
 
-	// Read the updated Dockerfile and verify it includes deps from base-plugin
-	updatedBytes, err := os.ReadFile(filepath.Join(consumerDir, "Dockerfile"))
+	// Verify the maven-deps stage was inserted into the Dockerfile.
+	dockerfileBytes, err := os.ReadFile(filepath.Join(consumerDir, "Dockerfile"))
 	require.NoError(t, err)
-	updated := string(updatedBytes)
+	assert.Contains(t, string(dockerfileBytes), "FROM "+maven.MavenImage+" AS maven-deps")
+	assert.Contains(t, string(dockerfileBytes), "COPY --from=maven-deps /root/.m2/repository /maven-repository")
 
-	// Consumer's own deps should be present
-	assert.Contains(t, updated, "protobuf-kotlin")
-	assert.Contains(t, updated, "protobuf-kotlin-lite")
-
-	// Base plugin's main deps should be merged in
-	assert.Contains(t, updated, "protobuf-java")
-
+	// Read and parse pom.xml to verify deps include versions.
+	pomBytes, err := os.ReadFile(filepath.Join(consumerDir, "pom.xml"))
+	require.NoError(t, err)
+	var pom testPOMProject
+	require.NoError(t, xml.Unmarshal(pomBytes, &pom))
+	var depVersions []string
+	for _, dep := range pom.Dependencies {
+		depVersions = append(depVersions, dep.String())
+	}
+	// Consumer's own deps should be present.
+	assert.Contains(t, depVersions, "com.google.protobuf:protobuf-kotlin:4.33.5")
+	assert.Contains(t, depVersions, "com.google.protobuf:protobuf-kotlin-lite:4.33.5")
+	// Base plugin's main deps should be merged in.
+	assert.Contains(t, depVersions, "com.google.protobuf:protobuf-java:4.33.5")
 	// Base plugin's lite runtime deps should be merged into the
-	// matching lite runtime section
-	assert.Contains(t, updated, "protobuf-javalite")
-	assert.Contains(t, updated, "build.buf")
+	// matching lite runtime section.
+	assert.Contains(t, depVersions, "com.google.protobuf:protobuf-javalite:4.33.5")
+	assert.Contains(t, depVersions, "build.buf:protobuf-javalite:4.33.5")
 }
 
 func TestMergeDepsMavenDepsTransitive(t *testing.T) {
@@ -612,147 +602,18 @@ func TestDeduplicateAllDeps(t *testing.T) {
 	}
 }
 
-func TestReplacePOMInDockerfile(t *testing.T) {
-	t.Parallel()
-	tests := []struct {
-		name       string
-		dockerfile string
-		newPOM     string
-		want       string
-		wantErr    string
-	}{
-		{
-			name: "basic replacement",
-			dockerfile: `FROM maven:3.9.11-eclipse-temurin-25 AS maven-deps
-COPY <<EOF /tmp/pom.xml
-<project>
-  <groupId>old</groupId>
-</project>
-EOF
-RUN cd /tmp && mvn -f pom.xml dependency:go-offline
-`,
-			newPOM: `<project>
-  <groupId>new</groupId>
-</project>
-`,
-			want: `FROM maven:3.9.11-eclipse-temurin-25 AS maven-deps
-COPY <<EOF /tmp/pom.xml
-<project>
-  <groupId>new</groupId>
-</project>
-EOF
-RUN cd /tmp && mvn -f pom.xml dependency:go-offline
-`,
-		},
-		{
-			name: "new POM without trailing newline",
-			dockerfile: `FROM maven:3.9.11-eclipse-temurin-25 AS maven-deps
-COPY <<EOF /tmp/pom.xml
-<project>
-  <groupId>old</groupId>
-</project>
-EOF
-RUN cd /tmp && mvn -f pom.xml dependency:go-offline
-`,
-			newPOM: "<project>\n  <groupId>new</groupId>\n</project>",
-			want: `FROM maven:3.9.11-eclipse-temurin-25 AS maven-deps
-COPY <<EOF /tmp/pom.xml
-<project>
-  <groupId>new</groupId>
-</project>
-EOF
-RUN cd /tmp && mvn -f pom.xml dependency:go-offline
-`,
-		},
-		{
-			name: "preserves surrounding content",
-			dockerfile: `# syntax=docker/dockerfile:1.19
-FROM debian:bookworm AS build
-RUN echo hello
+// testPOMProject mirrors the Maven POM structure for test assertions.
+type testPOMProject struct {
+	XMLName      xml.Name  `xml:"project"`
+	Dependencies []testDep `xml:"dependencies>dependency"`
+}
 
-FROM maven:3.9.11-eclipse-temurin-25 AS maven-deps
-COPY <<EOF /tmp/pom.xml
-<project>
-  <groupId>old</groupId>
-</project>
-EOF
-RUN cd /tmp && mvn -f pom.xml dependency:go-offline
+type testDep struct {
+	GroupID    string `xml:"groupId"`
+	ArtifactID string `xml:"artifactId"`
+	Version    string `xml:"version"`
+}
 
-FROM scratch
-COPY --from=build /app .
-COPY --from=maven-deps /root/.m2/repository /maven-repository
-ENTRYPOINT ["/app"]
-`,
-			newPOM: "<project>\n  <groupId>replaced</groupId>\n</project>\n",
-			want: `# syntax=docker/dockerfile:1.19
-FROM debian:bookworm AS build
-RUN echo hello
-
-FROM maven:3.9.11-eclipse-temurin-25 AS maven-deps
-COPY <<EOF /tmp/pom.xml
-<project>
-  <groupId>replaced</groupId>
-</project>
-EOF
-RUN cd /tmp && mvn -f pom.xml dependency:go-offline
-
-FROM scratch
-COPY --from=build /app .
-COPY --from=maven-deps /root/.m2/repository /maven-repository
-ENTRYPOINT ["/app"]
-`,
-		},
-		{
-			name:       "missing COPY heredoc marker",
-			dockerfile: "FROM maven:3.9.11 AS maven-deps\nRUN echo hello\n",
-			newPOM:     "<project/>",
-			wantErr:    `could not find "COPY <<EOF /tmp/pom.xml" in Dockerfile`,
-		},
-		{
-			name: "missing closing EOF",
-			dockerfile: `FROM maven:3.9.11 AS maven-deps
-COPY <<EOF /tmp/pom.xml
-<project>
-  <groupId>old</groupId>
-</project>
-`,
-			newPOM:  "<project/>",
-			wantErr: "could not find closing EOF for POM heredoc in Dockerfile",
-		},
-		{
-			name: "nested heredoc before POM EOF",
-			dockerfile: "FROM maven:3.9.11 AS maven-deps\n" +
-				"COPY <<EOF /tmp/pom.xml\n" +
-				"<project>\n" +
-				"  <groupId>old</groupId>\n" +
-				"</project>\n" +
-				"EOF\n" +
-				"RUN cat <<EOF > /tmp/other.txt\n" +
-				"some other content\n" +
-				"EOF\n",
-			newPOM: "<project>\n  <groupId>new</groupId>\n</project>\n",
-			want: "FROM maven:3.9.11 AS maven-deps\n" +
-				"COPY <<EOF /tmp/pom.xml\n" +
-				"<project>\n" +
-				"  <groupId>new</groupId>\n" +
-				"</project>\n" +
-				"EOF\n" +
-				"RUN cat <<EOF > /tmp/other.txt\n" +
-				"some other content\n" +
-				"EOF\n",
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-			got, err := maven.ReplacePOMInDockerfile(tt.dockerfile, tt.newPOM)
-			if tt.wantErr != "" {
-				require.Error(t, err)
-				assert.Contains(t, err.Error(), tt.wantErr)
-				return
-			}
-			require.NoError(t, err)
-			assert.Equal(t, tt.want, got)
-		})
-	}
+func (d testDep) String() string {
+	return d.GroupID + ":" + d.ArtifactID + ":" + d.Version
 }

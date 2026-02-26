@@ -1,0 +1,39 @@
+<project>
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>temp</groupId>
+  <artifactId>temp</artifactId>
+  <version>1.0</version>
+  <dependencies>
+    <dependency>
+      <groupId>io.servicetalk</groupId>
+      <artifactId>servicetalk-data-protobuf</artifactId>
+      <version>0.42.63</version>
+    </dependency>
+    <dependency>
+      <groupId>io.servicetalk</groupId>
+      <artifactId>servicetalk-grpc-api</artifactId>
+      <version>0.42.63</version>
+    </dependency>
+    <dependency>
+      <groupId>io.servicetalk</groupId>
+      <artifactId>servicetalk-grpc-protobuf</artifactId>
+      <version>0.42.63</version>
+    </dependency>
+    <dependency>
+      <groupId>com.google.protobuf</groupId>
+      <artifactId>protobuf-java</artifactId>
+      <version>4.33.5</version>
+    </dependency>
+    <!-- lite -->
+    <dependency>
+      <groupId>com.google.protobuf</groupId>
+      <artifactId>protobuf-javalite</artifactId>
+      <version>4.33.5</version>
+    </dependency>
+    <dependency>
+      <groupId>build.buf</groupId>
+      <artifactId>protobuf-javalite</artifactId>
+      <version>4.33.5</version>
+    </dependency>
+  </dependencies>
+</project>

@@ -23,64 +23,8 @@ RUN bazelisk ${BAZEL_OPTS} build '//plugins:protoc-gen-kotlin.stripped'
 
 FROM gcr.io/distroless/cc-debian12:latest@sha256:72344f7f909a8bf003c67f55687e6d51a441b49661af8f660aa7b285f00e57df AS base
 
-FROM maven:3.9.11-eclipse-temurin-25 AS maven-deps
-COPY <<EOF /tmp/pom.xml
-<project>
-  <modelVersion>4.0.0</modelVersion>
-  <groupId>temp</groupId>
-  <artifactId>temp</artifactId>
-  <version>1.0</version>
-  <dependencies>
-    <dependency>
-      <groupId>com.google.protobuf</groupId>
-      <artifactId>protobuf-kotlin</artifactId>
-      <version>4.33.5</version>
-    </dependency>
-    <dependency>
-      <groupId>org.jetbrains.kotlin</groupId>
-      <artifactId>kotlin-stdlib</artifactId>
-      <version>1.8.22</version>
-    </dependency>
-    <dependency>
-      <groupId>org.jetbrains.kotlin</groupId>
-      <artifactId>kotlin-stdlib-jdk8</artifactId>
-      <version>1.8.22</version>
-    </dependency>
-    <dependency>
-      <groupId>com.google.protobuf</groupId>
-      <artifactId>protobuf-java</artifactId>
-      <version>4.33.5</version>
-    </dependency>
-    <!-- lite -->
-    <dependency>
-      <groupId>com.google.protobuf</groupId>
-      <artifactId>protobuf-kotlin-lite</artifactId>
-      <version>4.33.5</version>
-    </dependency>
-    <dependency>
-      <groupId>com.google.protobuf</groupId>
-      <artifactId>protobuf-javalite</artifactId>
-      <version>4.33.5</version>
-    </dependency>
-    <dependency>
-      <groupId>build.buf</groupId>
-      <artifactId>protobuf-javalite</artifactId>
-      <version>4.33.5</version>
-    </dependency>
-  </dependencies>
-  <build>
-    <plugins>
-      <plugin>
-        <groupId>org.jetbrains.kotlin</groupId>
-        <artifactId>kotlin-maven-plugin</artifactId>
-        <version>1.8.22</version>
-        <configuration>
-        </configuration>
-      </plugin>
-    </plugins>
-  </build>
-</project>
-EOF
+FROM maven:3.9.11-eclipse-temurin-21 AS maven-deps
+COPY pom.xml /tmp/pom.xml
 RUN cd /tmp && mvn -f pom.xml dependency:go-offline
 
 FROM scratch

@@ -7,63 +7,8 @@ RUN curl -fsSL -o reactor-grpc-protoc.jar https://repo1.maven.org/maven2/com/sal
 
 FROM gcr.io/distroless/java21-debian12:latest@sha256:7c9a9a362eadadb308d29b9c7fec2b39e5d5aa21d58837176a2cca50bdd06609 AS base
 
-FROM maven:3.9.11-eclipse-temurin-25 AS maven-deps
-COPY <<EOF /tmp/pom.xml
-<project>
-  <modelVersion>4.0.0</modelVersion>
-  <groupId>temp</groupId>
-  <artifactId>temp</artifactId>
-  <version>1.0</version>
-  <dependencies>
-    <dependency>
-      <groupId>com.salesforce.servicelibs</groupId>
-      <artifactId>reactor-grpc-stub</artifactId>
-      <version>1.2.4</version>
-    </dependency>
-    <dependency>
-      <groupId>io.projectreactor</groupId>
-      <artifactId>reactor-core</artifactId>
-      <version>3.5.4</version>
-    </dependency>
-    <dependency>
-      <groupId>com.google.protobuf</groupId>
-      <artifactId>protobuf-java</artifactId>
-      <version>4.31.0</version>
-    </dependency>
-    <dependency>
-      <groupId>io.grpc</groupId>
-      <artifactId>grpc-core</artifactId>
-      <version>1.73.0</version>
-    </dependency>
-    <dependency>
-      <groupId>io.grpc</groupId>
-      <artifactId>grpc-protobuf</artifactId>
-      <version>1.73.0</version>
-    </dependency>
-    <dependency>
-      <groupId>io.grpc</groupId>
-      <artifactId>grpc-stub</artifactId>
-      <version>1.73.0</version>
-    </dependency>
-    <!-- lite -->
-    <dependency>
-      <groupId>io.grpc</groupId>
-      <artifactId>grpc-protobuf-lite</artifactId>
-      <version>1.73.0</version>
-    </dependency>
-    <dependency>
-      <groupId>com.google.protobuf</groupId>
-      <artifactId>protobuf-javalite</artifactId>
-      <version>4.31.0</version>
-    </dependency>
-    <dependency>
-      <groupId>build.buf</groupId>
-      <artifactId>protobuf-javalite</artifactId>
-      <version>4.31.0</version>
-    </dependency>
-  </dependencies>
-</project>
-EOF
+FROM maven:3.9.11-eclipse-temurin-21 AS maven-deps
+COPY pom.xml /tmp/pom.xml
 RUN cd /tmp && mvn -f pom.xml dependency:go-offline
 
 FROM scratch

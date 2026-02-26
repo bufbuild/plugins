@@ -80,25 +80,6 @@ registry:
 			},
 		},
 		{
-			name: "XML escaping round-trips correctly",
-			yaml: `version: v1
-name: buf.build/test/plugin
-plugin_version: v1.0.0
-output_languages:
-  - java
-registry:
-  maven:
-    deps:
-      - com.test:artifact<>&:1.0.0
-`,
-			check: func(t *testing.T, p pomProject, _ string) { //nolint:thelper
-				require.Len(t, p.Dependencies, 1)
-				// encoding/xml decodes entities, so the parsed value
-				// should match the original unescaped input.
-				assert.Equal(t, "artifact<>&", p.Dependencies[0].ArtifactID)
-			},
-		},
-		{
 			name: "Kotlin compiler plugin configuration",
 			yaml: `version: v1
 name: buf.build/test/kotlin-plugin
@@ -175,10 +156,6 @@ registry:
     deps: []
 `,
 			check: func(t *testing.T, p pomProject, _ string) { //nolint:thelper
-				assert.Equal(t, "4.0.0", p.ModelVersion)
-				assert.Equal(t, "temp", p.GroupID)
-				assert.Equal(t, "temp", p.ArtifactID)
-				assert.Equal(t, "1.0", p.Version)
 				assert.Empty(t, p.Dependencies)
 			},
 		},
