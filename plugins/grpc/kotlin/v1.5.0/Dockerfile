@@ -84,17 +84,6 @@ COPY <<EOF /tmp/pom.xml
       <artifactId>protobuf-kotlin-lite</artifactId>
       <version>4.32.0</version>
     </dependency>
-    <!-- kotlin-maven-plugin dynamic dependencies (not resolved by go-offline) -->
-    <dependency>
-      <groupId>org.jetbrains.kotlin</groupId>
-      <artifactId>kotlin-compiler-embeddable</artifactId>
-      <version>2.2.20</version>
-    </dependency>
-    <dependency>
-      <groupId>org.jetbrains.kotlin</groupId>
-      <artifactId>kotlin-scripting-compiler</artifactId>
-      <version>2.2.20</version>
-    </dependency>
   </dependencies>
   <build>
     <plugins>

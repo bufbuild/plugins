@@ -202,7 +202,7 @@ registry:
 			wantErr: "generated POM is not well-formed XML",
 		},
 		{
-			name: "Kotlin dynamic dependencies",
+			name: "Kotlin plugin with no explicit deps",
 			yaml: `version: v1
 name: buf.build/test/kotlin-plugin
 plugin_version: v1.0.0
@@ -215,13 +215,12 @@ registry:
         version: 1.9.0
     deps: []
 `,
-			check: func(t *testing.T, p pomProject, rawPOM string) { //nolint:thelper
-				require.Len(t, p.Dependencies, 2)
-				assert.Equal(t, "kotlin-compiler-embeddable", p.Dependencies[0].ArtifactID)
-				assert.Equal(t, "1.9.0", p.Dependencies[0].Version)
-				assert.Equal(t, "kotlin-scripting-compiler", p.Dependencies[1].ArtifactID)
-				assert.Equal(t, "1.9.0", p.Dependencies[1].Version)
-				assert.Contains(t, rawPOM, "<!-- kotlin-maven-plugin dynamic dependencies")
+			check: func(t *testing.T, p pomProject, _ string) { //nolint:thelper
+				assert.Empty(t, p.Dependencies)
+				require.NotNil(t, p.Build)
+				require.Len(t, p.Build.Plugins, 1)
+				assert.Equal(t, "kotlin-maven-plugin", p.Build.Plugins[0].ArtifactID)
+				assert.Equal(t, "1.9.0", p.Build.Plugins[0].Version)
 			},
 		},
 	}

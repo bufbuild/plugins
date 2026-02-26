@@ -34,19 +34,6 @@
     </dependency>
     {{- end }}
     {{- end }}
-    {{- if $kotlinCompiler.Version }}
-    <!-- kotlin-maven-plugin dynamic dependencies (not resolved by go-offline) -->
-    <dependency>
-      <groupId>org.jetbrains.kotlin</groupId>
-      <artifactId>kotlin-compiler-embeddable</artifactId>
-      <version>{{ $kotlinCompiler.Version | xml }}</version>
-    </dependency>
-    <dependency>
-      <groupId>org.jetbrains.kotlin</groupId>
-      <artifactId>kotlin-scripting-compiler</artifactId>
-      <version>{{ $kotlinCompiler.Version | xml }}</version>
-    </dependency>
-    {{- end }}
   </dependencies>
   {{- if $kotlinCompiler.Version }}
   <build>
