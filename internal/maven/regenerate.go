@@ -73,7 +73,7 @@ func ensureDockerignoreAllowsPOM(path string) error {
 		return err
 	}
 	const pomRule = "!pom.xml"
-	for _, line := range strings.Split(string(content), "\n") {
+	for line := range strings.SplitSeq(string(content), "\n") {
 		if strings.TrimSpace(line) == pomRule {
 			return nil
 		}
