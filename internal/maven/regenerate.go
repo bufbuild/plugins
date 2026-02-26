@@ -17,11 +17,6 @@ import (
 // registry config.
 func RegenerateMavenDeps(pluginVersionDir, pluginsDir string) error {
 	yamlPath := filepath.Join(pluginVersionDir, "buf.plugin.yaml")
-	if _, err := os.Stat(yamlPath); errors.Is(err, os.ErrNotExist) {
-		return nil
-	} else if err != nil {
-		return err
-	}
 	pluginConfig, err := bufremotepluginconfig.ParseConfig(yamlPath)
 	if err != nil {
 		return err
