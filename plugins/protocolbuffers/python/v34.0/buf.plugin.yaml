@@ -13,7 +13,7 @@ registry:
   python:
     package_type: "runtime"
     # https://github.com/protocolbuffers/protobuf/blob/v34.0/python/dist/setup.py#L91
-    requires_python: ">=3.9"
+    requires_python: ">=3.10"
     deps:
       # https://pypi.org/project/protobuf/
       - "protobuf>=3.20"
