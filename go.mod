@@ -7,8 +7,8 @@ require (
 	buf.build/go/app v0.2.0
 	buf.build/go/interrupt v1.1.0
 	buf.build/go/standard v0.1.0
-	github.com/bufbuild/buf v1.65.0
-	github.com/google/go-containerregistry v0.21.0
+	github.com/bufbuild/buf v1.66.0
+	github.com/google/go-containerregistry v0.21.1
 	github.com/google/go-github/v72 v72.0.0
 	github.com/hashicorp/go-retryablehttp v0.7.8
 	github.com/spf13/pflag v1.0.10
@@ -41,6 +41,6 @@ require (
 	github.com/spf13/cobra v1.10.2 // indirect
 	github.com/vbatts/tar-split v0.12.2 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
-	golang.org/x/crypto v0.47.0 // indirect
+	golang.org/x/crypto v0.48.0 // indirect
 	golang.org/x/sys v0.41.0 // indirect
 )
