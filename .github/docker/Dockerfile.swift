@@ -1,3 +1,3 @@
-FROM swift:6.2.3-bookworm
+FROM swift:6.2.4-bookworm
 
 CMD echo this is a dummy file used to automate dependency upgrades for plugins
