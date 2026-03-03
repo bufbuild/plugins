@@ -1,5 +1,5 @@
 source:
-  update_frequency: 30d
+  disabled: true
   github:
     owner: chrusty
     repository: protoc-gen-jsonschema
