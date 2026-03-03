@@ -107,6 +107,12 @@ func newRootCommand(name string) *appcmd.Command {
 			if err := postProcessCreatedPlugins(ctx, container.Logger(), created); err != nil {
 				return fmt.Errorf("failed to run post-processing on plugins: %w", err)
 			}
+			if err := writeGitHubOutput("pr_title", generatePRTitle(created)); err != nil {
+				return fmt.Errorf("failed to write GitHub output: %w", err)
+			}
+			if err := writeGitHubOutput("pr_body", generatePRBody(created)); err != nil {
+				return fmt.Errorf("failed to write GitHub output: %w", err)
+			}
 			return nil
 		}),
 		BindFlags:           f.Bind,
@@ -705,6 +711,111 @@ func getLatestVersionFromDir(basedir string) (string, error) {
 	}
 	semver.Sort(versions)
 	return versions[len(versions)-1], nil
+}
+
+// pluginGroupName returns the display name used to group a plugin in the PR title and body.
+// Community plugins use their plugin name (e.g. "mercari-grpc-federation") since "community"
+// is not a meaningful org name. All other plugins use their org name.
+func pluginGroupName(p createdPlugin) string {
+	if p.org == "community" {
+		return p.name
+	}
+	return p.org
+}
+
+// generatePRTitle generates a PR title summarising which orgs (or community plugins) were updated.
+// Examples:
+//
+//	"Update protocolbuffers"
+//	"Update protocolbuffers and grpc"
+//	"Update protocolbuffers, grpc, and mercari-grpc-federation"
+func generatePRTitle(created []createdPlugin) string {
+	if len(created) == 0 {
+		return "Found new plugin versions"
+	}
+	seen := make(map[string]struct{})
+	var names []string
+	for _, p := range created {
+		name := pluginGroupName(p)
+		if _, ok := seen[name]; !ok {
+			seen[name] = struct{}{}
+			names = append(names, name)
+		}
+	}
+	switch len(names) {
+	case 1:
+		return "Update " + names[0]
+	case 2:
+		return "Update " + names[0] + " and " + names[1]
+	default:
+		return "Update " + strings.Join(names[:len(names)-1], ", ") + ", and " + names[len(names)-1]
+	}
+}
+
+// generatePRBody generates a markdown PR body grouping updated plugins by org,
+// with community plugins each getting their own section.
+// Example:
+//
+//	### protocolbuffers
+//	- go: v1.36.11 → v1.37.0
+//	- java: v4.28.3 → v4.29.0
+//
+//	### mercari-grpc-federation
+//	- v1.0.0 → v1.1.0
+func generatePRBody(created []createdPlugin) string {
+	if len(created) == 0 {
+		return ""
+	}
+	type pluginGroup struct {
+		name    string
+		plugins []createdPlugin
+	}
+	seenIdx := make(map[string]int)
+	var groups []pluginGroup
+	for _, p := range created {
+		groupName := pluginGroupName(p)
+		if idx, ok := seenIdx[groupName]; ok {
+			groups[idx].plugins = append(groups[idx].plugins, p)
+		} else {
+			seenIdx[groupName] = len(groups)
+			groups = append(groups, pluginGroup{name: groupName, plugins: []createdPlugin{p}})
+		}
+	}
+	var sb strings.Builder
+	for i, g := range groups {
+		if i > 0 {
+			sb.WriteString("\n")
+		}
+		fmt.Fprintf(&sb, "### %s\n", g.name)
+		for _, p := range g.plugins {
+			if p.org == "community" {
+				fmt.Fprintf(&sb, "- %s → %s\n", p.previousVersion, p.newVersion)
+			} else {
+				fmt.Fprintf(&sb, "- %s: %s → %s\n", p.name, p.previousVersion, p.newVersion)
+			}
+		}
+	}
+	return strings.TrimRight(sb.String(), "\n")
+}
+
+// writeGitHubOutput writes a key/value output to the GITHUB_OUTPUT file, if set.
+// Multi-line values use the heredoc format required by GitHub Actions.
+func writeGitHubOutput(key, value string) error {
+	outputFile := os.Getenv("GITHUB_OUTPUT")
+	if outputFile == "" {
+		return nil
+	}
+	f, err := os.OpenFile(outputFile, os.O_APPEND|os.O_WRONLY, 0644)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	if strings.Contains(value, "\n") {
+		_, err = fmt.Fprintf(f, "%s<<EOF\n%s\nEOF\n", key, strings.TrimRight(value, "\n"))
+	} else {
+		_, err = fmt.Fprintf(f, "%s=%s\n", key, value)
+	}
+	return err
 }
 
 func checkDirExists(dir string) (bool, error) {
