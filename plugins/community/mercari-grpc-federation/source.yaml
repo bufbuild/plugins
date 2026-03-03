@@ -1,4 +1,5 @@
 source:
+  update_frequency: 30d
   github:
     owner: mercari
     repository: grpc-federation
