@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"buf.build/go/app"
 	"buf.build/go/app/appext"
@@ -208,7 +209,6 @@ func TestRunDependencyOrdering(t *testing.T) {
 		},
 	}
 
-	// Run the fetcher
 	container := newTestContainer(t, tmpDir)
 	created, err := run(ctx, container, fetcher, &flags{})
 	require.NoError(t, err)
@@ -232,6 +232,64 @@ func TestRunDependencyOrdering(t *testing.T) {
 	require.Len(t, config.Deps, 1, "consumer should have one dependency")
 	assert.Equal(t, "buf.build/test/base-plugin:v2.0.0", config.Deps[0].Plugin,
 		"consumer should reference newly created base-plugin v2.0.0, not the old v1.0.0")
+}
+
+func TestRunUpdateFrequency(t *testing.T) {
+	t.Parallel()
+
+	baseSourceYAML := `source:
+  update_frequency: 30d
+  github:
+    owner: test
+    repository: base-plugin
+`
+	fetcher := &mockFetcher{
+		versions: map[string]string{
+			"github-test-base-plugin":     "v2.0.0",
+			"github-test-consumer-plugin": "v2.0.0",
+		},
+	}
+
+	// Each subtest gets its own temp dir to avoid shared state.
+	setupFrequencyRepo := func(t *testing.T) string {
+		t.Helper()
+		tmpDir := t.TempDir()
+		setupTestRepository(t, tmpDir)
+		require.NoError(t, os.WriteFile(
+			filepath.Join(tmpDir, "plugins", "test", "base-plugin", "source.yaml"),
+			[]byte(baseSourceYAML),
+			0644,
+		))
+		return tmpDir
+	}
+
+	t.Run("skips plugin when within frequency window", func(t *testing.T) {
+		t.Parallel()
+		tmpDir := setupFrequencyRepo(t)
+		recentTime := func(_ context.Context, _ string) (time.Time, error) {
+			return time.Now().Add(-10 * 24 * time.Hour), nil
+		}
+		container := newTestContainer(t, tmpDir)
+		created, err := run(t.Context(), container, fetcher, &flags{}, withPluginVersionCreateTime(recentTime))
+		require.NoError(t, err)
+		// Only consumer-plugin should be created (base-plugin skipped by frequency)
+		require.Len(t, created, 1)
+		assert.Equal(t, "consumer-plugin", created[0].name)
+	})
+
+	t.Run("updates plugin when frequency window has passed", func(t *testing.T) {
+		t.Parallel()
+		tmpDir := setupFrequencyRepo(t)
+		oldTime := func(_ context.Context, _ string) (time.Time, error) {
+			return time.Now().Add(-31 * 24 * time.Hour), nil
+		}
+		container := newTestContainer(t, tmpDir)
+		created, err := run(t.Context(), container, fetcher, &flags{}, withPluginVersionCreateTime(oldTime))
+		require.NoError(t, err)
+		require.Len(t, created, 2)
+		assert.Equal(t, "base-plugin", created[0].name)
+		assert.Equal(t, "consumer-plugin", created[1].name)
+	})
 }
 
 // mockFetcher returns predetermined versions for testing.

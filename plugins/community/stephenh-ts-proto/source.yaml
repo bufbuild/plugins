@@ -1,3 +1,4 @@
 source:
+  update_frequency: 30d
   npm_registry:
     name: ts-proto
