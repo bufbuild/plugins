@@ -28,6 +28,7 @@ jobs:
         uses: actions/checkout@v6
         with:
           token: ${{ steps.generate_token.outputs.token }}
+          fetch-depth: 0 # full history needed for update_frequency git log lookups
       - name: Install Go
         uses: actions/setup-go@v6
         with:

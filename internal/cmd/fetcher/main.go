@@ -24,6 +24,7 @@ import (
 
 	"github.com/bufbuild/plugins/internal/docker"
 	"github.com/bufbuild/plugins/internal/fetchclient"
+	"github.com/bufbuild/plugins/internal/git"
 	"github.com/bufbuild/plugins/internal/maven"
 	"github.com/bufbuild/plugins/internal/plugin"
 	"github.com/bufbuild/plugins/internal/source"
@@ -368,7 +369,35 @@ type pluginToCreate struct {
 	newVersion      string
 }
 
-func run(ctx context.Context, container appext.Container, fetcher Fetcher, f *flags) ([]createdPlugin, error) {
+type runOption func(*runOptions)
+
+type runOptions struct {
+	// pluginVersionCreateTime returns the time a plugin version directory was created.
+	// The path argument is relative to the repository root.
+	// Defaults to git.FirstCommitTime.
+	pluginVersionCreateTime func(ctx context.Context, path string) (time.Time, error)
+}
+
+// withPluginVersionCreateTime overrides the pluginVersionCreateTime function for testing.
+func withPluginVersionCreateTime(f func(ctx context.Context, path string) (time.Time, error)) runOption {
+	return func(o *runOptions) {
+		o.pluginVersionCreateTime = f
+	}
+}
+
+func run(
+	ctx context.Context,
+	container appext.Container,
+	fetcher Fetcher,
+	f *flags,
+	opts ...runOption,
+) ([]createdPlugin, error) {
+	options := runOptions{
+		pluginVersionCreateTime: git.FirstCommitTime,
+	}
+	for _, opt := range opts {
+		opt(&options)
+	}
 	var root string
 	if container.NumArgs() > 0 {
 		root = container.Arg(0)
@@ -414,10 +443,68 @@ func run(ctx context.Context, container appext.Container, fetcher Fetcher, f *fl
 		return nil, err
 	}
 
-	// First pass: fetch all new versions and determine which plugins need updates
-	filter := newPluginFilter(f.include)
+	pendingCreations, err := fetchPendingCreations(ctx, logger, fetcher, configs, f.include, options.pluginVersionCreateTime)
+	if err != nil {
+		return nil, err
+	}
+
+	created := make([]createdPlugin, 0, len(pendingCreations))
+	processedDirs := make(map[string]bool, len(pendingCreations))
+	for _, p := range allPlugins {
+		// Extract the plugin directory from the plugin's path
+		// p.Path is the full path to buf.plugin.yaml, directory is two levels up (dir/version/buf.plugin.yaml)
+		// Convert to absolute to match the keys in pendingCreations
+		pluginDir, err := filepath.Abs(filepath.Dir(filepath.Dir(p.Path)))
+		if err != nil {
+			return nil, err
+		}
+
+		// Skip if we've already processed this plugin directory (multiple versions of same plugin)
+		if processedDirs[pluginDir] {
+			continue
+		}
+
+		pending, needsCreation := pendingCreations[pluginDir]
+		if !needsCreation {
+			continue
+		}
+
+		if err := createPluginDir(ctx, logger, pending, latestBaseImageVersions, latestPluginVersions); err != nil {
+			return nil, err
+		}
+		logger.InfoContext(ctx, "created", slog.String("path", fmt.Sprintf("%v/%v", pending.pluginDir, pending.newVersion)))
+
+		// Mark this directory as processed
+		processedDirs[pluginDir] = true
+
+		// Update latestPluginVersions so subsequent plugins in this run can reference this new version
+		latestPluginVersions[p.Name] = pending.newVersion
+
+		created = append(created, createdPlugin{
+			org:             filepath.Base(filepath.Dir(pending.pluginDir)),
+			name:            filepath.Base(pending.pluginDir),
+			pluginDir:       pending.pluginDir,
+			previousVersion: pending.previousVersion,
+			newVersion:      pending.newVersion,
+		})
+	}
+	return created, nil
+}
+
+// fetchPendingCreations iterates over source configs, fetches the latest
+// version for each enabled plugin, and returns a map of plugin directories
+// that need a new version created.
+func fetchPendingCreations(
+	ctx context.Context,
+	logger *slog.Logger,
+	fetcher Fetcher,
+	configs []*source.Config,
+	includes []string,
+	versionTime func(ctx context.Context, path string) (time.Time, error),
+) (map[string]*pluginToCreate, error) {
+	filter := newPluginFilter(includes)
 	latestVersions := make(map[string]string, len(configs))
-	pendingCreations := make(map[string]*pluginToCreate) // keyed by plugin directory
+	pendingCreations := make(map[string]*pluginToCreate)
 
 	for _, config := range configs {
 		if config.Source.Disabled {
@@ -431,8 +518,18 @@ func run(ctx context.Context, container appext.Container, fetcher Fetcher, f *fl
 			logger.DebugContext(ctx, "skipping source (not in --include list)", slog.String("filename", config.Filename))
 			continue
 		}
+		if config.Source.UpdateFrequency != nil {
+			skip, err := shouldSkipUpdateFrequency(ctx, logger, config, versionTime)
+			if err != nil {
+				return nil, err
+			}
+			if skip {
+				continue
+			}
+		}
 		newVersion := latestVersions[config.CacheKey()]
 		if newVersion == "" {
+			var err error
 			newVersion, err = fetcher.Fetch(ctx, config)
 			if err != nil {
 				if errors.Is(err, fetchclient.ErrSemverPrerelease) {
@@ -472,50 +569,45 @@ func run(ctx context.Context, container appext.Container, fetcher Fetcher, f *fl
 			newVersion:      newVersion,
 		}
 	}
+	return pendingCreations, nil
+}
 
-	// Second pass: create plugins in dependency order (using the order from allPlugins)
-	// Update latestPluginVersions as we go so subsequent plugins reference new versions
-	created := make([]createdPlugin, 0, len(pendingCreations))
-	processedDirs := make(map[string]bool, len(pendingCreations))
-	for _, p := range allPlugins {
-		// Extract the plugin directory from the plugin's path
-		// p.Path is the full path to buf.plugin.yaml, directory is two levels up (dir/version/buf.plugin.yaml)
-		// Convert to absolute to match the keys in pendingCreations
-		pluginDir, err := filepath.Abs(filepath.Dir(filepath.Dir(p.Path)))
-		if err != nil {
-			return nil, err
+// shouldSkipUpdateFrequency reports whether a plugin should be skipped because
+// its configured update_frequency has not yet elapsed since the last version
+// was created.
+func shouldSkipUpdateFrequency(
+	ctx context.Context,
+	logger *slog.Logger,
+	config *source.Config,
+	versionTime func(ctx context.Context, path string) (time.Time, error),
+) (bool, error) {
+	configDir := filepath.Dir(config.Filename)
+	latestVersion, err := getLatestVersionFromDir(configDir)
+	if err != nil {
+		if errors.Is(err, errNoVersions) {
+			return false, nil
 		}
-
-		// Skip if we've already processed this plugin directory (multiple versions of same plugin)
-		if processedDirs[pluginDir] {
-			continue
-		}
-
-		pending, needsCreation := pendingCreations[pluginDir]
-		if !needsCreation {
-			continue
-		}
-
-		if err := createPluginDir(ctx, logger, pending.pluginDir, pending.previousVersion, pending.newVersion, latestBaseImageVersions, latestPluginVersions); err != nil {
-			return nil, err
-		}
-		logger.InfoContext(ctx, "created", slog.String("path", fmt.Sprintf("%v/%v", pending.pluginDir, pending.newVersion)))
-
-		// Mark this directory as processed
-		processedDirs[pluginDir] = true
-
-		// Update latestPluginVersions so subsequent plugins in this run can reference this new version
-		latestPluginVersions[p.Name] = pending.newVersion
-
-		created = append(created, createdPlugin{
-			org:             filepath.Base(filepath.Dir(pending.pluginDir)),
-			name:            filepath.Base(pending.pluginDir),
-			pluginDir:       pending.pluginDir,
-			previousVersion: pending.previousVersion,
-			newVersion:      pending.newVersion,
-		})
+		return false, err
 	}
-	return created, nil
+	versionPath := filepath.Join(configDir, latestVersion)
+	createTime, err := versionTime(ctx, versionPath)
+	if err != nil {
+		return false, fmt.Errorf("failed to get create time for %s: %w", versionPath, err)
+	}
+	if createTime.IsZero() {
+		return false, nil
+	}
+	freq := time.Duration(*config.Source.UpdateFrequency)
+	nextUpdate := createTime.Add(freq)
+	if time.Now().Before(nextUpdate) {
+		logger.InfoContext(ctx, "skipping source (update frequency not reached)",
+			slog.String("filename", config.Filename),
+			slog.String("last_updated", createTime.UTC().Format(time.DateOnly)),
+			slog.String("next_update", nextUpdate.UTC().Format(time.DateOnly)),
+		)
+		return true, nil
+	}
+	return false, nil
 }
 
 // copyDirectory copies all files from the source directory to the target,
@@ -566,27 +658,25 @@ func copyDirectory(
 func createPluginDir(
 	ctx context.Context,
 	logger *slog.Logger,
-	dir string,
-	previousVersion string,
-	newVersion string,
+	pending *pluginToCreate,
 	latestBaseImages *docker.BaseImages,
 	latestPluginVersions map[string]string,
 ) (retErr error) {
-	if err := os.Mkdir(filepath.Join(dir, newVersion), 0755); err != nil {
+	if err := os.Mkdir(filepath.Join(pending.pluginDir, pending.newVersion), 0755); err != nil {
 		return err
 	}
 	defer func() {
 		if retErr != nil {
-			retErr = errors.Join(retErr, os.RemoveAll(filepath.Join(dir, newVersion)))
+			retErr = errors.Join(retErr, os.RemoveAll(filepath.Join(pending.pluginDir, pending.newVersion)))
 		}
 	}()
 	return copyDirectory(
 		ctx,
 		logger,
-		filepath.Join(dir, previousVersion),
-		filepath.Join(dir, newVersion),
-		previousVersion,
-		newVersion,
+		filepath.Join(pending.pluginDir, pending.previousVersion),
+		filepath.Join(pending.pluginDir, pending.newVersion),
+		pending.previousVersion,
+		pending.newVersion,
 		latestBaseImages,
 		latestPluginVersions,
 	)

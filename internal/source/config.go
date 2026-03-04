@@ -50,6 +50,10 @@ type Source struct {
 	// MaxVersion is an exclusive upper bound for versions. Versions >= this value will be ignored.
 	// Must be a valid semver version (e.g., "2.0.0").
 	MaxVersion string `yaml:"max_version"`
+	// UpdateFrequency limits how often a plugin can be updated. If set, the fetcher
+	// will skip the plugin unless at least this much time has passed since the latest
+	// version was added.
+	UpdateFrequency *Duration `yaml:"update_frequency"`
 }
 
 var _ Cacheable = (*Source)(nil)
