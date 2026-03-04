@@ -51,6 +51,7 @@ jobs:
         id: buildx
         uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
       - name: Fetch all versions
+        id: fetch_versions
         env:
           GITHUB_TOKEN: ${{ steps.generate_token.outputs.token }}
         run: |
@@ -69,8 +70,8 @@ jobs:
           commit-message: "detected new plugin versions"
           branch: fetch-versions
           delete-branch: true
-          title: "Found new plugin versions"
-          body: ""
+          title: ${{ steps.fetch_versions.outputs.pr_title }}
+          body: ${{ steps.fetch_versions.outputs.pr_body }}
           assignees: mfridman, pkwarren, stefanvanburen
           token: ${{ steps.generate_token.outputs.token }}
           author: ${{ steps.generate_token.outputs.app-slug }}[bot] <${{ steps.generate_token.outputs.app-slug }}[bot]@users.noreply.github.com>
