@@ -813,15 +813,27 @@ func pluginGroupName(p createdPlugin) string {
 	return p.org
 }
 
-// generatePRTitle generates a PR title summarising which orgs (or community plugins) were updated.
+// generatePRTitle generates a PR title summarising which plugins were updated.
+// When 1 or 2 plugins are updated, the full org/name is used for clarity.
+// For 3 or more, plugins are grouped by org (or plugin name for community plugins).
 // Examples:
 //
-//	"Update protocolbuffers"
-//	"Update protocolbuffers and grpc"
+//	"Update grpc/swift"
+//	"Update grpc/swift and connectrpc/go"
 //	"Update protocolbuffers, grpc, and mercari-grpc-federation"
 func generatePRTitle(created []createdPlugin) string {
 	if len(created) == 0 {
 		return "Found new plugin versions"
+	}
+	if len(created) <= 2 {
+		names := make([]string, len(created))
+		for i, p := range created {
+			names[i] = p.org + "/" + p.name
+		}
+		if len(names) == 1 {
+			return "Update " + names[0]
+		}
+		return "Update " + names[0] + " and " + names[1]
 	}
 	seen := make(map[string]struct{})
 	var names []string
