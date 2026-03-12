@@ -30,11 +30,13 @@ import (
 	"github.com/bufbuild/plugins/internal/source"
 )
 
-var (
+const (
+	communityOrg           = "community"
 	dockerfileImageName    = "docker/dockerfile"
 	dockerfileSyntaxPrefix = "# syntax=docker/dockerfile:"
-	errNoVersions          = errors.New("no versions found")
 )
+
+var errNoVersions = errors.New("no versions found")
 
 type flags struct {
 	include []string
@@ -807,21 +809,39 @@ func getLatestVersionFromDir(basedir string) (string, error) {
 // Community plugins use their plugin name (e.g. "mercari-grpc-federation") since "community"
 // is not a meaningful org name. All other plugins use their org name.
 func pluginGroupName(p createdPlugin) string {
-	if p.org == "community" {
+	if p.org == communityOrg {
 		return p.name
 	}
 	return p.org
 }
 
-// generatePRTitle generates a PR title summarising which orgs (or community plugins) were updated.
+// generatePRTitle generates a PR title summarising which plugins were updated.
+// When 1 or 2 plugins are updated, the full org/name is used for clarity.
+// Community plugins omit the "community" org prefix since the plugin name is self-descriptive.
+// For 3 or more, plugins are grouped by org (or plugin name for community plugins).
 // Examples:
 //
-//	"Update protocolbuffers"
-//	"Update protocolbuffers and grpc"
+//	"Update grpc/swift"
+//	"Update grpc/swift and connectrpc/go"
+//	"Update mercari-grpc-federation"
 //	"Update protocolbuffers, grpc, and mercari-grpc-federation"
 func generatePRTitle(created []createdPlugin) string {
 	if len(created) == 0 {
 		return "Found new plugin versions"
+	}
+	if len(created) <= 2 {
+		names := make([]string, len(created))
+		for i, p := range created {
+			if p.org == communityOrg {
+				names[i] = p.name
+			} else {
+				names[i] = p.org + "/" + p.name
+			}
+		}
+		if len(names) == 1 {
+			return "Update " + names[0]
+		}
+		return "Update " + names[0] + " and " + names[1]
 	}
 	seen := make(map[string]struct{})
 	var names []string
@@ -878,7 +898,7 @@ func generatePRBody(created []createdPlugin) string {
 		}
 		fmt.Fprintf(&sb, "### %s\n", g.name)
 		for _, p := range g.plugins {
-			if p.org == "community" {
+			if p.org == communityOrg {
 				fmt.Fprintf(&sb, "- %s → %s\n", p.previousVersion, p.newVersion)
 			} else {
 				fmt.Fprintf(&sb, "- %s: %s → %s\n", p.name, p.previousVersion, p.newVersion)
