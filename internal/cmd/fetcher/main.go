@@ -30,11 +30,13 @@ import (
 	"github.com/bufbuild/plugins/internal/source"
 )
 
-var (
+const (
+	communityOrg           = "community"
 	dockerfileImageName    = "docker/dockerfile"
 	dockerfileSyntaxPrefix = "# syntax=docker/dockerfile:"
-	errNoVersions          = errors.New("no versions found")
 )
+
+var errNoVersions = errors.New("no versions found")
 
 type flags struct {
 	include []string
@@ -807,7 +809,7 @@ func getLatestVersionFromDir(basedir string) (string, error) {
 // Community plugins use their plugin name (e.g. "mercari-grpc-federation") since "community"
 // is not a meaningful org name. All other plugins use their org name.
 func pluginGroupName(p createdPlugin) string {
-	if p.org == "community" {
+	if p.org == communityOrg {
 		return p.name
 	}
 	return p.org
@@ -830,7 +832,7 @@ func generatePRTitle(created []createdPlugin) string {
 	if len(created) <= 2 {
 		names := make([]string, len(created))
 		for i, p := range created {
-			if p.org == "community" {
+			if p.org == communityOrg {
 				names[i] = p.name
 			} else {
 				names[i] = p.org + "/" + p.name
@@ -896,7 +898,7 @@ func generatePRBody(created []createdPlugin) string {
 		}
 		fmt.Fprintf(&sb, "### %s\n", g.name)
 		for _, p := range g.plugins {
-			if p.org == "community" {
+			if p.org == communityOrg {
 				fmt.Fprintf(&sb, "- %s → %s\n", p.previousVersion, p.newVersion)
 			} else {
 				fmt.Fprintf(&sb, "- %s: %s → %s\n", p.name, p.previousVersion, p.newVersion)
