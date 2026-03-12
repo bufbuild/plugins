@@ -5,7 +5,12 @@ RUN apt-get update \
 WORKDIR /app
 RUN curl -fsSL -o /app/protoc-gen-connect-kotlin.jar https://repo1.maven.org/maven2/com/connectrpc/protoc-gen-connect-kotlin/0.5.1/protoc-gen-connect-kotlin-0.5.1.jar
 
+FROM maven:3.9.11-eclipse-temurin-21 AS maven-deps
+COPY pom.xml /tmp/pom.xml
+RUN cd /tmp && mvn -f pom.xml dependency:go-offline
+
 FROM gcr.io/distroless/java17-debian12:latest@sha256:9dc2b13d8adb97617c308a4150f7af193ef4acbdd74317767ceb13ea13a16055
 WORKDIR /app
 COPY --from=build /app/protoc-gen-connect-kotlin.jar /app
+COPY --from=maven-deps /root/.m2/repository /maven-repository
 CMD ["/app/protoc-gen-connect-kotlin.jar"]
