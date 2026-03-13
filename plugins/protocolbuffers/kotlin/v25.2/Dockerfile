@@ -18,7 +18,12 @@ RUN bazel build '//:protoc_lib'
 COPY --link BUILD kotlin.cc plugins/
 RUN bazel build '//plugins:protoc-gen-kotlin.stripped'
 
+FROM maven:3.9.11-eclipse-temurin-21 AS maven-deps
+COPY pom.xml /tmp/pom.xml
+RUN cd /tmp && mvn -f pom.xml dependency:go-offline
+
 FROM gcr.io/distroless/cc-debian12:latest@sha256:6714977f9f02632c31377650c15d89a7efaebf43bab0f37c712c30fc01edb973
 COPY --from=build --link --chmod=0755 /build/bazel-bin/plugins/protoc-gen-kotlin .
+COPY --from=maven-deps /root/.m2/repository /maven-repository
 USER nobody
 ENTRYPOINT ["/protoc-gen-kotlin"]
