@@ -15,7 +15,12 @@ RUN arch=${TARGETARCH}; \
     echo "${arch}"; \
     curl -fsSL -o protoc-gen-grpc-java https://repo1.maven.org/maven2/io/grpc/protoc-gen-grpc-java/1.63.0/protoc-gen-grpc-java-1.63.0-linux-${arch}.exe
 
+FROM maven:3.9.11-eclipse-temurin-21 AS maven-deps
+COPY pom.xml /tmp/pom.xml
+RUN cd /tmp && mvn -f pom.xml dependency:go-offline
+
 FROM gcr.io/distroless/base-debian12:latest@sha256:611d30d7f6d9992c37b1e1a212eefdf1f7c671deb56db3707e24eb01da8c4c2a
 COPY --from=build --link --chmod=0755 --chown=root:root /build/protoc-gen-grpc-java .
+COPY --from=maven-deps /root/.m2/repository /maven-repository
 USER nobody
 ENTRYPOINT [ "/protoc-gen-grpc-java" ]
