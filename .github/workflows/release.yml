@@ -19,7 +19,7 @@ jobs:
   release:
     environment: production
     if: github.repository == 'bufbuild/plugins'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest-16-cores
     steps:
       - name: Checkout repository code
         uses: actions/checkout@v6
