@@ -18,7 +18,12 @@ RUN bazel build '//:protoc_lib'
 COPY --link BUILD java.cc plugins/
 RUN bazel build '//plugins:protoc-gen-java.stripped'
 
+FROM maven:3.9.11-eclipse-temurin-21 AS maven-deps
+COPY pom.xml /tmp/pom.xml
+RUN cd /tmp && mvn -f pom.xml dependency:go-offline
+
 FROM gcr.io/distroless/cc-debian11
 COPY --from=build --link --chmod=0755 /build/bazel-bin/plugins/protoc-gen-java .
+COPY --from=maven-deps /root/.m2/repository /maven-repository
 USER nobody
 ENTRYPOINT ["/protoc-gen-java"]
