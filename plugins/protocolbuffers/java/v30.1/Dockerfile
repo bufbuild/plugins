@@ -23,8 +23,13 @@ RUN bazelisk ${BAZEL_OPTS} build '//plugins:protoc-gen-java.stripped'
 
 FROM gcr.io/distroless/cc-debian12:latest@sha256:b7550f0b15838de14c564337eef2b804ba593ae55d81ca855421bd52f19bb480 AS base
 
+FROM maven:3.9.11-eclipse-temurin-21 AS maven-deps
+COPY pom.xml /tmp/pom.xml
+RUN cd /tmp && mvn -f pom.xml dependency:go-offline
+
 FROM scratch
 COPY --from=base --link / /
 COPY --from=build --link --chmod=0755 /build/bazel-bin/plugins/protoc-gen-java .
+COPY --from=maven-deps /root/.m2/repository /maven-repository
 USER nobody
 ENTRYPOINT ["/protoc-gen-java"]
