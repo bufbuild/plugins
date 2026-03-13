@@ -17,7 +17,7 @@ RUN arch=${TARGETARCH}; \
 
 FROM maven:3.9.11-eclipse-temurin-21 AS maven-deps
 COPY pom.xml /tmp/pom.xml
-RUN cd /tmp && mvn -f pom.xml dependency:copy-dependencies -Dmdep.useRepositoryLayout=true -Dmdep.copyPom=true -DoutputDirectory=/maven-repository && cd /root/.m2/repository && find . -name '*.pom' -exec sh -c 'mkdir -p "/maven-repository/$(dirname "$1")" && cp -n "$1" "/maven-repository/$1"' _ {} \;
+RUN cd /tmp && mvn -f pom.xml dependency:copy-dependencies -Dmdep.useRepositoryLayout=true -Dmdep.copyPom=true -DoutputDirectory=/maven-repository && cd /root/.m2/repository && find . -name '*.pom' -exec cp --parents -t /maven-repository {} +
 
 FROM gcr.io/distroless/base-debian12:latest@sha256:1dfdb5ed7d9a66dcfc90135b25a46c25a85cf719b619b40c249a2445b9d055f5
 COPY --from=build --link --chmod=0755 --chown=root:root /build/protoc-gen-grpc-java .

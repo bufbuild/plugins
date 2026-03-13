@@ -44,7 +44,7 @@ func insertMavenDepsStage(lines []string) (string, error) {
 			"-Dmdep.useRepositoryLayout=true -Dmdep.copyPom=true " +
 			"-DoutputDirectory=/maven-repository " +
 			"&& cd /root/.m2/repository " +
-			`&& find . -name '*.pom' -exec sh -c 'mkdir -p "/maven-repository/$(dirname "$1")" && cp -n "$1" "/maven-repository/$1"' _ {} \;`,
+			"&& find . -name '*.pom' -exec cp --parents -t /maven-repository {} +",
 	}
 
 	// Find the insertion point: strip trailing blank lines before
