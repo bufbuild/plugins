@@ -17,8 +17,13 @@ RUN arch=${TARGETARCH}; \
 
 FROM gcr.io/distroless/cc-debian12:latest@sha256:6f05aba4de16e89f8d879bf2a1364de3e41aba04f1dcbba8c75494f6134b4b13 AS base
 
+FROM maven:3.9.11-eclipse-temurin-21 AS maven-deps
+COPY pom.xml /tmp/pom.xml
+RUN cd /tmp && mvn -f pom.xml dependency:go-offline
+
 FROM scratch
 COPY --link --from=base / /
 COPY --link --from=build --chmod=0755 --chown=root:root /build/protoc-gen-grpc-java .
+COPY --from=maven-deps /root/.m2/repository /maven-repository
 USER nobody
 ENTRYPOINT [ "/protoc-gen-grpc-java" ]
