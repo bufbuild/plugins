@@ -10,11 +10,11 @@ FROM gcr.io/distroless/java21-debian12:latest@sha256:f34fd3e4e2d7a246d764d0614f5
 
 FROM maven:3.9.11-eclipse-temurin-21 AS maven-deps
 COPY pom.xml /tmp/pom.xml
-RUN cd /tmp && mvn -f pom.xml dependency:go-offline
+RUN cd /tmp && mvn -f pom.xml dependency:copy-dependencies -Dmdep.useRepositoryLayout=true -Dmdep.copyPom=true -DoutputDirectory=/maven-repository
 
 FROM scratch
 COPY --from=base --link / /
 COPY --from=build --link --chmod=0755 --chown=root:root /app/servicetalk-grpc-protoc.jar .
-COPY --from=maven-deps /root/.m2/repository /maven-repository
+COPY --from=maven-deps /maven-repository /maven-repository
 USER nobody
 ENTRYPOINT [ "/usr/bin/java", "-jar", "/servicetalk-grpc-protoc.jar"]

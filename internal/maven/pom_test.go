@@ -19,6 +19,7 @@ type pomProject struct {
 	GroupID      string          `xml:"groupId"`
 	ArtifactID   string          `xml:"artifactId"`
 	Version      string          `xml:"version"`
+	Packaging    string          `xml:"packaging"`
 	Dependencies []pomDependency `xml:"dependencies>dependency"`
 	Build        *pomBuild       `xml:"build"`
 }
@@ -80,7 +81,7 @@ registry:
 			},
 		},
 		{
-			name: "Kotlin compiler plugin configuration",
+			name: "Kotlin compiler adds plugin dependency",
 			yaml: `version: v1
 name: buf.build/test/kotlin-plugin
 plugin_version: v1.0.0
@@ -97,16 +98,12 @@ registry:
     deps: []
 `,
 			check: func(t *testing.T, p pomProject, _ string) { //nolint:thelper
-				require.NotNil(t, p.Build)
-				require.Len(t, p.Build.Plugins, 1)
-				plugin := p.Build.Plugins[0]
-				assert.Equal(t, "org.jetbrains.kotlin", plugin.GroupID)
-				assert.Equal(t, "kotlin-maven-plugin", plugin.ArtifactID)
-				assert.Equal(t, "1.8.22", plugin.Version)
-				require.NotNil(t, plugin.Configuration)
-				assert.Equal(t, "1.8", plugin.Configuration.JVMTarget)
-				assert.Equal(t, "1.8", plugin.Configuration.LanguageVersion)
-				assert.Equal(t, "1.8", plugin.Configuration.APIVersion)
+				require.Len(t, p.Dependencies, 1)
+				dep := p.Dependencies[0]
+				assert.Equal(t, "org.jetbrains.kotlin", dep.GroupID)
+				assert.Equal(t, "kotlin-maven-plugin", dep.ArtifactID)
+				assert.Equal(t, "1.8.22", dep.Version)
+				assert.Nil(t, p.Build)
 			},
 		},
 		{
@@ -193,11 +190,11 @@ registry:
     deps: []
 `,
 			check: func(t *testing.T, p pomProject, _ string) { //nolint:thelper
-				assert.Empty(t, p.Dependencies)
-				require.NotNil(t, p.Build)
-				require.Len(t, p.Build.Plugins, 1)
-				assert.Equal(t, "kotlin-maven-plugin", p.Build.Plugins[0].ArtifactID)
-				assert.Equal(t, "1.9.0", p.Build.Plugins[0].Version)
+				require.Len(t, p.Dependencies, 1)
+				assert.Equal(t, "org.jetbrains.kotlin", p.Dependencies[0].GroupID)
+				assert.Equal(t, "kotlin-maven-plugin", p.Dependencies[0].ArtifactID)
+				assert.Equal(t, "1.9.0", p.Dependencies[0].Version)
+				assert.Nil(t, p.Build)
 			},
 		},
 	}

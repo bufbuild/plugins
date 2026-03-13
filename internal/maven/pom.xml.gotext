@@ -34,29 +34,12 @@
     </dependency>
     {{- end }}
     {{- end }}
+    {{- if $kotlinCompiler.Version }}
+    <dependency>
+      <groupId>org.jetbrains.kotlin</groupId>
+      <artifactId>kotlin-maven-plugin</artifactId>
+      <version>{{ $kotlinCompiler.Version | xml }}</version>
+    </dependency>
+    {{- end }}
   </dependencies>
-  {{- if $kotlinCompiler.Version }}
-  <build>
-    <plugins>
-      <plugin>
-        <groupId>org.jetbrains.kotlin</groupId>
-        <artifactId>kotlin-maven-plugin</artifactId>
-        {{- with $kotlinCompiler.Version }}
-        <version>{{ . | xml }}</version>
-        {{- end }}
-        <configuration>
-          {{- with $kotlinCompiler.APIVersion }}
-          <apiVersion>{{ . | xml }}</apiVersion>
-          {{- end }}
-          {{- with $kotlinCompiler.JVMTarget }}
-          <jvmTarget>{{ . | xml }}</jvmTarget>
-          {{- end }}
-          {{- with $kotlinCompiler.LanguageVersion }}
-          <languageVersion>{{ . | xml }}</languageVersion>
-          {{- end }}
-        </configuration>
-      </plugin>
-    </plugins>
-  </build>
-  {{- end }}
 </project>

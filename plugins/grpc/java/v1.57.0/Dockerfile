@@ -17,10 +17,10 @@ RUN arch=${TARGETARCH}; \
 
 FROM maven:3.9.11-eclipse-temurin-21 AS maven-deps
 COPY pom.xml /tmp/pom.xml
-RUN cd /tmp && mvn -f pom.xml dependency:go-offline
+RUN cd /tmp && mvn -f pom.xml dependency:copy-dependencies -Dmdep.useRepositoryLayout=true -Dmdep.copyPom=true -DoutputDirectory=/maven-repository
 
 FROM gcr.io/distroless/base-debian11
 COPY --from=build --link --chmod=0755 --chown=root:root /build/protoc-gen-grpc-java .
-COPY --from=maven-deps /root/.m2/repository /maven-repository
+COPY --from=maven-deps /maven-repository /maven-repository
 USER nobody
 ENTRYPOINT [ "/protoc-gen-grpc-java" ]

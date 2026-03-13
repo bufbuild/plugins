@@ -7,10 +7,10 @@ RUN curl -fsSL -o /app/protoc-gen-connect-kotlin.jar https://repo1.maven.org/mav
 
 FROM maven:3.9.11-eclipse-temurin-21 AS maven-deps
 COPY pom.xml /tmp/pom.xml
-RUN cd /tmp && mvn -f pom.xml dependency:go-offline
+RUN cd /tmp && mvn -f pom.xml dependency:copy-dependencies -Dmdep.useRepositoryLayout=true -Dmdep.copyPom=true -DoutputDirectory=/maven-repository
 
 FROM gcr.io/distroless/java17-debian11
 WORKDIR /app
 COPY --from=build /app/protoc-gen-connect-kotlin.jar /app
-COPY --from=maven-deps /root/.m2/repository /maven-repository
+COPY --from=maven-deps /maven-repository /maven-repository
 CMD ["/app/protoc-gen-connect-kotlin.jar"]

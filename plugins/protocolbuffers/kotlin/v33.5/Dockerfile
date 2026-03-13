@@ -25,11 +25,11 @@ FROM gcr.io/distroless/cc-debian12:latest@sha256:72344f7f909a8bf003c67f55687e6d5
 
 FROM maven:3.9.11-eclipse-temurin-21 AS maven-deps
 COPY pom.xml /tmp/pom.xml
-RUN cd /tmp && mvn -f pom.xml dependency:go-offline
+RUN cd /tmp && mvn -f pom.xml dependency:copy-dependencies -Dmdep.useRepositoryLayout=true -Dmdep.copyPom=true -DoutputDirectory=/maven-repository
 
 FROM scratch
 COPY --from=base --link / /
 COPY --from=build --link --chmod=0755 /build/bazel-bin/plugins/protoc-gen-kotlin .
-COPY --from=maven-deps /root/.m2/repository /maven-repository
+COPY --from=maven-deps /maven-repository /maven-repository
 USER nobody
 ENTRYPOINT ["/protoc-gen-kotlin"]

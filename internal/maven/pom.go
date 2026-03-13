@@ -27,9 +27,10 @@ var (
 )
 
 // RenderPOM generates a Maven POM XML from a parsed plugin config.
-// The POM includes all runtime dependencies, additional runtimes, and
-// kotlin-maven-plugin for Kotlin plugins. maven-compiler-plugin and
-// maven-source-plugin are bundled in the maven-jdk base image.
+// The POM includes all runtime dependencies, additional runtimes,
+// and kotlin-maven-plugin as a dependency for Kotlin plugins.
+// Compiler configuration (apiVersion, jvmTarget, etc.) is read from
+// the database by the compile service, not from this POM.
 func RenderPOM(pluginConfig *bufremotepluginconfig.Config) (string, error) {
 	if pluginConfig.Registry == nil || pluginConfig.Registry.Maven == nil {
 		return "", fmt.Errorf("no Maven registry configured for %q", pluginConfig.Name)

@@ -40,7 +40,9 @@ func insertMavenDepsStage(lines []string) (string, error) {
 	mavenDepsLines := []string{
 		"FROM " + MavenImage + " AS maven-deps",
 		"COPY pom.xml /tmp/pom.xml",
-		"RUN cd /tmp && mvn -f pom.xml dependency:go-offline",
+		"RUN cd /tmp && mvn -f pom.xml dependency:copy-dependencies " +
+			"-Dmdep.useRepositoryLayout=true -Dmdep.copyPom=true " +
+			"-DoutputDirectory=/maven-repository",
 	}
 
 	// Find the insertion point: strip trailing blank lines before
@@ -78,7 +80,7 @@ func insertMavenDepsStage(lines []string) (string, error) {
 		}
 	}
 
-	copyLine := "COPY --from=maven-deps /root/.m2/repository /maven-repository"
+	copyLine := "COPY --from=maven-deps /maven-repository /maven-repository"
 	if copyInsertAt < 0 {
 		newLines = append(newLines, copyLine)
 		return strings.Join(newLines, "\n"), nil

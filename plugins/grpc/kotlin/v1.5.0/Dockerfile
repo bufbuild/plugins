@@ -12,11 +12,11 @@ FROM gcr.io/distroless/java21-debian12:latest@sha256:418b2e2a9e452aa9299511427f2
 
 FROM maven:3.9.11-eclipse-temurin-21 AS maven-deps
 COPY pom.xml /tmp/pom.xml
-RUN cd /tmp && mvn -f pom.xml dependency:go-offline
+RUN cd /tmp && mvn -f pom.xml dependency:copy-dependencies -Dmdep.useRepositoryLayout=true -Dmdep.copyPom=true -DoutputDirectory=/maven-repository
 
 FROM scratch
 COPY --link --from=base / /
 COPY --link --from=build --chmod=0644 --chown=root:root /build/protoc-gen-grpc-kotlin.jar .
-COPY --from=maven-deps /root/.m2/repository /maven-repository
+COPY --from=maven-deps /maven-repository /maven-repository
 USER nobody
 ENTRYPOINT [ "/usr/bin/java", "-jar", "/protoc-gen-grpc-kotlin.jar" ]

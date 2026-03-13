@@ -60,17 +60,10 @@
       <artifactId>protobuf-javalite</artifactId>
       <version>4.31.1</version>
     </dependency>
+    <dependency>
+      <groupId>org.jetbrains.kotlin</groupId>
+      <artifactId>kotlin-maven-plugin</artifactId>
+      <version>2.1.0</version>
+    </dependency>
   </dependencies>
-  <build>
-    <plugins>
-      <plugin>
-        <groupId>org.jetbrains.kotlin</groupId>
-        <artifactId>kotlin-maven-plugin</artifactId>
-        <version>2.1.0</version>
-        <configuration>
-          <apiVersion>1.8</apiVersion>
-        </configuration>
-      </plugin>
-    </plugins>
-  </build>
 </project>

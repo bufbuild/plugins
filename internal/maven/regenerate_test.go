@@ -80,7 +80,7 @@ ENTRYPOINT ["/app"]
 	dockerfileBytes, err := os.ReadFile(filepath.Join(consumerDir, "Dockerfile"))
 	require.NoError(t, err)
 	assert.Contains(t, string(dockerfileBytes), "FROM "+MavenImage+" AS maven-deps")
-	assert.Contains(t, string(dockerfileBytes), "COPY --from=maven-deps /root/.m2/repository /maven-repository")
+	assert.Contains(t, string(dockerfileBytes), "COPY --from=maven-deps /maven-repository /maven-repository")
 
 	// Read and parse pom.xml to verify deps include versions.
 	pomBytes, err := os.ReadFile(filepath.Join(consumerDir, "pom.xml"))

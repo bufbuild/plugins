@@ -70,16 +70,10 @@
       <artifactId>protobuf-kotlin-lite</artifactId>
       <version>4.32.0</version>
     </dependency>
+    <dependency>
+      <groupId>org.jetbrains.kotlin</groupId>
+      <artifactId>kotlin-maven-plugin</artifactId>
+      <version>2.2.20</version>
+    </dependency>
   </dependencies>
-  <build>
-    <plugins>
-      <plugin>
-        <groupId>org.jetbrains.kotlin</groupId>
-        <artifactId>kotlin-maven-plugin</artifactId>
-        <version>2.2.20</version>
-        <configuration>
-        </configuration>
-      </plugin>
-    </plugins>
-  </build>
 </project>
