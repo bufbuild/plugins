@@ -1,0 +1,16 @@
+version: v1
+name: buf.build/community/cjermain-pydantic
+plugin_version: v0.10.0
+source_url: https://github.com/cjermain/protoc-gen-pydantic
+integration_guide_url: https://cjermain.github.io/protoc-gen-pydantic/
+description: Generates Pydantic v2 model definitions from .proto files with type-safe validation, well-known type mappings, and buf.validate constraint translation.
+output_languages:
+  - python
+spdx_license_id: Apache-2.0
+license_url: https://github.com/cjermain/protoc-gen-pydantic/blob/v0.10.0/LICENSE
+registry:
+  python:
+    package_type: stub-only
+    requires_python: ">=3.10"
+    deps:
+      - "pydantic>=2.0"
