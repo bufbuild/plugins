@@ -286,8 +286,7 @@ func recreateSwiftPackageResolved(ctx context.Context, logger *slog.Logger, plug
 	return nil
 }
 
-// regenerateMavenDeps regenerates the pom.xml and Dockerfile's maven-deps
-// stage from the plugin's buf.plugin.yaml.
+// regenerateMavenDeps regenerates the pom.xml from the plugin's buf.plugin.yaml.
 func regenerateMavenDeps(plugin createdPlugin) error {
 	versionDir := filepath.Join(plugin.pluginDir, plugin.newVersion)
 	pluginsDir := filepath.Dir(filepath.Dir(plugin.pluginDir))

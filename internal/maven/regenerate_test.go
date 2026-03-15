@@ -36,7 +36,7 @@ registry:
 	require.NoError(t, os.WriteFile(filepath.Join(baseDir, "buf.plugin.yaml"), []byte(baseYAML), 0644))
 
 	// Setup: consumer-plugin depends on base-plugin and has its own Maven
-	// deps plus a lite runtime. The Dockerfile has a maven-deps stage.
+	// deps plus a lite runtime.
 	consumerDir := filepath.Join(tmpDir, "plugins", "test", "consumer-plugin", "v1.0.0")
 	require.NoError(t, os.MkdirAll(consumerDir, 0755))
 	consumerYAML := `version: v1
@@ -61,26 +61,10 @@ registry:
 `
 	require.NoError(t, os.WriteFile(filepath.Join(consumerDir, "buf.plugin.yaml"), []byte(consumerYAML), 0644))
 
-	dockerfile := `# syntax=docker/dockerfile:1.19
-FROM debian:bookworm AS build
-RUN echo hello
-
-FROM scratch
-COPY --from=build /app .
-ENTRYPOINT ["/app"]
-`
-	require.NoError(t, os.WriteFile(filepath.Join(consumerDir, "Dockerfile"), []byte(dockerfile), 0644))
-
 	// Run RegenerateMavenDeps on the consumer plugin.
 	pluginsDir := filepath.Join(tmpDir, "plugins")
 	err := RegenerateMavenDeps(consumerDir, pluginsDir)
 	require.NoError(t, err)
-
-	// Verify the maven-deps stage was inserted into the Dockerfile.
-	dockerfileBytes, err := os.ReadFile(filepath.Join(consumerDir, "Dockerfile"))
-	require.NoError(t, err)
-	assert.Contains(t, string(dockerfileBytes), "FROM "+MavenImage+" AS maven-deps")
-	assert.Contains(t, string(dockerfileBytes), "COPY --from=maven-deps /root/.m2/repository /maven-repository")
 
 	// Read and parse pom.xml to verify deps include versions.
 	pomBytes, err := os.ReadFile(filepath.Join(consumerDir, "pom.xml"))
