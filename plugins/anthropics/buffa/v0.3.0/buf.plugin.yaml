@@ -1,0 +1,41 @@
+version: v1
+name: buf.build/anthropics/buffa
+plugin_version: v0.3.0
+source_url: https://github.com/anthropics/buffa
+description: Generates Rust message types with buffa, a zero-copy Protobuf implementation with editions support and no_std compatibility.
+output_languages:
+  - rust
+spdx_license_id: Apache-2.0
+license_url: https://github.com/anthropics/buffa/blob/v0.3.0/LICENSE
+registry:
+  cargo:
+    rust_version: "1.85"
+    deps:
+      # Runtime: wire format, Message trait, view types, JSON helpers.
+      # https://github.com/anthropics/buffa/blob/v0.3.0/buffa/Cargo.toml
+      - name: "buffa"
+        req: "0.3.0"
+        default_features: true
+        features:
+          - json
+      # Well-known types (Timestamp, Duration, Any, Struct, etc.).
+      # Generated code references these via the auto-injected
+      # extern_path mapping `.google.protobuf` -> `::buffa_types::google::protobuf`.
+      - name: "buffa-types"
+        req: "0.3.0"
+        default_features: true
+        features:
+          - json
+      # Generated code derives `::serde::Serialize` / `::serde::Deserialize`
+      # directly when json=true, so serde must be a direct dep.
+      - name: "serde"
+        req: "1"
+        default_features: true
+        features:
+          - derive
+  opts:
+    # Enable serde derives + proto3 JSON mapping helpers. Required for
+    # downstream plugins that need the Connect protocol's JSON codec.
+    - json=true
+    # Zero-copy view types. Default, but explicit for clarity.
+    - views=true
