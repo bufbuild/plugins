@@ -1,0 +1,40 @@
+version: v1
+name: buf.build/anthropics/connect-rust
+plugin_version: v0.3.2
+source_url: https://github.com/anthropics/connect-rust
+description: Generates ConnectRPC service traits, typed clients, and monomorphic dispatchers for Rust. Compatible with the Connect, gRPC, and gRPC-Web protocols. Passes the full ConnectRPC conformance suite.
+deps:
+  - plugin: buf.build/anthropics/buffa:v0.3.0
+output_languages:
+  - rust
+spdx_license_id: Apache-2.0
+license_url: https://github.com/anthropics/connect-rust/blob/v0.3.2/LICENSE
+registry:
+  cargo:
+    rust_version: "1.88"
+    deps:
+      # ConnectRPC runtime: Router, Context, ConnectError, client transports.
+      # https://github.com/anthropics/connect-rust/blob/v0.3.2/connectrpc/Cargo.toml
+      - name: "connectrpc"
+        req: "0.3.2"
+        default_features: true
+      # Generated service stubs use buffa::Message, buffa::view::OwnedView,
+      # buffa::bytes::Bytes directly. Message types live in the buffa SDK
+      # crate (via the plugin dep above); this dep is for the runtime API.
+      - name: "buffa"
+        req: "0.3.0"
+        default_features: true
+      # Streaming method signatures use futures::Stream.
+      - name: "futures"
+        req: "0.3"
+        default_features: true
+      # Client transport bounds reference http_body::Body.
+      - name: "http-body"
+        req: "1"
+        default_features: true
+  # The plugin accepts `extern_path=.=<rust_path>` (or the shorthand
+  # `buffa_module=<rust_path>`) to tell it where the buffa-generated message
+  # types live. BSR should inject this based on the buffa dep's SDK crate
+  # name, same as tonic receives extern_path for its prost dep. Leaving
+  # opts empty here; please advise if an explicit entry is needed.
+  opts: []
