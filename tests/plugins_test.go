@@ -6,6 +6,7 @@ import (
 	"cmp"
 	"context"
 	"encoding/xml"
+	"errors"
 	"fmt"
 	"io"
 	"io/fs"
@@ -25,6 +26,7 @@ import (
 	"golang.org/x/mod/semver"
 	"golang.org/x/mod/sumdb/dirhash"
 
+	"github.com/bufbuild/plugins/internal/maven"
 	"github.com/bufbuild/plugins/internal/plugin"
 	"github.com/bufbuild/plugins/internal/source"
 )
@@ -322,6 +324,38 @@ func TestMavenDependencies(t *testing.T) {
 				require.NoError(t, resp.Body.Close())
 				assert.Equalf(t, http.StatusOK, resp.StatusCode, "failed to find maven dependency %s", dep)
 			}
+		})
+	}
+}
+
+func TestMavenPOMInSync(t *testing.T) {
+	t.Parallel()
+	plugins := loadFilteredPlugins(t)
+	pluginsDir, err := filepath.Abs(filepath.Join("..", "plugins"))
+	require.NoError(t, err)
+	for _, p := range plugins {
+		if p.Registry.Maven == nil {
+			continue
+		}
+		pomPath := filepath.Join(filepath.Dir(p.Path), "pom.xml")
+		if _, err := os.Stat(pomPath); err != nil {
+			if errors.Is(err, fs.ErrNotExist) {
+				continue
+			}
+			require.NoError(t, err)
+		}
+		t.Run(fmt.Sprintf("%s/%s@%s", p.Identity.Owner(), p.Identity.Plugin(), p.PluginVersion), func(t *testing.T) {
+			t.Parallel()
+			pluginVersionDir := filepath.Dir(p.Path)
+			pluginConfig, err := bufremotepluginconfig.ParseConfig(p.Path)
+			require.NoError(t, err)
+			require.NoError(t, maven.MergeTransitiveDeps(pluginConfig, pluginsDir))
+			require.NoError(t, maven.DeduplicateAllDeps(pluginConfig.Registry.Maven))
+			expectedPOM, err := maven.RenderPOM(pluginConfig)
+			require.NoError(t, err)
+			actualPOM, err := os.ReadFile(filepath.Join(pluginVersionDir, "pom.xml"))
+			require.NoError(t, err)
+			assert.Equal(t, expectedPOM, string(actualPOM), "pom.xml is out of sync with buf.plugin.yaml")
 		})
 	}
 }
