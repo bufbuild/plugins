@@ -16,8 +16,8 @@ registry:
   maven:
     compiler:
       kotlin:
-        api_version: "1.8"
-        version: "2.1.0"
+        api_version: "2.1"
+        version: "2.2.21"
     deps:
       - com.connectrpc:connect-kotlin:0.8.0
       - com.connectrpc:connect-kotlin-google-java-ext:0.8.0
