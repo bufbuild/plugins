@@ -15,5 +15,5 @@ registry:
     # https://github.com/connectrpc/connect-python/blob/v0.9.0/protoc-gen-connect-python/pyproject.toml#L11
     requires_python: ">=3.10"
     deps:
-      # https://pypi.org/project/connect-python/
-      - "connect-python >= 0.9.0"
+      # https://pypi.org/project/connectrpc/
+      - "connectrpc >= 0.9.0"
