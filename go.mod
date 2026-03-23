@@ -8,7 +8,7 @@ require (
 	buf.build/go/interrupt v1.1.0
 	buf.build/go/standard v0.1.0
 	github.com/bufbuild/buf v1.66.1
-	github.com/google/go-containerregistry v0.21.2
+	github.com/google/go-containerregistry v0.21.3
 	github.com/google/go-github/v72 v72.0.0
 	github.com/hashicorp/go-retryablehttp v0.7.8
 	github.com/spf13/pflag v1.0.10
@@ -43,4 +43,5 @@ require (
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
 	golang.org/x/crypto v0.48.0 // indirect
 	golang.org/x/sys v0.42.0 // indirect
+	gotest.tools/v3 v3.5.2 // indirect
 )
