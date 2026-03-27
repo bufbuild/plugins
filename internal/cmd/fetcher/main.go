@@ -26,6 +26,7 @@ import (
 	"github.com/bufbuild/plugins/internal/fetchclient"
 	"github.com/bufbuild/plugins/internal/git"
 	"github.com/bufbuild/plugins/internal/maven"
+	"github.com/bufbuild/plugins/internal/nuget"
 	"github.com/bufbuild/plugins/internal/plugin"
 	"github.com/bufbuild/plugins/internal/source"
 )
@@ -143,6 +144,9 @@ func postProcessCreatedPlugins(ctx context.Context, logger *slog.Logger, plugins
 		newPluginRef := plugin.String()
 		if err := regenerateMavenDeps(plugin); err != nil {
 			return fmt.Errorf("failed to regenerate maven deps for %s: %w", newPluginRef, err)
+		}
+		if err := regenerateNugetDeps(plugin); err != nil {
+			return fmt.Errorf("failed to regenerate nuget deps for %s: %w", newPluginRef, err)
 		}
 		if err := runGoModTidy(ctx, logger, plugin); err != nil {
 			return fmt.Errorf("failed to run go mod tidy for %s: %w", newPluginRef, err)
@@ -291,6 +295,13 @@ func regenerateMavenDeps(plugin createdPlugin) error {
 	versionDir := filepath.Join(plugin.pluginDir, plugin.newVersion)
 	pluginsDir := filepath.Dir(filepath.Dir(plugin.pluginDir))
 	return maven.RegenerateMavenDeps(versionDir, pluginsDir)
+}
+
+// regenerateNugetDeps regenerates the build.csproj from the plugin's buf.plugin.yaml.
+func regenerateNugetDeps(plugin createdPlugin) error {
+	versionDir := filepath.Join(plugin.pluginDir, plugin.newVersion)
+	pluginsDir := filepath.Dir(filepath.Dir(plugin.pluginDir))
+	return nuget.RegenerateNugetDeps(versionDir, pluginsDir)
 }
 
 // runPluginTests runs 'make test PLUGINS="org/name:v<new>"' in order to generate plugin.sum files.
