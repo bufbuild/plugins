@@ -59,7 +59,7 @@ jobs:
           app-id: ${{ secrets.BUFBUILD_ISSUE_CREATOR_APP_ID }}
           private-key: ${{ secrets.BUFBUILD_ISSUE_CREATOR_APP_KEY }}
           permission-issues: write
-      - uses: dblock/create-a-github-issue@d10508ebcd7fbef05990c86355a17763cd29aa93 # v3.3.0
+      - uses: dblock/create-a-github-issue@a25e69ccb88998dc267170a0dbde8ef8ac3a491c # v3.4.0
         if: ${{ failure() }}
         env:
           GITHUB_TOKEN: ${{ steps.generate_issues_token.outputs.token }}
