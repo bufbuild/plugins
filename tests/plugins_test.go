@@ -84,6 +84,13 @@ exec docker run --log-driver=none --rm -i {{.ImageName}}:{{.Version}} "$@"
 		"buf.build/community/mercari-grpc-federation": {"eliza": true, "petapis": true},
 		"buf.build/googlecloudplatform/bq-schema":     {"eliza": true, "petapis": true},
 	}
+	// allowedMissingRegistryDeps lists dependencies that are known to lack a registry config for
+	// a given registry type. The key is "pluginRef -> depRef" (e.g. "buf.build/grpc/python:v1.59.1 -> buf.build/protocolbuffers/python:v24.4").
+	// Only add entries here for old plugin versions where the dep predates registry config support.
+	allowedMissingRegistryDeps = map[string]bool{
+		"buf.build/grpc/python:v1.59.1 -> buf.build/protocolbuffers/python:v24.4": true,
+		"buf.build/grpc/python:v1.59.2 -> buf.build/protocolbuffers/python:v24.4": true,
+	}
 )
 
 func TestGeneration(t *testing.T) {
@@ -497,10 +504,13 @@ func TestRegistryDepsHaveRegistryConfig(t *testing.T) {
 			visited[dep.Plugin] = true
 			depPlugin, ok := pluginByRef[dep.Plugin]
 			require.Truef(t, ok, "dependency %q not found", dep.Plugin)
-			assert.Equalf(t, want, registryType(depPlugin),
-				"dependency %q of plugin %q has registry type %q, want %q",
-				dep.Plugin, p.String(), registryType(depPlugin), want,
-			)
+			key := fmt.Sprintf("%s -> %s", p.String(), dep.Plugin)
+			if registryType(depPlugin) != want && !allowedMissingRegistryDeps[key] {
+				assert.Failf(t, "missing registry config",
+					"dependency %q of plugin %q has registry type %q, want %q",
+					dep.Plugin, p.String(), registryType(depPlugin), want,
+				)
+			}
 			checkDeps(t, depPlugin, want, visited)
 		}
 	}
