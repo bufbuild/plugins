@@ -14,6 +14,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"reflect"
 	"strconv"
 	"strings"
 	"testing"
@@ -83,6 +84,13 @@ exec docker run --log-driver=none --rm -i {{.ImageName}}:{{.Version}} "$@"
 		"buf.build/grpc-ecosystem/gateway":            {"eliza": true, "petapis": true},
 		"buf.build/community/mercari-grpc-federation": {"eliza": true, "petapis": true},
 		"buf.build/googlecloudplatform/bq-schema":     {"eliza": true, "petapis": true},
+	}
+	// allowedMissingRegistryDeps lists dependencies that are known to lack a registry config for
+	// a given registry type. The key is "pluginRef -> depRef" (e.g. "buf.build/grpc/python:v1.59.1 -> buf.build/protocolbuffers/python:v24.4").
+	// Only add entries here for old plugin versions where the dep predates registry config support.
+	allowedMissingRegistryDeps = map[string]bool{
+		"buf.build/grpc/python:v1.59.1 -> buf.build/protocolbuffers/python:v24.4": true,
+		"buf.build/grpc/python:v1.59.2 -> buf.build/protocolbuffers/python:v24.4": true,
 	}
 )
 
@@ -451,6 +459,82 @@ func TestPyPIDependencies(t *testing.T) {
 				output, err := uvInitCmd.CombinedOutput()
 				require.NoErrorf(t, err, "uv add failed - output: %s", string(output))
 			}
+		})
+	}
+}
+
+func TestRegistryDepsHaveRegistryConfig(t *testing.T) {
+	t.Parallel()
+	plugins := loadAllPlugins(t)
+	// Build a lookup map by "name:version".
+	pluginByRef := make(map[string]*plugin.Plugin, len(plugins))
+	for _, p := range plugins {
+		pluginByRef[p.String()] = p
+	}
+	// registryType returns a string identifying which registry type is configured,
+	// or "" if no registry is configured. Fails the test if any pointer field on
+	// the registry struct is non-nil but not handled by the switch, so this test
+	// stays up to date when new registry types are added to ExternalRegistryConfig.
+	registryType := func(t *testing.T, p *plugin.Plugin) string {
+		t.Helper()
+		switch {
+		case p.Registry.Go != nil:
+			return "go"
+		case p.Registry.NPM != nil:
+			return "npm"
+		case p.Registry.Maven != nil:
+			return "maven"
+		case p.Registry.Swift != nil:
+			return "swift"
+		case p.Registry.Python != nil:
+			return "python"
+		case p.Registry.Cargo != nil:
+			return "cargo"
+		case p.Registry.Nuget != nil:
+			return "nuget"
+		case p.Registry.Cmake != nil:
+			return "cmake"
+		default:
+			rv := reflect.ValueOf(p.Registry)
+			rt := reflect.TypeFor[bufremotepluginconfig.ExternalRegistryConfig]()
+			for i := range rt.NumField() {
+				field := rt.Field(i)
+				if field.Type.Kind() == reflect.Pointer && !rv.Field(i).IsNil() {
+					assert.Failf(t, "unrecognized registry type", "plugin %q has unrecognized registry type field %q - update registryType() in this test", p.String(), field.Name)
+				}
+			}
+			return ""
+		}
+	}
+	// checkDeps recursively verifies that all transitive dependencies of p have the expected registry type.
+	var checkDeps func(t *testing.T, p *plugin.Plugin, want string, visited map[string]bool)
+	checkDeps = func(t *testing.T, p *plugin.Plugin, want string, visited map[string]bool) {
+		t.Helper()
+		for _, dep := range p.Deps {
+			if visited[dep.Plugin] {
+				continue
+			}
+			visited[dep.Plugin] = true
+			depPlugin, ok := pluginByRef[dep.Plugin]
+			require.Truef(t, ok, "dependency %q not found", dep.Plugin)
+			key := fmt.Sprintf("%s -> %s", p.String(), dep.Plugin)
+			if registryType(t, depPlugin) != want && !allowedMissingRegistryDeps[key] {
+				assert.Failf(t, "missing registry config",
+					"dependency %q of plugin %q has registry type %q, want %q",
+					dep.Plugin, p.String(), registryType(t, depPlugin), want,
+				)
+			}
+			checkDeps(t, depPlugin, want, visited)
+		}
+	}
+	for _, p := range plugins {
+		rt := registryType(t, p)
+		if rt == "" {
+			continue
+		}
+		t.Run(fmt.Sprintf("%s/%s@%s", p.Identity.Owner(), p.Identity.Plugin(), p.PluginVersion), func(t *testing.T) {
+			t.Parallel()
+			checkDeps(t, p, rt, make(map[string]bool))
 		})
 	}
 }
