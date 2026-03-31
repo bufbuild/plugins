@@ -455,6 +455,67 @@ func TestPyPIDependencies(t *testing.T) {
 	}
 }
 
+func TestRegistryDepsHaveRegistryConfig(t *testing.T) {
+	t.Parallel()
+	plugins := loadAllPlugins(t)
+	// Build a lookup map by "name:version".
+	pluginByRef := make(map[string]*plugin.Plugin, len(plugins))
+	for _, p := range plugins {
+		pluginByRef[p.String()] = p
+	}
+	// registryType returns a non-empty string identifying which registry type is configured, or "".
+	registryType := func(p *plugin.Plugin) string {
+		switch {
+		case p.Registry.Go != nil:
+			return "go"
+		case p.Registry.NPM != nil:
+			return "npm"
+		case p.Registry.Maven != nil:
+			return "maven"
+		case p.Registry.Swift != nil:
+			return "swift"
+		case p.Registry.Python != nil:
+			return "python"
+		case p.Registry.Cargo != nil:
+			return "cargo"
+		case p.Registry.Nuget != nil:
+			return "nuget"
+		case p.Registry.Cmake != nil:
+			return "cmake"
+		default:
+			return ""
+		}
+	}
+	// checkDeps recursively verifies that all transitive dependencies of p have the expected registry type.
+	var checkDeps func(t *testing.T, p *plugin.Plugin, want string, visited map[string]bool)
+	checkDeps = func(t *testing.T, p *plugin.Plugin, want string, visited map[string]bool) {
+		t.Helper()
+		for _, dep := range p.Deps {
+			if visited[dep.Plugin] {
+				continue
+			}
+			visited[dep.Plugin] = true
+			depPlugin, ok := pluginByRef[dep.Plugin]
+			require.Truef(t, ok, "dependency %q not found", dep.Plugin)
+			assert.Equalf(t, want, registryType(depPlugin),
+				"dependency %q of plugin %q has registry type %q, want %q",
+				dep.Plugin, p.String(), registryType(depPlugin), want,
+			)
+			checkDeps(t, depPlugin, want, visited)
+		}
+	}
+	for _, p := range plugins {
+		rt := registryType(p)
+		if rt == "" {
+			continue
+		}
+		t.Run(fmt.Sprintf("%s/%s@%s", p.Identity.Owner(), p.Identity.Plugin(), p.PluginVersion), func(t *testing.T) {
+			t.Parallel()
+			checkDeps(t, p, rt, make(map[string]bool))
+		})
+	}
+}
+
 func runPluginWithImage(ctx context.Context, t *testing.T, basedir string, pluginMeta *plugin.Plugin, image string, goPkgPrefix string) string {
 	t.Helper()
 	gendir := filepath.Join(basedir, "gen")
