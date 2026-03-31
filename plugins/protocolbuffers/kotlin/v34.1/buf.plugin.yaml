@@ -14,7 +14,7 @@ registry:
   maven:
     compiler:
       kotlin:
-        api_version: "1.8"
+        api_version: "2.1"
         version: "2.2.21"
     deps:
       - com.google.protobuf:protobuf-kotlin:4.34.1
