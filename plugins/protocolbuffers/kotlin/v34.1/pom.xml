@@ -48,6 +48,7 @@
         <artifactId>kotlin-maven-plugin</artifactId>
         <version>2.2.21</version>
         <configuration>
+          <apiVersion>2.1</apiVersion>
         </configuration>
       </plugin>
     </plugins>
