@@ -14,6 +14,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"reflect"
 	"strconv"
 	"strings"
 	"testing"
@@ -470,8 +471,12 @@ func TestRegistryDepsHaveRegistryConfig(t *testing.T) {
 	for _, p := range plugins {
 		pluginByRef[p.String()] = p
 	}
-	// registryType returns a non-empty string identifying which registry type is configured, or "".
-	registryType := func(p *plugin.Plugin) string {
+	// registryType returns a string identifying which registry type is configured,
+	// or "" if no registry is configured. Fails the test if any pointer field on
+	// the registry struct is non-nil but not handled by the switch, so this test
+	// stays up to date when new registry types are added to ExternalRegistryConfig.
+	registryType := func(t *testing.T, p *plugin.Plugin) string {
+		t.Helper()
 		switch {
 		case p.Registry.Go != nil:
 			return "go"
@@ -490,6 +495,14 @@ func TestRegistryDepsHaveRegistryConfig(t *testing.T) {
 		case p.Registry.Cmake != nil:
 			return "cmake"
 		default:
+			rv := reflect.ValueOf(p.Registry)
+			rt := reflect.TypeFor[bufremotepluginconfig.ExternalRegistryConfig]()
+			for i := range rt.NumField() {
+				field := rt.Field(i)
+				if field.Type.Kind() == reflect.Pointer && !rv.Field(i).IsNil() {
+					assert.Failf(t, "unrecognized registry type", "plugin %q has unrecognized registry type field %q - update registryType() in this test", p.String(), field.Name)
+				}
+			}
 			return ""
 		}
 	}
@@ -505,17 +518,17 @@ func TestRegistryDepsHaveRegistryConfig(t *testing.T) {
 			depPlugin, ok := pluginByRef[dep.Plugin]
 			require.Truef(t, ok, "dependency %q not found", dep.Plugin)
 			key := fmt.Sprintf("%s -> %s", p.String(), dep.Plugin)
-			if registryType(depPlugin) != want && !allowedMissingRegistryDeps[key] {
+			if registryType(t, depPlugin) != want && !allowedMissingRegistryDeps[key] {
 				assert.Failf(t, "missing registry config",
 					"dependency %q of plugin %q has registry type %q, want %q",
-					dep.Plugin, p.String(), registryType(depPlugin), want,
+					dep.Plugin, p.String(), registryType(t, depPlugin), want,
 				)
 			}
 			checkDeps(t, depPlugin, want, visited)
 		}
 	}
 	for _, p := range plugins {
-		rt := registryType(p)
+		rt := registryType(t, p)
 		if rt == "" {
 			continue
 		}
