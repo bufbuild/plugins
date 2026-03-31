@@ -125,11 +125,13 @@ func newRootCommand(name string) *appcmd.Command {
 }
 
 type createdPlugin struct {
-	org             string
-	name            string
-	pluginDir       string
-	previousVersion string
-	newVersion      string
+	org                string
+	name               string
+	pluginDir          string
+	previousVersion    string
+	newVersion         string
+	previousReleaseURL string
+	releaseURL         string
 }
 
 func (p createdPlugin) String() string {
@@ -382,9 +384,11 @@ func updatePluginDeps(ctx context.Context, logger *slog.Logger, content []byte, 
 
 // pluginToCreate represents a plugin that needs a new version created.
 type pluginToCreate struct {
-	pluginDir       string
-	previousVersion string
-	newVersion      string
+	pluginDir          string
+	previousVersion    string
+	newVersion         string
+	previousReleaseURL string
+	releaseURL         string
 }
 
 type runOption func(*runOptions)
@@ -499,14 +503,50 @@ func run(
 		latestPluginVersions[p.Name] = pending.newVersion
 
 		created = append(created, createdPlugin{
-			org:             filepath.Base(filepath.Dir(pending.pluginDir)),
-			name:            filepath.Base(pending.pluginDir),
-			pluginDir:       pending.pluginDir,
-			previousVersion: pending.previousVersion,
-			newVersion:      pending.newVersion,
+			org:                filepath.Base(filepath.Dir(pending.pluginDir)),
+			name:               filepath.Base(pending.pluginDir),
+			pluginDir:          pending.pluginDir,
+			previousVersion:    pending.previousVersion,
+			newVersion:         pending.newVersion,
+			previousReleaseURL: pending.previousReleaseURL,
+			releaseURL:         pending.releaseURL,
 		})
 	}
 	return created, nil
+}
+
+// pluginReleaseURL returns the release URL for a new plugin version, or empty string if not determinable.
+// For GitHub sources, reads the previous version's buf.plugin.yaml to determine
+// whether the repo uses v-prefixed tags (e.g. v1.2.3) or bare tags (e.g. 1.2.3).
+func pluginReleaseURL(pluginDir, previousVersion, newVersion string, src source.Source) string {
+	bare := strings.TrimPrefix(newVersion, "v")
+	switch {
+	case src.GitHub != nil:
+		tag := newVersion // default: v-prefixed
+		// Check the previous buf.plugin.yaml to see which tag format the repo uses.
+		prevYAML := filepath.Join(pluginDir, previousVersion, "buf.plugin.yaml")
+		if content, err := os.ReadFile(prevYAML); err == nil {
+			prevBare := strings.TrimPrefix(previousVersion, "v")
+			// If the file contains the bare version but NOT the v-prefixed version
+			// in a blob/tree URL, the repo uses bare tags.
+			if strings.Contains(string(content), "/blob/"+prevBare) && !strings.Contains(string(content), "/blob/v"+prevBare) {
+				tag = bare
+			}
+		}
+		return "https://github.com/" + src.GitHub.Owner + "/" + src.GitHub.Repository + "/releases/tag/" + tag
+	case src.GoProxy != nil:
+		return "https://pkg.go.dev/" + src.GoProxy.Name + "@" + newVersion
+	case src.NPMRegistry != nil:
+		return "https://www.npmjs.com/package/" + src.NPMRegistry.Name + "/v/" + bare
+	case src.Maven != nil:
+		groupPath := strings.ReplaceAll(src.Maven.Group, ".", "/")
+		return "https://mvnrepository.com/artifact/" + groupPath + "/" + src.Maven.Name + "/" + bare
+	case src.Crates != nil:
+		return "https://crates.io/crates/" + src.Crates.CrateName + "/" + bare
+	case src.DartFlutter != nil:
+		return "https://pub.dev/packages/" + src.DartFlutter.Name + "/versions/" + bare
+	}
+	return ""
 }
 
 // fetchPendingCreations iterates over source configs, fetches the latest
@@ -582,9 +622,11 @@ func fetchPendingCreations(
 		}
 
 		pendingCreations[pluginDir] = &pluginToCreate{
-			pluginDir:       pluginDir,
-			previousVersion: previousVersion,
-			newVersion:      newVersion,
+			pluginDir:          pluginDir,
+			previousVersion:    previousVersion,
+			newVersion:         newVersion,
+			previousReleaseURL: pluginReleaseURL(pluginDir, previousVersion, previousVersion, config.Source),
+			releaseURL:         pluginReleaseURL(pluginDir, previousVersion, newVersion, config.Source),
 		}
 	}
 	return pendingCreations, nil
@@ -908,10 +950,18 @@ func generatePRBody(created []createdPlugin) string {
 		}
 		fmt.Fprintf(&sb, "### %s\n", g.name)
 		for _, p := range g.plugins {
+			prevVersionLink := p.previousVersion
+			if p.previousReleaseURL != "" {
+				prevVersionLink = "[" + p.previousVersion + "](" + p.previousReleaseURL + ")"
+			}
+			newVersionLink := p.newVersion
+			if p.releaseURL != "" {
+				newVersionLink = "[" + p.newVersion + "](" + p.releaseURL + ")"
+			}
 			if p.org == communityOrg {
-				fmt.Fprintf(&sb, "- %s → %s\n", p.previousVersion, p.newVersion)
+				fmt.Fprintf(&sb, "- %s → %s\n", prevVersionLink, newVersionLink)
 			} else {
-				fmt.Fprintf(&sb, "- %s: %s → %s\n", p.name, p.previousVersion, p.newVersion)
+				fmt.Fprintf(&sb, "- %s: %s → %s\n", p.name, prevVersionLink, newVersionLink)
 			}
 		}
 	}

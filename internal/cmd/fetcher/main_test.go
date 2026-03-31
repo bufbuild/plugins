@@ -398,6 +398,140 @@ COPY --from=consumer /binary /usr/local/bin/protoc-gen-consumer
 	))
 }
 
+func TestPluginReleaseURL(t *testing.T) {
+	t.Parallel()
+
+	t.Run("github with v-prefixed tags", func(t *testing.T) {
+		t.Parallel()
+		tmpDir := t.TempDir()
+		pluginDir := filepath.Join(tmpDir, "plugins", "protocolbuffers", "go")
+		require.NoError(t, os.MkdirAll(filepath.Join(pluginDir, "v1.36.5"), 0755))
+		require.NoError(t, os.WriteFile(
+			filepath.Join(pluginDir, "v1.36.5", "buf.plugin.yaml"),
+			[]byte("license_url: https://github.com/protocolbuffers/protobuf-go/blob/v1.36.5/LICENSE\n"),
+			0644,
+		))
+		src := source.Source{GitHub: &source.GitHubConfig{Owner: "protocolbuffers", Repository: "protobuf-go"}}
+		url := pluginReleaseURL(pluginDir, "v1.36.5", "v1.37.0", src)
+		assert.Equal(t, "https://github.com/protocolbuffers/protobuf-go/releases/tag/v1.37.0", url)
+	})
+
+	t.Run("github with bare tags (no v prefix)", func(t *testing.T) {
+		t.Parallel()
+		tmpDir := t.TempDir()
+		pluginDir := filepath.Join(tmpDir, "plugins", "connectrpc", "swift")
+		require.NoError(t, os.MkdirAll(filepath.Join(pluginDir, "v1.2.1"), 0755))
+		require.NoError(t, os.WriteFile(
+			filepath.Join(pluginDir, "v1.2.1", "buf.plugin.yaml"),
+			[]byte("license_url: https://github.com/connectrpc/connect-swift/blob/1.2.1/LICENSE\n"),
+			0644,
+		))
+		src := source.Source{GitHub: &source.GitHubConfig{Owner: "connectrpc", Repository: "connect-swift"}}
+		url := pluginReleaseURL(pluginDir, "v1.2.1", "v1.2.2", src)
+		assert.Equal(t, "https://github.com/connectrpc/connect-swift/releases/tag/1.2.2", url)
+	})
+
+	t.Run("github falls back to v-prefix when no previous yaml", func(t *testing.T) {
+		t.Parallel()
+		tmpDir := t.TempDir()
+		pluginDir := filepath.Join(tmpDir, "plugins", "test", "myplugin")
+		require.NoError(t, os.MkdirAll(pluginDir, 0755))
+		src := source.Source{GitHub: &source.GitHubConfig{Owner: "test", Repository: "myplugin"}}
+		url := pluginReleaseURL(pluginDir, "v1.0.0", "v1.1.0", src)
+		assert.Equal(t, "https://github.com/test/myplugin/releases/tag/v1.1.0", url)
+	})
+
+	t.Run("goproxy", func(t *testing.T) {
+		t.Parallel()
+		src := source.Source{GoProxy: &source.GoProxyConfig{Name: "google.golang.org/grpc/cmd/protoc-gen-go-grpc"}}
+		url := pluginReleaseURL("", "", "v1.5.1", src)
+		assert.Equal(t, "https://pkg.go.dev/google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.5.1", url)
+	})
+
+	t.Run("npm", func(t *testing.T) {
+		t.Parallel()
+		src := source.Source{NPMRegistry: &source.NPMRegistryConfig{Name: "@bufbuild/protoc-gen-es"}}
+		url := pluginReleaseURL("", "", "v2.5.0", src)
+		assert.Equal(t, "https://www.npmjs.com/package/@bufbuild/protoc-gen-es/v/2.5.0", url)
+	})
+
+	t.Run("crates", func(t *testing.T) {
+		t.Parallel()
+		src := source.Source{Crates: &source.CratesConfig{CrateName: "prost"}}
+		url := pluginReleaseURL("", "", "v0.13.4", src)
+		assert.Equal(t, "https://crates.io/crates/prost/0.13.4", url)
+	})
+
+	t.Run("maven", func(t *testing.T) {
+		t.Parallel()
+		src := source.Source{Maven: &source.MavenConfig{Group: "io.grpc", Name: "grpc-java"}}
+		url := pluginReleaseURL("", "", "v1.70.0", src)
+		assert.Equal(t, "https://mvnrepository.com/artifact/io/grpc/grpc-java/1.70.0", url)
+	})
+
+	t.Run("dart_flutter", func(t *testing.T) {
+		t.Parallel()
+		src := source.Source{DartFlutter: &source.DartFlutterConfig{Name: "protobuf"}}
+		url := pluginReleaseURL("", "", "v3.1.0", src)
+		assert.Equal(t, "https://pub.dev/packages/protobuf/versions/3.1.0", url)
+	})
+}
+
+func TestGeneratePRBody(t *testing.T) {
+	t.Parallel()
+
+	t.Run("single plugin with release URLs", func(t *testing.T) {
+		t.Parallel()
+		created := []createdPlugin{
+			{
+				org: "connectrpc", name: "swift",
+				previousVersion:    "v1.2.1",
+				newVersion:         "v1.2.2",
+				previousReleaseURL: "https://github.com/connectrpc/connect-swift/releases/tag/1.2.1",
+				releaseURL:         "https://github.com/connectrpc/connect-swift/releases/tag/1.2.2",
+			},
+		}
+		body := generatePRBody(created)
+		assert.Equal(t, "### connectrpc\n- swift: [v1.2.1](https://github.com/connectrpc/connect-swift/releases/tag/1.2.1) → [v1.2.2](https://github.com/connectrpc/connect-swift/releases/tag/1.2.2)", body)
+	})
+
+	t.Run("single plugin without release URLs", func(t *testing.T) {
+		t.Parallel()
+		created := []createdPlugin{
+			{org: "protocolbuffers", name: "go", previousVersion: "v1.36.5", newVersion: "v1.37.0"},
+		}
+		body := generatePRBody(created)
+		assert.Equal(t, "### protocolbuffers\n- go: v1.36.5 → v1.37.0", body)
+	})
+
+	t.Run("multiple plugins grouped by org", func(t *testing.T) {
+		t.Parallel()
+		created := []createdPlugin{
+			{
+				org: "protocolbuffers", name: "go",
+				previousVersion:    "v1.36.5",
+				newVersion:         "v1.37.0",
+				previousReleaseURL: "https://github.com/protocolbuffers/protobuf-go/releases/tag/v1.36.5",
+				releaseURL:         "https://github.com/protocolbuffers/protobuf-go/releases/tag/v1.37.0",
+			},
+			{
+				org: "protocolbuffers", name: "java",
+				previousVersion:    "v4.28.3",
+				newVersion:         "v4.29.0",
+				previousReleaseURL: "https://github.com/protocolbuffers/protobuf/releases/tag/v4.28.3",
+				releaseURL:         "https://github.com/protocolbuffers/protobuf/releases/tag/v4.29.0",
+			},
+		}
+		body := generatePRBody(created)
+		assert.Equal(t, "### protocolbuffers\n- go: [v1.36.5](https://github.com/protocolbuffers/protobuf-go/releases/tag/v1.36.5) → [v1.37.0](https://github.com/protocolbuffers/protobuf-go/releases/tag/v1.37.0)\n- java: [v4.28.3](https://github.com/protocolbuffers/protobuf/releases/tag/v4.28.3) → [v4.29.0](https://github.com/protocolbuffers/protobuf/releases/tag/v4.29.0)", body)
+	})
+
+	t.Run("empty created list", func(t *testing.T) {
+		t.Parallel()
+		assert.Empty(t, generatePRBody(nil))
+	})
+}
+
 type testWriter struct {
 	tb testing.TB
 }
