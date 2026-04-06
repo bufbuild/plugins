@@ -6,8 +6,8 @@ require (
 	aead.dev/minisign v0.3.0
 	buf.build/go/app v0.2.0
 	buf.build/go/interrupt v1.1.0
-	buf.build/go/standard v0.1.0
-	github.com/bufbuild/buf v1.66.1
+	buf.build/go/standard v0.1.1-0.20260325175353-2b287e071df5
+	github.com/bufbuild/buf v1.67.0
 	github.com/google/go-containerregistry v0.21.3
 	github.com/google/go-github/v72 v72.0.0
 	github.com/hashicorp/go-retryablehttp v0.7.8
@@ -31,7 +31,7 @@ require (
 	github.com/google/go-querystring v1.1.0 // indirect
 	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
-	github.com/klauspost/compress v1.18.4 // indirect
+	github.com/klauspost/compress v1.18.5 // indirect
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/opencontainers/image-spec v1.1.1 // indirect
@@ -41,7 +41,7 @@ require (
 	github.com/spf13/cobra v1.10.2 // indirect
 	github.com/vbatts/tar-split v0.12.2 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
-	golang.org/x/crypto v0.48.0 // indirect
+	golang.org/x/crypto v0.49.0 // indirect
 	golang.org/x/sys v0.42.0 // indirect
 	gotest.tools/v3 v3.5.2 // indirect
 )
