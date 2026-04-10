@@ -11,6 +11,8 @@ COPY separate-package.patch /tmp/grpc-go
 RUN git apply separate-package.patch
 WORKDIR /tmp/grpc-go/cmd/protoc-gen-go-grpc
 RUN --mount=type=cache,target=/go/pkg/mod \
+    go mod download
+RUN --mount=type=cache,target=/go/pkg/mod \
     go build -o protoc-gen-go-grpc -ldflags "-s -w" -trimpath
 
 FROM scratch

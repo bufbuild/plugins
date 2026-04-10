@@ -4,6 +4,7 @@ FROM swift:5.8.1-focal AS build
 WORKDIR /app
 RUN git clone --depth 1 --branch 0.7.0 https://github.com/bufbuild/connect-swift
 WORKDIR /app/connect-swift
+RUN swift package resolve
 RUN swift build -c release --product protoc-gen-connect-swift --static-swift-stdlib -Xlinker -s
 
 FROM gcr.io/distroless/cc-debian11
