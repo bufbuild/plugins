@@ -2,7 +2,9 @@ package main
 
 import (
 	"context"
+	"io"
 	"log/slog"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
@@ -396,6 +398,202 @@ COPY --from=consumer /binary /usr/local/bin/protoc-gen-consumer
 		[]byte(consumerDockerfile),
 		0644,
 	))
+}
+
+// mockHTTPTransport is an http.RoundTripper that serves static responses for testing.
+type mockHTTPTransport struct {
+	responses map[string]string // URL -> response body
+}
+
+func (m *mockHTTPTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	body, ok := m.responses[req.URL.String()]
+	if !ok {
+		return &http.Response{
+			StatusCode: http.StatusNotFound,
+			Body:       io.NopCloser(strings.NewReader("")),
+			Header:     make(http.Header),
+		}, nil
+	}
+	return &http.Response{
+		StatusCode: http.StatusOK,
+		Body:       io.NopCloser(strings.NewReader(body)),
+		Header:     make(http.Header),
+	}, nil
+}
+
+func TestUpdateGoRegistryMinVersion(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name             string
+		pluginYAML       string
+		goModResponses   map[string]string
+		wantBump         *goMinVersionBump
+		wantYAMLContains string
+	}{
+		{
+			name: "bumps min_version when dep requires newer go",
+			pluginYAML: `version: v1
+name: buf.build/grpc-ecosystem/gateway
+plugin_version: v2.29.0
+registry:
+  go:
+    min_version: "1.24"
+    deps:
+      - module: github.com/grpc-ecosystem/grpc-gateway/v2
+        version: v2.29.0
+`,
+			goModResponses: map[string]string{
+				"https://proxy.golang.org/github.com/grpc-ecosystem/grpc-gateway/v2/@v/v2.29.0.mod": "module github.com/grpc-ecosystem/grpc-gateway/v2\n\ngo 1.25\n",
+			},
+			wantBump: &goMinVersionBump{
+				oldVersion: "1.24",
+				newVersion: "1.25",
+				module:     "github.com/grpc-ecosystem/grpc-gateway/v2",
+				modVersion: "v2.29.0",
+			},
+			wantYAMLContains: `min_version: "1.25"`,
+		},
+		{
+			name: "bumps to max across multiple deps",
+			pluginYAML: `version: v1
+name: buf.build/test/plugin
+plugin_version: v1.0.0
+registry:
+  go:
+    min_version: "1.22"
+    deps:
+      - module: example.com/lower
+        version: v1.0.0
+      - module: example.com/higher
+        version: v1.0.0
+`,
+			goModResponses: map[string]string{
+				"https://proxy.golang.org/example.com/lower/@v/v1.0.0.mod":  "module example.com/lower\n\ngo 1.23\n",
+				"https://proxy.golang.org/example.com/higher/@v/v1.0.0.mod": "module example.com/higher\n\ngo 1.25\n",
+			},
+			wantBump: &goMinVersionBump{
+				oldVersion: "1.22",
+				newVersion: "1.25",
+				module:     "example.com/higher",
+				modVersion: "v1.0.0",
+			},
+			wantYAMLContains: `min_version: "1.25"`,
+		},
+		{
+			name: "no bump when min_version already matches",
+			pluginYAML: `version: v1
+name: buf.build/grpc-ecosystem/gateway
+plugin_version: v2.29.0
+registry:
+  go:
+    min_version: "1.25"
+    deps:
+      - module: github.com/grpc-ecosystem/grpc-gateway/v2
+        version: v2.29.0
+`,
+			goModResponses: map[string]string{
+				"https://proxy.golang.org/github.com/grpc-ecosystem/grpc-gateway/v2/@v/v2.29.0.mod": "module github.com/grpc-ecosystem/grpc-gateway/v2\n\ngo 1.25\n",
+			},
+			wantBump:         nil,
+			wantYAMLContains: `min_version: "1.25"`,
+		},
+		{
+			name: "no bump when no registry.go deps",
+			pluginYAML: `version: v1
+name: buf.build/test/plugin
+plugin_version: v1.0.0
+output_languages:
+  - go
+`,
+			goModResponses:   nil,
+			wantBump:         nil,
+			wantYAMLContains: "",
+		},
+		{
+			name: "normalizes patch version from go.mod",
+			pluginYAML: `version: v1
+name: buf.build/test/plugin
+plugin_version: v1.0.0
+registry:
+  go:
+    min_version: "1.24"
+    deps:
+      - module: example.com/mod
+        version: v1.0.0
+`,
+			goModResponses: map[string]string{
+				// Go 1.21+ uses go 1.25.0 format in go.mod
+				"https://proxy.golang.org/example.com/mod/@v/v1.0.0.mod": "module example.com/mod\n\ngo 1.25.0\n",
+			},
+			wantBump: &goMinVersionBump{
+				oldVersion: "1.24",
+				newVersion: "1.25",
+				module:     "example.com/mod",
+				modVersion: "v1.0.0",
+			},
+			wantYAMLContains: `min_version: "1.25"`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			tmpDir := t.TempDir()
+			pluginDir := filepath.Join(tmpDir, "plugins", "test", "plugin")
+			versionDir := filepath.Join(pluginDir, "v2.29.0")
+			require.NoError(t, os.MkdirAll(versionDir, 0755))
+			require.NoError(t, os.WriteFile(filepath.Join(versionDir, "buf.plugin.yaml"), []byte(tt.pluginYAML), 0644))
+
+			httpClient := &http.Client{Transport: &mockHTTPTransport{responses: tt.goModResponses}}
+			logger := slog.New(slog.NewTextHandler(testWriter{t}, &slog.HandlerOptions{Level: slog.LevelDebug}))
+
+			plugin := createdPlugin{
+				pluginDir:  pluginDir,
+				newVersion: "v2.29.0",
+			}
+			bump, err := updateGoRegistryMinVersion(t.Context(), logger, httpClient, plugin)
+			require.NoError(t, err)
+
+			if tt.wantBump == nil {
+				assert.Nil(t, bump)
+			} else {
+				require.NotNil(t, bump)
+				assert.Equal(t, tt.wantBump.oldVersion, bump.oldVersion)
+				assert.Equal(t, tt.wantBump.newVersion, bump.newVersion)
+				assert.Equal(t, tt.wantBump.module, bump.module)
+				assert.Equal(t, tt.wantBump.modVersion, bump.modVersion)
+			}
+
+			if tt.wantYAMLContains != "" {
+				content, err := os.ReadFile(filepath.Join(versionDir, "buf.plugin.yaml"))
+				require.NoError(t, err)
+				assert.Contains(t, string(content), tt.wantYAMLContains)
+			}
+		})
+	}
+}
+
+func TestGeneratePRBodyWithGoMinVersionBump(t *testing.T) {
+	t.Parallel()
+	created := []createdPlugin{
+		{
+			org:             "grpc-ecosystem",
+			name:            "gateway",
+			previousVersion: "v2.28.0",
+			newVersion:      "v2.29.0",
+			goMinVersionBump: &goMinVersionBump{
+				oldVersion: "1.24",
+				newVersion: "1.25",
+				module:     "github.com/grpc-ecosystem/grpc-gateway/v2",
+				modVersion: "v2.29.0",
+			},
+		},
+	}
+	body := generatePRBody(created)
+	assert.Contains(t, body, "registry.go.min_version bumped: 1.24 → 1.25")
+	assert.Contains(t, body, "github.com/grpc-ecosystem/grpc-gateway/v2@v2.29.0")
+	assert.Contains(t, body, "proxy.golang.org/github.com/grpc-ecosystem/grpc-gateway/v2/@v/v2.29.0.mod")
 }
 
 type testWriter struct {

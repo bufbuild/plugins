@@ -2,12 +2,14 @@ package main
 
 import (
 	"bufio"
+	"cmp"
 	"context"
 	"errors"
 	"fmt"
 	"io"
 	"io/fs"
 	"log/slog"
+	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -20,6 +22,7 @@ import (
 	"github.com/bufbuild/buf/private/bufpkg/bufremoteplugin/bufremotepluginconfig"
 	"github.com/bufbuild/buf/private/pkg/encoding"
 	"github.com/spf13/pflag"
+	"golang.org/x/mod/modfile"
 	"golang.org/x/mod/semver"
 
 	"github.com/bufbuild/plugins/internal/docker"
@@ -35,6 +38,9 @@ const (
 	communityOrg           = "community"
 	dockerfileImageName    = "docker/dockerfile"
 	dockerfileSyntaxPrefix = "# syntax=docker/dockerfile:"
+	// defaultGoModVersion is the Go version assumed for modules with no go directive.
+	defaultGoModVersion = "1.16"
+	goModProxyURL       = "https://proxy.golang.org"
 )
 
 var errNoVersions = errors.New("no versions found")
@@ -108,7 +114,7 @@ func newRootCommand(name string) *appcmd.Command {
 			if err != nil {
 				return fmt.Errorf("failed to fetch versions: %w", err)
 			}
-			if err := postProcessCreatedPlugins(ctx, container.Logger(), created); err != nil {
+			if err := postProcessCreatedPlugins(ctx, container.Logger(), http.DefaultClient, created); err != nil {
 				return fmt.Errorf("failed to run post-processing on plugins: %w", err)
 			}
 			if err := writeGitHubOutput("pr_title", generatePRTitle(created)); err != nil {
@@ -124,39 +130,52 @@ func newRootCommand(name string) *appcmd.Command {
 	}
 }
 
+type goMinVersionBump struct {
+	oldVersion string
+	newVersion string
+	module     string
+	modVersion string
+}
+
 type createdPlugin struct {
-	org             string
-	name            string
-	pluginDir       string
-	previousVersion string
-	newVersion      string
+	org              string
+	name             string
+	pluginDir        string
+	previousVersion  string
+	newVersion       string
+	goMinVersionBump *goMinVersionBump
 }
 
 func (p createdPlugin) String() string {
 	return fmt.Sprintf("%s/%s:%s", p.org, p.name, p.newVersion)
 }
 
-func postProcessCreatedPlugins(ctx context.Context, logger *slog.Logger, plugins []createdPlugin) error {
+func postProcessCreatedPlugins(ctx context.Context, logger *slog.Logger, client *http.Client, plugins []createdPlugin) error {
 	if len(plugins) == 0 {
 		return nil
 	}
-	for _, plugin := range plugins {
-		newPluginRef := plugin.String()
-		if err := regenerateMavenDeps(plugin); err != nil {
+	for i := range plugins {
+		newPluginRef := plugins[i].String()
+		if err := regenerateMavenDeps(plugins[i]); err != nil {
 			return fmt.Errorf("failed to regenerate maven deps for %s: %w", newPluginRef, err)
 		}
-		if err := regenerateNugetDeps(plugin); err != nil {
+		if err := regenerateNugetDeps(plugins[i]); err != nil {
 			return fmt.Errorf("failed to regenerate nuget deps for %s: %w", newPluginRef, err)
 		}
-		if err := runGoModTidy(ctx, logger, plugin); err != nil {
+		if err := runGoModTidy(ctx, logger, plugins[i]); err != nil {
 			return fmt.Errorf("failed to run go mod tidy for %s: %w", newPluginRef, err)
 		}
-		if err := recreateNPMPackageLock(ctx, logger, plugin); err != nil {
+		if err := recreateNPMPackageLock(ctx, logger, plugins[i]); err != nil {
 			return fmt.Errorf("failed to recreate package-lock.json for %s: %w", newPluginRef, err)
 		}
-		if err := recreateSwiftPackageResolved(ctx, logger, plugin); err != nil {
+		if err := recreateSwiftPackageResolved(ctx, logger, plugins[i]); err != nil {
 			return fmt.Errorf("failed to resolve Swift package for %s: %w", newPluginRef, err)
 		}
+		bump, err := updateGoRegistryMinVersion(ctx, logger, client, plugins[i])
+		if err != nil {
+			return fmt.Errorf("failed to update go registry min version for %s: %w", newPluginRef, err)
+		}
+		plugins[i].goMinVersionBump = bump
 	}
 	if err := runPluginTests(ctx, logger, plugins); err != nil {
 		return fmt.Errorf("failed to run plugin tests: %w", err)
@@ -322,6 +341,112 @@ func runPluginTests(ctx context.Context, logger *slog.Logger, plugins []createdP
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	return cmd.Run()
+}
+
+func goModFileURL(module, version string) string {
+	return fmt.Sprintf("%s/%s/@v/%s.mod", goModProxyURL, module, version)
+}
+
+func fetchGoModVersion(ctx context.Context, client *http.Client, module, version string) (string, error) {
+	reqURL := goModFileURL(module, version)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, reqURL, nil)
+	if err != nil {
+		return "", err
+	}
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("unexpected status %d fetching go.mod for %s@%s", resp.StatusCode, module, version)
+	}
+	content, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", err
+	}
+	modFile, err := modfile.ParseLax("go.mod", content, nil)
+	if err != nil {
+		return "", err
+	}
+	if modFile.Go == nil || modFile.Go.Version == "" {
+		return defaultGoModVersion, nil
+	}
+	// Normalize to major.minor (e.g. "1.25.0" → "1.25").
+	normalized := strings.TrimPrefix(semver.MajorMinor("v"+modFile.Go.Version), "v")
+	if normalized == "" {
+		return defaultGoModVersion, nil
+	}
+	return normalized, nil
+}
+
+func updateGoRegistryMinVersion(ctx context.Context, logger *slog.Logger, client *http.Client, plugin createdPlugin) (*goMinVersionBump, error) {
+	versionDir := filepath.Join(plugin.pluginDir, plugin.newVersion)
+	pluginYAMLPath := filepath.Join(versionDir, "buf.plugin.yaml")
+
+	content, err := os.ReadFile(pluginYAMLPath)
+	if err != nil {
+		return nil, err
+	}
+
+	var config bufremotepluginconfig.ExternalConfig
+	if err := encoding.UnmarshalJSONOrYAMLStrict(content, &config); err != nil {
+		return nil, fmt.Errorf("failed to parse buf.plugin.yaml: %w", err)
+	}
+
+	if config.Registry.Go == nil || len(config.Registry.Go.Deps) == 0 {
+		return nil, nil
+	}
+
+	currentMinVersion := cmp.Or(config.Registry.Go.MinVersion, defaultGoModVersion)
+	maxVersion := currentMinVersion
+	var maxModule, maxModVersion string
+
+	for _, dep := range config.Registry.Go.Deps {
+		goVersion, err := fetchGoModVersion(ctx, client, dep.Module, dep.Version)
+		if err != nil {
+			return nil, fmt.Errorf("failed to fetch go.mod for %s@%s: %w", dep.Module, dep.Version, err)
+		}
+		if semver.Compare("v"+goVersion, "v"+maxVersion) > 0 {
+			maxVersion = goVersion
+			maxModule = dep.Module
+			maxModVersion = dep.Version
+		}
+	}
+
+	if maxVersion == currentMinVersion {
+		return nil, nil
+	}
+
+	// Use text replacement to preserve formatting and comments.
+	oldStr := fmt.Sprintf(`min_version: "%s"`, currentMinVersion)
+	newStr := fmt.Sprintf(`min_version: "%s"`, maxVersion)
+	newContent := strings.ReplaceAll(string(content), oldStr, newStr)
+
+	if newContent == string(content) {
+		logger.WarnContext(ctx, "could not find min_version to update in buf.plugin.yaml",
+			slog.String("plugin", plugin.String()),
+			slog.String("current", currentMinVersion),
+			slog.String("required", maxVersion))
+		return nil, nil
+	}
+
+	if err := os.WriteFile(pluginYAMLPath, []byte(newContent), 0644); err != nil {
+		return nil, err
+	}
+
+	logger.InfoContext(ctx, "updated registry.go.min_version",
+		slog.String("plugin", plugin.String()),
+		slog.String("old", currentMinVersion),
+		slog.String("new", maxVersion),
+		slog.String("dep", fmt.Sprintf("%s@%s", maxModule, maxModVersion)))
+
+	return &goMinVersionBump{
+		oldVersion: currentMinVersion,
+		newVersion: maxVersion,
+		module:     maxModule,
+		modVersion: maxModVersion,
+	}, nil
 }
 
 // updatePluginDeps updates plugin dependencies in a buf.plugin.yaml file to their latest versions.
@@ -912,6 +1037,13 @@ func generatePRBody(created []createdPlugin) string {
 				fmt.Fprintf(&sb, "- %s → %s\n", p.previousVersion, p.newVersion)
 			} else {
 				fmt.Fprintf(&sb, "- %s: %s → %s\n", p.name, p.previousVersion, p.newVersion)
+			}
+			if p.goMinVersionBump != nil {
+				goModURL := goModFileURL(p.goMinVersionBump.module, p.goMinVersionBump.modVersion)
+				fmt.Fprintf(&sb, "  - registry.go.min_version bumped: %s → %s (required by [%s@%s go.mod](%s))\n",
+					p.goMinVersionBump.oldVersion, p.goMinVersionBump.newVersion,
+					p.goMinVersionBump.module, p.goMinVersionBump.modVersion,
+					goModURL)
 			}
 		}
 	}
