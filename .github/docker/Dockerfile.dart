@@ -1,3 +1,3 @@
-FROM dart:3.11.4-sdk@sha256:81d9a4b6e64b092a9d051ee74e34cbdc8005c5c885db966da09eae0a4268b14d
+FROM dart:3.11.5-sdk@sha256:45239c4fbd377166c495b5bca0140c1a73a27263444fb860386c1dd81c7054b1
 
 CMD echo this is a dummy file used to automate dependency upgrades for plugins
