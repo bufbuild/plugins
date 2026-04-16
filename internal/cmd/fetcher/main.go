@@ -431,7 +431,7 @@ func updateGoRegistryMinVersion(ctx context.Context, logger *slog.Logger, client
 		return nil, nil
 	}
 
-	if err := os.WriteFile(pluginYAMLPath, []byte(newContent), 0644); err != nil {
+	if err := os.WriteFile(pluginYAMLPath, []byte(newContent), 0600); err != nil {
 		return nil, err
 	}
 
