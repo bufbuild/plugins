@@ -10,7 +10,7 @@ output_languages:
 registry:
   python:
     package_type: "stub-only"
-    # https://github.com/nipunn1313/mypy-protobuf/blob/v5.0.0/setup.cfg#L20
+    # https://github.com/nipunn1313/mypy-protobuf/blob/v5.0.0/pyproject.toml#L21
     requires_python: ">=3.8"
     deps:
       # https://github.com/nipunn1313/mypy-protobuf/tree/v5.0.0#requirements-to-run-typecheckers-on-stubs-generated-by-mypy-protobuf
