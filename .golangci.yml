@@ -12,6 +12,7 @@ linters:
     - lll               # don't want hard limits for line length
     - maintidx          # covered by gocyclo
     - mnd               # some unnamed constants are okay
+    - nilnil            # (T, error) returning (nil, nil) is an acceptable "no result" signal
     - nlreturn          # generous whitespace violates house style
     - noinlineerr       # excess scope violates house style
     - rowserrcheck      # no SQL code in plugins
