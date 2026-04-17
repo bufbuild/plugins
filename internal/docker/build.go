@@ -82,12 +82,12 @@ func Build(
 	defer func() {
 		retErr = errors.Join(retErr, root.Close())
 	}()
-	if err := filepath.WalkDir(filepath.Dir(plugin.Path), func(path string, d fs.DirEntry, err error) error {
+	if err := fs.WalkDir(root.FS(), ".", func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
 		if !d.IsDir() {
-			if err := root.Chtimes(path, time.Now(), time.Now().UTC()); err != nil {
+			if err := root.Chtimes(path, time.Time{}, time.Now().UTC()); err != nil {
 				return fmt.Errorf("failed to set mtime for %q: %w", path, err)
 			}
 		}
