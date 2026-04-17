@@ -1,14 +1,11 @@
 package main
 
 import (
-	"archive/zip"
 	"cmp"
-	"compress/flate"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"io/fs"
 	"log/slog"
 	"os"
@@ -30,6 +27,7 @@ import (
 	"golang.org/x/mod/semver"
 
 	"github.com/bufbuild/plugins/internal/plugin"
+	"github.com/bufbuild/plugins/internal/pluginzip"
 	"github.com/bufbuild/plugins/internal/release"
 )
 
@@ -319,7 +317,7 @@ func sortPluginsByNameVersion(plugins []release.PluginRelease) {
 }
 
 func (c *command) createRelease(ctx context.Context, client *release.Client, releaseName string, plugins []release.PluginRelease, tmpDir string, privateKey minisign.PrivateKey) error {
-	releaseBody, err := c.createReleaseBody(releaseName, plugins, privateKey) //nolint:staticcheck // SA4006 false positive with Go 1.26 new(value)
+	releaseBody, err := c.createReleaseBody(releaseName, plugins, privateKey)
 	if err != nil {
 		return err
 	}
@@ -366,7 +364,7 @@ func (c *command) createReleaseBody(name string, plugins []release.PluginRelease
 		pluginsByStatus[p.Status] = append(pluginsByStatus[p.Status], p)
 	}
 
-	sb.WriteString(fmt.Sprintf("# Buf Remote Plugins Release %s\n\n", name))
+	fmt.Fprintf(&sb, "# Buf Remote Plugins Release %s\n\n", name)
 
 	if newPlugins := pluginsByStatus[release.StatusNew]; len(newPlugins) > 0 {
 		sb.WriteString(`## New Plugins
@@ -375,7 +373,7 @@ func (c *command) createReleaseBody(name string, plugins []release.PluginRelease
 |--------|---------|------|
 `)
 		for _, p := range newPlugins {
-			sb.WriteString(fmt.Sprintf("| %s | %s | [Download](%s) |\n", p.PluginName, p.PluginVersion, p.URL))
+			fmt.Fprintf(&sb, "| %s | %s | [Download](%s) |\n", p.PluginName, p.PluginVersion, p.URL)
 		}
 		sb.WriteString("\n")
 	}
@@ -387,14 +385,14 @@ func (c *command) createReleaseBody(name string, plugins []release.PluginRelease
 |--------|---------|------|
 `)
 		for _, p := range updatedPlugins {
-			sb.WriteString(fmt.Sprintf("| %s | %s | [Download](%s) |\n", p.PluginName, p.PluginVersion, p.URL))
+			fmt.Fprintf(&sb, "| %s | %s | [Download](%s) |\n", p.PluginName, p.PluginVersion, p.URL)
 		}
 		sb.WriteString("\n")
 	}
 
 	if existingPlugins := pluginsByStatus[release.StatusExisting]; len(existingPlugins) > 0 {
 		sb.WriteString("## Previously Released Plugins\n\n")
-		sb.WriteString(fmt.Sprintf("A complete list of previously released plugins can be found in the [plugin-releases.json](%s) file.\n", c.pluginReleasesURL(name)))
+		fmt.Fprintf(&sb, "A complete list of previously released plugins can be found in the [plugin-releases.json](%s) file.\n", c.pluginReleasesURL(name))
 	}
 
 	if !privateKey.Equal(minisign.PrivateKey{}) {
@@ -404,12 +402,12 @@ func (c *command) createReleaseBody(name string, plugins []release.PluginRelease
 		}
 		sb.WriteString("## Verifying a release\n\n")
 		sb.WriteString("Releases are signed using our [minisign](https://github.com/jedisct1/minisign) public key:\n\n")
-		sb.WriteString(fmt.Sprintf("```\n%s\n```\n\n", publicKey.String()))
+		fmt.Fprintf(&sb, "```\n%s\n```\n\n", publicKey.String())
 		sb.WriteString("The release assets can be verified using this command (assuming that minisign is installed):\n\n")
 		releasesFile := fmt.Sprintf("https://github.com/%s/%s/releases/download/%s/%s", c.githubReleaseOwner, release.GithubRepoPlugins, name, release.PluginReleasesFile)
-		sb.WriteString(fmt.Sprintf("```\ncurl -OL %s && \\\n", releasesFile))
-		sb.WriteString(fmt.Sprintf("  curl -OL %s && \\\n", releasesFile+".minisig"))
-		sb.WriteString(fmt.Sprintf("  minisign -Vm %s -P %s\n```\n", release.PluginReleasesFile, publicKey.String()))
+		fmt.Fprintf(&sb, "```\ncurl -OL %s && \\\n", releasesFile)
+		fmt.Fprintf(&sb, "  curl -OL %s && \\\n", releasesFile+".minisig")
+		fmt.Fprintf(&sb, "  minisign -Vm %s -P %s\n```\n", release.PluginReleasesFile, publicKey.String())
 	}
 	return sb.String(), nil
 }
@@ -442,75 +440,11 @@ func createPluginZip(
 	if err := pullImage(ctx, logger, registryImage); err != nil {
 		return "", err
 	}
-	zipName := pluginZipName(plugin)
-	pluginTempDir, err := os.MkdirTemp(basedir, strings.TrimSuffix(zipName, filepath.Ext(zipName)))
+	zipPath, err := pluginzip.Create(ctx, logger, plugin, registryImage, basedir)
 	if err != nil {
 		return "", err
 	}
-	defer func() {
-		if err := os.RemoveAll(pluginTempDir); err != nil {
-			logger.WarnContext(ctx, "failed to remove tmp dir", slog.String("dir", pluginTempDir), slog.Any("error", err))
-		}
-	}()
-	if err := saveImageToDir(ctx, registryImage, pluginTempDir); err != nil {
-		return "", err
-	}
-	logger.InfoContext(ctx, "creating zip", slog.String("name", zipName))
-	zipFile := filepath.Join(basedir, zipName)
-	zf, err := os.OpenFile(zipFile, os.O_CREATE|os.O_RDWR|os.O_TRUNC, 0644)
-	if err != nil {
-		return "", err
-	}
-	defer func() {
-		if err := zf.Close(); err != nil && !errors.Is(err, os.ErrClosed) {
-			logger.WarnContext(ctx, "failed to close zip file", slog.Any("error", err))
-		}
-	}()
-	zw := zip.NewWriter(zf)
-	zw.RegisterCompressor(zip.Deflate, func(w io.Writer) (io.WriteCloser, error) {
-		return flate.NewWriter(w, flate.BestCompression)
-	})
-	if err := addFileToZip(zw, plugin.Path); err != nil {
-		return "", err
-	}
-	if err := addFileToZip(zw, filepath.Join(pluginTempDir, "image.tar")); err != nil {
-		return "", err
-	}
-	if err := zw.Close(); err != nil {
-		return "", err
-	}
-	if err := zf.Close(); err != nil {
-		return "", err
-	}
-	digest, err := release.CalculateDigest(zipFile)
-	if err != nil {
-		return "", err
-	}
-	return digest, nil
-}
-
-func addFileToZip(zipWriter *zip.Writer, path string) (retErr error) {
-	w, err := zipWriter.Create(filepath.Base(path))
-	if err != nil {
-		return err
-	}
-	r, err := os.Open(path)
-	if err != nil {
-		return err
-	}
-	defer func() {
-		retErr = errors.Join(retErr, r.Close())
-	}()
-	if _, err := io.Copy(w, r); err != nil {
-		return err
-	}
-	return nil
-}
-
-func saveImageToDir(ctx context.Context, imageRef string, dir string) error {
-	cmd := dockerCmd(ctx, "save", imageRef, "-o", "image.tar")
-	cmd.Dir = dir
-	return cmd.Run()
+	return release.CalculateDigest(zipPath)
 }
 
 func createPluginReleases(dir string, plugins []release.PluginRelease) (retErr error) {
@@ -562,8 +496,9 @@ func calculateNextRelease(now time.Time, latestRelease *github.RepositoryRelease
 }
 
 func (c *command) pluginDownloadURL(plugin *plugin.Plugin, releaseName string) string {
-	zipName := pluginZipName(plugin)
-	return fmt.Sprintf("https://github.com/%s/%s/releases/download/%s/%s", c.githubReleaseOwner, release.GithubRepoPlugins, releaseName, zipName)
+	return fmt.Sprintf("https://github.com/%s/%s/releases/download/%s/%s",
+		c.githubReleaseOwner, release.GithubRepoPlugins, releaseName, pluginzip.Name(plugin),
+	)
 }
 
 func (c *command) pluginReleasesURL(releaseName string) string {
@@ -574,11 +509,6 @@ func (c *command) pluginReleasesURL(releaseName string) string {
 		releaseName,
 		release.PluginReleasesFile,
 	)
-}
-
-func pluginZipName(plugin *plugin.Plugin) string {
-	identity := plugin.Identity
-	return fmt.Sprintf("%s-%s-%s.zip", identity.Owner(), identity.Plugin(), plugin.PluginVersion)
 }
 
 func fetchRegistryImageAndImageID(plugin *plugin.Plugin) (string, string, error) {

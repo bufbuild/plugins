@@ -8,8 +8,10 @@ DOCKER_BUILD_EXTRA_ARGS ?=
 DOCKER_BUILDER := bufbuild-plugins
 DOCKER_CACHE_DIR ?= $(TMP)/dockercache
 GO ?= go
-GOLANGCI_LINT_VERSION ?= v2.9.0
+GOLANGCI_LINT_VERSION ?= v2.11.4
 GOLANGCI_LINT := $(TMP)/golangci-lint-$(GOLANGCI_LINT_VERSION)
+# OUTPUT_DIR is the directory where plugin zip files are written by `make package`.
+OUTPUT_DIR ?= $(TMP)/plugins
 
 GO_TEST_FLAGS ?= -race -count=1
 
@@ -49,7 +51,6 @@ lintfix: $(GOLANGCI_LINT)
 	$(GOLANGCI_LINT) run --timeout=5m --fix
 	$(GOLANGCI_LINT) fmt
 
-
 $(GOLANGCI_LINT):
 	GOBIN=$(abspath $(TMP)) $(GO) install -ldflags="-s -w" github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$(GOLANGCI_LINT_VERSION)
 	ln -sf $(abspath $(TMP))/golangci-lint $@
@@ -76,6 +77,10 @@ push: build
 		fi; \
 		$(BUF) beta registry plugin push $${plugin_dir} $(BUF_PLUGIN_PUSH_ARGS) --image $(DOCKER_ORG)/plugins-$${PLUGIN_OWNER}-$${PLUGIN_NAME}:$${PLUGIN_VERSION} || exit 1; \
 	done
+
+.PHONY: package
+package: build
+	$(GO) run ./internal/cmd/package --dir . --org "$(DOCKER_ORG)" --output-dir "$(OUTPUT_DIR)"
 
 .PHONY: clean
 clean:

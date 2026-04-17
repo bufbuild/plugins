@@ -66,6 +66,14 @@ linters:
       - linters:
           - err113
         text: do not define dynamic errors
+      # G703: Path traversal via taint analysis (very noisy)
+      - linters:
+          - gosec
+        text: G703
+      # G706: Log injection via taint analysis (very noisy)
+      - linters:
+          - gosec
+        text: G706
       # dupword reports several errors in .proto test fixtures
       # gosec reports a few minor issues in tests
       # prealloc is not important in tests
