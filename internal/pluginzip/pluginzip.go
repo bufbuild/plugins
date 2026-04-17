@@ -14,6 +14,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 
 	"github.com/bufbuild/plugins/internal/plugin"
 )
@@ -46,9 +47,22 @@ func Create(
 			)
 		}
 	}()
+	// `docker save <tag>` produces a tarball whose `docker load` emits
+	// "Loaded image: <tag>", but buf's beta registry plugin push parser only
+	// recognizes the "Loaded image ID: sha256:..." form. Digest-qualified refs
+	// (name@sha256:...) and bare image IDs (sha256:...) already emit that form,
+	// so we only resolve when the ref is a plain tag.
+	saveRef := imageRef
+	if !hasDigest(saveRef) {
+		resolved, err := inspectImageID(ctx, saveRef)
+		if err != nil {
+			return "", fmt.Errorf("inspect %q: %w", saveRef, err)
+		}
+		saveRef = resolved
+	}
 	imageTar := filepath.Join(stagingDir, "image.tar")
-	if err := saveImage(ctx, imageRef, imageTar); err != nil {
-		return "", fmt.Errorf("docker save %q: %w", imageRef, err)
+	if err := saveImage(ctx, saveRef, imageTar); err != nil {
+		return "", fmt.Errorf("docker save %q: %w", saveRef, err)
 	}
 	zipPath := filepath.Join(outputDir, Name(p))
 	logger.InfoContext(ctx, "creating zip", slog.String("path", zipPath))
@@ -63,6 +77,27 @@ func saveImage(ctx context.Context, imageRef, outputPath string) error {
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	return cmd.Run()
+}
+
+// hasDigest reports whether ref is already in a form that `docker save`
+// preserves as an image ID on load: a digest-qualified ref ("<name>@sha256:...")
+// or a bare image ID ("sha256:...").
+func hasDigest(ref string) bool {
+	return strings.HasPrefix(ref, "sha256:") || strings.Contains(ref, "@sha256:")
+}
+
+func inspectImageID(ctx context.Context, ref string) (string, error) {
+	cmd := exec.CommandContext(ctx, "docker", "image", "inspect", "--format", "{{.ID}}", ref)
+	cmd.Stderr = os.Stderr
+	out, err := cmd.Output()
+	if err != nil {
+		return "", err
+	}
+	id := strings.TrimSpace(string(out))
+	if id == "" {
+		return "", fmt.Errorf("empty image ID for ref %q", ref)
+	}
+	return id, nil
 }
 
 func writeZip(zipPath, pluginYAMLPath, imageTarPath string) (retErr error) {
