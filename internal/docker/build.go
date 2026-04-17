@@ -87,7 +87,7 @@ func Build(
 			return err
 		}
 		if !d.IsDir() {
-			if err := root.Chtimes(path, time.Now(), time.Now()); err != nil {
+			if err := root.Chtimes(path, time.Now(), time.Now().UTC()); err != nil {
 				return fmt.Errorf("failed to set mtime for %q: %w", path, err)
 			}
 		}
