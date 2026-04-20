@@ -612,5 +612,5 @@ func newTestContainer(t *testing.T, root string) appext.Container {
 	nameContainer, err := appext.NewNameContainer(appContainer, "fetcher")
 	require.NoError(t, err)
 	logger := slog.New(slog.NewTextHandler(testWriter{t}, &slog.HandlerOptions{Level: slog.LevelDebug}))
-	return appext.NewContainer(nameContainer, logger)
+	return appext.NewContainer(nameContainer, logger, appext.LogLevelDebug, appext.LogFormatText)
 }
