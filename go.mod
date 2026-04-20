@@ -4,10 +4,10 @@ go 1.26.0
 
 require (
 	aead.dev/minisign v0.3.0
-	buf.build/go/app v0.2.0
+	buf.build/go/app v0.2.1-0.20260407195847-833f8f978cda
 	buf.build/go/interrupt v1.1.0
 	buf.build/go/standard v0.1.1-0.20260325175353-2b287e071df5
-	github.com/bufbuild/buf v1.67.0
+	github.com/bufbuild/buf v1.68.2
 	github.com/google/go-containerregistry v0.21.5
 	github.com/google/go-github/v72 v72.0.0
 	github.com/hashicorp/go-retryablehttp v0.7.8
@@ -40,7 +40,7 @@ require (
 	github.com/spf13/cobra v1.10.2 // indirect
 	github.com/vbatts/tar-split v0.12.2 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
-	golang.org/x/crypto v0.49.0 // indirect
+	golang.org/x/crypto v0.50.0 // indirect
 	golang.org/x/sys v0.43.0 // indirect
 	gotest.tools/v3 v3.5.2 // indirect
 )
