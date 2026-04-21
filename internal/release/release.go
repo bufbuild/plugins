@@ -3,9 +3,9 @@ package release
 import (
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"io"
-	"log"
 	"os"
 	"slices"
 	"strings"
@@ -47,15 +47,13 @@ type PluginRelease struct {
 
 // CalculateDigest will calculate the sha256 digest of the given file.
 // It returns a string in the format: '<digest-type>:<digest>'.
-func CalculateDigest(path string) (string, error) {
+func CalculateDigest(path string) (_ string, retErr error) {
 	f, err := os.Open(path)
 	if err != nil {
 		return "", err
 	}
 	defer func() {
-		if err := f.Close(); err != nil {
-			log.Printf("failed to close: %v", err)
-		}
+		retErr = errors.Join(retErr, f.Close())
 	}()
 	hash := sha256.New()
 	if _, err := io.Copy(hash, f); err != nil {

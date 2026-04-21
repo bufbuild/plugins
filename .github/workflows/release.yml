@@ -5,6 +5,11 @@ on:
     # At minute 30 past every 6th hour.
     - cron: "30 */6 * * *"
   workflow_dispatch:
+    inputs:
+      plugins:
+        description: 'Force-include plugins (comma-separated, e.g. "connect-go,grpc/csharp:v1.68.1", or "all")'
+        required: false
+        default: ''
 
 permissions:
   contents: write
@@ -23,6 +28,8 @@ jobs:
     steps:
       - name: Checkout repository code
         uses: actions/checkout@v6
+        with:
+          fetch-depth: 0 # full history and tags needed to diff against the prior release tag
       - name: Login to GitHub Container Registry
         if: github.repository == 'bufbuild/plugins'
         uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121 # v4.1.0
@@ -40,6 +47,7 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
           MINISIGN_PRIVATE_KEY: ${{ secrets.MINISIGN_PRIVATE_KEY }}
           MINISIGN_PRIVATE_KEY_PASSWORD: ${{ secrets.MINISIGN_PRIVATE_KEY_PASSWORD }}
+          PLUGINS: ${{ inputs.plugins }}
         run: |
           echo "${MINISIGN_PRIVATE_KEY}" > minisign.key
           go run ./internal/cmd/release --commit ${{ github.sha }} --minisign-private-key minisign.key .
