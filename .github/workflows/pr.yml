@@ -72,6 +72,11 @@ jobs:
         registry: ghcr.io
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
+    - name: Cache golangci-lint
+      uses: actions/cache@v4
+      with:
+        path: .tmp/golangci-lint-*
+        key: golangci-lint-${{ runner.os }}-${{ hashFiles('Makefile') }}
     - name: Lint
       run: make lint
     - name: Test
