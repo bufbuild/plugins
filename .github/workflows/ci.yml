@@ -34,12 +34,6 @@ jobs:
     - uses: actions/checkout@v6
       with:
         fetch-depth: 0
-    - uses: nrwl/nx-set-shas@afb73a62d26e41464e9254689e1fd6122ee683c1 # v5.0.1
-      id: last_successful_commit_push
-      if: ${{ inputs.plugins == '' }}
-      with:
-        main-branch-name: ${{ github.ref_name }}
-        workflow-id: 'ci.yml'
     - name: Install Go
       uses: actions/setup-go@v6
       with:
@@ -47,8 +41,11 @@ jobs:
         check-latest: true
     - name: Calculate changed plugins and set PLUGINS env var from last successful commit push
       if: ${{ inputs.plugins == '' }}
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
-        val=`go run ./internal/cmd/changed-plugins --base-ref '${{ steps.last_successful_commit_push.outputs.base }}'`
+        base_ref=$(go run ./internal/cmd/last-successful-commit --workflow ci.yml --branch '${{ github.ref_name }}')
+        val=$(go run ./internal/cmd/changed-plugins --base-ref "${base_ref}")
         if [[ -n "${val}" && -z "${PLUGINS}" ]]; then
           echo "PLUGINS=${val}" >> $GITHUB_ENV
         fi
