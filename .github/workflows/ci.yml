@@ -47,10 +47,8 @@ jobs:
         check-latest: true
     - name: Calculate changed plugins and set PLUGINS env var from last successful commit push
       if: ${{ inputs.plugins == '' }}
-      env:
-        BASE_REF: ${{ steps.last_successful_commit_push.outputs.base }}
       run: |
-        val=`go run ./internal/cmd/changed-plugins .`
+        val=`go run ./internal/cmd/changed-plugins --base-ref '${{ steps.last_successful_commit_push.outputs.base }}'`
         if [[ -n "${val}" && -z "${PLUGINS}" ]]; then
           echo "PLUGINS=${val}" >> $GITHUB_ENV
         fi
