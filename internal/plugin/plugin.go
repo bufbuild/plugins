@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"cmp"
 	"context"
-	"errors"
 	"fmt"
 	"io/fs"
 	"log"
@@ -12,7 +11,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"slices"
-	"strconv"
 	"strings"
 	"sync"
 	"unicode"
@@ -205,16 +203,12 @@ func FilterByPluginsEnv(plugins []*Plugin, pluginsEnv string) ([]*Plugin, error)
 // FilterByBaseRefDiff filters the passed plugins to the ones that changed from a base Git ref to
 // diff against. It calculates the changed files from that ref, and filters the relevant files in
 // the plugins directory(ies) to determine which plugins changed from the ones passed.
-func FilterByBaseRefDiff(ctx context.Context, plugins []*Plugin) ([]*Plugin, error) {
-	diffEnv, err := readDiffEnv()
+func FilterByBaseRefDiff(ctx context.Context, plugins []*Plugin, baseRef string, includeTestdata bool) ([]*Plugin, error) {
+	allChangedFiles, err := git.ChangedFilesFrom(ctx, baseRef)
 	if err != nil {
-		return nil, fmt.Errorf("get diff env: %w", err)
+		return nil, fmt.Errorf("calculate changed files from base ref %q: %w", baseRef, err)
 	}
-	allChangedFiles, err := git.ChangedFilesFrom(ctx, diffEnv.baseRef)
-	if err != nil {
-		return nil, fmt.Errorf("calculate changed files from base ref %q: %w", diffEnv.baseRef, err)
-	}
-	return filterPluginsByChangedFiles(plugins, allChangedFiles, diffEnv.includeTestdata)
+	return filterPluginsByChangedFiles(plugins, allChangedFiles, includeTestdata)
 }
 
 func filterPluginsByChangedFiles(plugins []*Plugin, allChangedFiles []string, includeTestdata bool) ([]*Plugin, error) {
@@ -344,32 +338,6 @@ func calculateGitModified(ctx context.Context, pluginYamlPath string) (bool, err
 		return false, err
 	}
 	return strings.TrimSpace(output.String()) != "", nil
-}
-
-type diffEnv struct {
-	baseRef         string
-	includeTestdata bool
-}
-
-func readDiffEnv() (*diffEnv, error) {
-	baseRef, ok := os.LookupEnv("BASE_REF")
-	if !ok {
-		return nil, errors.New("missing BASE_REF")
-	} else if baseRef == "" {
-		return nil, errors.New("empty BASE_REF")
-	}
-	var includeTestdata bool // default false
-	if includeTestdataStr, _ := os.LookupEnv("INCLUDE_TESTDATA"); includeTestdataStr != "" {
-		var err error
-		includeTestdata, err = strconv.ParseBool(includeTestdataStr)
-		if err != nil {
-			return nil, fmt.Errorf("invalid INCLUDE_TESTDATA value %s: %w", includeTestdataStr, err)
-		}
-	}
-	return &diffEnv{
-		baseRef:         baseRef,
-		includeTestdata: includeTestdata,
-	}, nil
 }
 
 // filterPluginPaths returns the filepaths that are considered to be a relevant plugin file, based

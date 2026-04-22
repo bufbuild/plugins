@@ -41,11 +41,8 @@ jobs:
         check-latest: true
     - name: Calculate changed plugins and set PLUGINS env var from base branch
       if: ${{ inputs.plugins == '' }}
-      env:
-        BASE_REF: 'origin/${{ github.base_ref }}' # we can use a remote ref because we fetch everything back in the checkout step
-        INCLUDE_TESTDATA: 'true'
       run: |
-        val=`go run ./internal/cmd/changed-plugins .`
+        val=`go run ./internal/cmd/changed-plugins --base-ref 'origin/${{ github.base_ref }}' --include-testdata`
         if [[ -n "${val}" && -z "${PLUGINS}" ]]; then
           echo "PLUGINS=${val}" >> $GITHUB_ENV
         fi
