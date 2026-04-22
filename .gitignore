@@ -7,4 +7,5 @@ tests/testdata/**/buf.gen.yaml
 tests/testdata/**/gen/
 tests/testdata/**/protoc-gen-plugin
 /fetcher
+/last-successful-commit
 /release
