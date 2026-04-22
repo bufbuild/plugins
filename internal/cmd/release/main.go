@@ -35,12 +35,17 @@ type pluginNameVersion struct {
 	name, version string
 }
 
+func (p pluginNameVersion) String() string {
+	return p.name + ":" + p.version
+}
+
 type flags struct {
 	dryRun             bool
 	githubCommit       string
 	githubReleaseOwner string
 	minisignPrivateKey string
 	minisignPublicKey  string
+	sinceTag           string
 }
 
 func (f *flags) Bind(flagSet *pflag.FlagSet) {
@@ -59,6 +64,7 @@ func (f *flags) Bind(flagSet *pflag.FlagSet) {
 		"",
 		"path to public key used to verify the latest release's plugin-releases.json file (if different than private key)",
 	)
+	flagSet.StringVar(&f.sinceTag, "since-tag", "", "prior release tag to diff against (defaults to the latest release)")
 }
 
 func main() {
@@ -80,6 +86,7 @@ func newRootCommand(name string) *appcmd.Command {
 				githubCommit:       f.githubCommit,
 				githubReleaseOwner: release.GithubOwner(f.githubReleaseOwner),
 				dryRun:             f.dryRun,
+				sinceTag:           f.sinceTag,
 				rootDir:            container.Arg(0),
 			}
 			return cmd.run(ctx)
@@ -96,6 +103,7 @@ type command struct {
 	githubCommit       string
 	githubReleaseOwner release.GithubOwner
 	dryRun             bool
+	sinceTag           string
 	rootDir            string
 }
 
@@ -115,9 +123,18 @@ func (c *command) run(ctx context.Context) error {
 		}
 	}()
 	client := release.NewClient()
-	latestRelease, err := client.GetLatestRelease(ctx, c.githubReleaseOwner, release.GithubRepoPlugins)
-	if err != nil && !errors.Is(err, release.ErrNotFound) {
-		return fmt.Errorf("failed to retrieve latest release: %w", err)
+	var latestRelease *github.RepositoryRelease
+	if c.sinceTag == "" {
+		latestRelease, err = client.GetLatestRelease(ctx, c.githubReleaseOwner, release.GithubRepoPlugins)
+		if err != nil && !errors.Is(err, release.ErrNotFound) {
+			return fmt.Errorf("failed to retrieve latest release: %w", err)
+		}
+	} else {
+		latestRelease, err = client.GetReleaseByTag(ctx, c.githubReleaseOwner, release.GithubRepoPlugins, c.sinceTag)
+		if err != nil {
+			return fmt.Errorf("failed to retrieve --since-tag release %q: %w", c.sinceTag, err)
+		}
+		c.logger.InfoContext(ctx, "overriding prior release via --since-tag", slog.String("tag", c.sinceTag))
 	}
 
 	var privateKey minisign.PrivateKey
@@ -146,7 +163,22 @@ func (c *command) run(ctx context.Context) error {
 		return fmt.Errorf("failed to determine next release name: %w", err)
 	}
 
-	plugins, err := c.calculateNewReleasePlugins(ctx, releases, releaseName, now, tmpDir)
+	allPlugins, err := plugin.FindAll(c.rootDir)
+	if err != nil {
+		return fmt.Errorf("failed to discover plugins in path %q: %w", c.rootDir, err)
+	}
+	candidates, err := c.collectCandidates(ctx, client, allPlugins, latestRelease)
+	if err != nil {
+		return fmt.Errorf("failed to collect candidate plugins: %w", err)
+	}
+	if candidates != nil {
+		c.logger.InfoContext(ctx, "plugin scan scope",
+			slog.Int("candidates", len(candidates)),
+			slog.Int("total", len(allPlugins)),
+		)
+	}
+
+	plugins, err := c.calculateNewReleasePlugins(ctx, releases, releaseName, now, tmpDir, allPlugins, candidates)
 	if err != nil {
 		return fmt.Errorf("failed to calculate new release contents: %w", err)
 	}
@@ -184,9 +216,15 @@ func (c *command) run(ctx context.Context) error {
 	return nil
 }
 
-func (c *command) calculateNewReleasePlugins(ctx context.Context, currentRelease *release.PluginReleases, releaseName string, now time.Time, tmpDir string) (
-	[]release.PluginRelease, error,
-) {
+func (c *command) calculateNewReleasePlugins(
+	ctx context.Context,
+	currentRelease *release.PluginReleases,
+	releaseName string,
+	now time.Time,
+	tmpDir string,
+	allPlugins []*plugin.Plugin,
+	candidates map[pluginNameVersion]struct{},
+) ([]release.PluginRelease, error) {
 	pluginNameVersionToRelease := make(map[pluginNameVersion]release.PluginRelease, len(currentRelease.Releases))
 	for _, pluginRelease := range currentRelease.Releases {
 		key := pluginNameVersion{name: pluginRelease.PluginName, version: pluginRelease.PluginVersion}
@@ -199,70 +237,33 @@ func (c *command) calculateNewReleasePlugins(ctx context.Context, currentRelease
 	var newPlugins []release.PluginRelease
 	var existingPlugins []release.PluginRelease
 
-	if err := plugin.Walk(c.rootDir, func(plugin *plugin.Plugin) error {
-		pluginYamlDigest, err := release.CalculateDigest(plugin.Path)
-		if err != nil {
-			return err
-		}
-		registryImage, imageID, err := fetchRegistryImageAndImageID(plugin)
-		if err != nil {
-			return err
-		}
-		identity := plugin.Identity
-		if registryImage == "" || imageID == "" {
-			c.logger.InfoContext(ctx, "unable to detect registry image and image ID",
-				slog.String("owner", identity.Owner()),
-				slog.String("plugin", identity.Plugin()),
-				slog.String("version", plugin.PluginVersion),
-			)
-			return nil
-		}
-		key := pluginNameVersion{name: identity.Owner() + "/" + identity.Plugin(), version: plugin.PluginVersion}
-		pluginRelease := pluginNameVersionToRelease[key]
-		// Found existing release - only rebuild if changed image digest or buf.plugin.yaml digest
-		if pluginRelease.ImageID != imageID || pluginRelease.PluginYAMLDigest != pluginYamlDigest {
-			downloadURL := c.pluginDownloadURL(plugin, releaseName)
-			zipDigest, err := createPluginZip(ctx, c.logger, tmpDir, plugin, registryImage)
+	for _, p := range allPlugins {
+		key := pluginNameVersion{name: p.Identity.Owner() + "/" + p.Identity.Plugin(), version: p.PluginVersion}
+		priorRelease, hasPrior := pluginNameVersionToRelease[key]
+		_, isCandidate := candidates[key]
+		// Fast path: non-candidate plugins with a prior release entry are
+		// carried forward verbatim without any yaml digest or registry calls.
+		// A nil candidate set (initial release) means every plugin is inspected.
+		if candidates != nil && hasPrior && !isCandidate {
+			carried, err := carryForwardExisting(p, priorRelease)
 			if err != nil {
-				return err
+				return nil, err
 			}
-			status := release.StatusUpdated
-			if pluginRelease.ImageID == "" {
-				status = release.StatusNew
-			}
-			deps, err := pluginDependencies(plugin)
-			if err != nil {
-				return err
-			}
-			newPlugins = append(newPlugins, release.PluginRelease{
-				PluginName:       fmt.Sprintf("%s/%s", identity.Owner(), identity.Plugin()),
-				PluginVersion:    plugin.PluginVersion,
-				PluginZipDigest:  zipDigest,
-				PluginYAMLDigest: pluginYamlDigest,
-				RegistryImage:    registryImage,
-				ImageID:          imageID,
-				ReleaseTag:       releaseName,
-				URL:              downloadURL,
-				LastUpdated:      now,
-				Status:           status,
-				Dependencies:     deps,
-			})
+			existingPlugins = append(existingPlugins, carried)
+			continue
+		}
+		entry, skipped, err := c.inspectPlugin(ctx, p, priorRelease, releaseName, now, tmpDir)
+		if err != nil {
+			return nil, err
+		}
+		if skipped {
+			continue
+		}
+		if entry.Status == release.StatusExisting {
+			existingPlugins = append(existingPlugins, entry)
 		} else {
-			c.logger.InfoContext(ctx, "plugin unchanged",
-				slog.String("name", pluginRelease.PluginName),
-				slog.String("version", pluginRelease.PluginVersion),
-			)
-			pluginRelease.Status = release.StatusExisting
-			deps, err := pluginDependencies(plugin)
-			if err != nil {
-				return err
-			}
-			pluginRelease.Dependencies = deps
-			existingPlugins = append(existingPlugins, pluginRelease)
+			newPlugins = append(newPlugins, entry)
 		}
-		return nil
-	}); err != nil {
-		return nil, fmt.Errorf("failed to discover plugins in path %q: %w", c.rootDir, err)
 	}
 
 	if len(newPlugins) == 0 {
@@ -272,6 +273,82 @@ func (c *command) calculateNewReleasePlugins(ctx context.Context, currentRelease
 	plugins := slices.Concat(newPlugins, existingPlugins)
 	sortPluginsByNameVersion(plugins)
 	return plugins, nil
+}
+
+// carryForwardExisting returns priorRelease with refreshed dependencies from
+// the on-disk buf.plugin.yaml, marked as StatusExisting. No network calls.
+func carryForwardExisting(p *plugin.Plugin, priorRelease release.PluginRelease) (release.PluginRelease, error) {
+	deps, err := pluginDependencies(p)
+	if err != nil {
+		return release.PluginRelease{}, err
+	}
+	priorRelease.Status = release.StatusExisting
+	priorRelease.Dependencies = deps
+	return priorRelease, nil
+}
+
+// inspectPlugin computes the current yaml digest and registry image digest for
+// p and returns the corresponding release entry. The skipped return is true
+// when no registry image exists for the plugin version.
+func (c *command) inspectPlugin(
+	ctx context.Context,
+	p *plugin.Plugin,
+	priorRelease release.PluginRelease,
+	releaseName string,
+	now time.Time,
+	tmpDir string,
+) (release.PluginRelease, bool, error) {
+	identity := p.Identity
+	pluginYamlDigest, err := release.CalculateDigest(p.Path)
+	if err != nil {
+		return release.PluginRelease{}, false, err
+	}
+	registryImage, imageID, err := fetchRegistryImageAndImageID(p)
+	if err != nil {
+		return release.PluginRelease{}, false, err
+	}
+	if registryImage == "" || imageID == "" {
+		c.logger.InfoContext(ctx, "unable to detect registry image and image ID",
+			slog.String("owner", identity.Owner()),
+			slog.String("plugin", identity.Plugin()),
+			slog.String("version", p.PluginVersion),
+		)
+		return release.PluginRelease{}, true, nil
+	}
+	deps, err := pluginDependencies(p)
+	if err != nil {
+		return release.PluginRelease{}, false, err
+	}
+	if priorRelease.ImageID == imageID && priorRelease.PluginYAMLDigest == pluginYamlDigest {
+		c.logger.InfoContext(ctx, "plugin unchanged",
+			slog.String("name", priorRelease.PluginName),
+			slog.String("version", priorRelease.PluginVersion),
+		)
+		priorRelease.Status = release.StatusExisting
+		priorRelease.Dependencies = deps
+		return priorRelease, false, nil
+	}
+	zipDigest, err := createPluginZip(ctx, c.logger, tmpDir, p, registryImage)
+	if err != nil {
+		return release.PluginRelease{}, false, err
+	}
+	status := release.StatusUpdated
+	if priorRelease.ImageID == "" {
+		status = release.StatusNew
+	}
+	return release.PluginRelease{
+		PluginName:       fmt.Sprintf("%s/%s", identity.Owner(), identity.Plugin()),
+		PluginVersion:    p.PluginVersion,
+		PluginZipDigest:  zipDigest,
+		PluginYAMLDigest: pluginYamlDigest,
+		RegistryImage:    registryImage,
+		ImageID:          imageID,
+		ReleaseTag:       releaseName,
+		URL:              c.pluginDownloadURL(p, releaseName),
+		LastUpdated:      now,
+		Status:           status,
+		Dependencies:     deps,
+	}, false, nil
 }
 
 func pluginDependencies(plugin *plugin.Plugin) ([]string, error) {

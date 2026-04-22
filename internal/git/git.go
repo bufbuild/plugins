@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"log"
 	"strings"
 	"time"
 
@@ -18,7 +17,6 @@ func ChangedFilesFrom(ctx context.Context, ref string) ([]string, error) {
 	if err != nil {
 		return nil, fmt.Errorf("git diff: %w", err)
 	}
-	log.Printf("git diff against %s:\n%s\n", ref, changedFiles)
 	return strings.Split(changedFiles, "\n"), nil
 }
 
