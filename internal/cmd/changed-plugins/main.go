@@ -2,38 +2,46 @@ package main
 
 import (
 	"context"
-	"flag"
 	"fmt"
-	"log"
-	"os"
 	"strings"
+
+	"buf.build/go/app/appcmd"
+	"buf.build/go/app/appext"
 
 	"github.com/bufbuild/plugins/internal/plugin"
 )
 
 func main() {
-	flag.Parse()
-	if len(flag.Args()) != 1 {
-		flag.Usage()
-		os.Exit(2)
-	}
-	basedir := flag.Args()[0]
+	appcmd.Main(context.Background(), newRootCommand("changed-plugins"))
+}
 
-	plugins, err := plugin.FindAll(basedir)
-	if err != nil {
-		log.Fatalf("failed to find plugins: %v", err)
+func newRootCommand(name string) *appcmd.Command {
+	builder := appext.NewBuilder(name)
+	return &appcmd.Command{
+		Use:                 name + " <directory>",
+		Short:               "Outputs plugins that changed relative to a base git ref.",
+		Args:                appcmd.ExactArgs(1),
+		Run:                 builder.NewRunFunc(run),
+		BindPersistentFlags: builder.BindRoot,
 	}
-	// Filter by changed plugins (for PR builds)
-	includedPlugins, err := plugin.FilterByBaseRefDiff(context.Background(), plugins)
+}
+
+func run(ctx context.Context, container appext.Container) error {
+	plugins, err := plugin.FindAll(container.Arg(0))
 	if err != nil {
-		log.Fatalf("failed to filter plugins by changed files: %v", err)
+		return fmt.Errorf("find plugins: %w", err)
+	}
+	includedPlugins, err := plugin.FilterByBaseRefDiff(ctx, plugins)
+	if err != nil {
+		return fmt.Errorf("filter plugins by changed files: %w", err)
 	}
 	var sb strings.Builder
-	for _, includedPlugin := range includedPlugins {
-		sb.WriteString(strings.TrimPrefix(includedPlugin.Name, "buf.build/"))
+	for _, p := range includedPlugins {
+		sb.WriteString(strings.TrimPrefix(p.Name, "buf.build/"))
 		sb.WriteByte(':')
-		sb.WriteString(includedPlugin.PluginVersion)
+		sb.WriteString(p.PluginVersion)
 		sb.WriteByte(' ')
 	}
-	fmt.Println(strings.TrimSpace(sb.String())) //nolint:forbidigo
+	fmt.Fprintln(container.Stdout(), strings.TrimSpace(sb.String()))
+	return nil
 }
