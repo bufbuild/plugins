@@ -5,6 +5,8 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"maps"
+	"net/http"
 	"os"
 	"slices"
 	"strings"
@@ -133,9 +135,11 @@ func pluginKeyFromPath(path string) (pluginNameVersion, bool) {
 // addGHCRCandidates adds (name, version) pairs for every container package
 // version whose image was updated after since.
 //
-// The list-packages endpoint returns every container package owned by the org
-// (a few dozen), and per-package version listings are only fetched for packages
-// that were touched after since.
+// Each known package (derived from allPlugins) is fetched individually via the
+// per-package endpoint, which works with a fine-grained token. The org-wide
+// list endpoint is avoided because it requires organization-level permissions
+// that fine-grained tokens can't grant. Per-package version listings are only
+// fetched for packages that were touched after since.
 func (c *command) addGHCRCandidates(
 	ctx context.Context,
 	ghClient *release.Client,
@@ -149,33 +153,25 @@ func (c *command) addGHCRCandidates(
 		packageToPlugin[pkg] = p.Identity.Owner() + "/" + p.Identity.Plugin()
 	}
 	var added []pluginNameVersion
-	opts := &github.PackageListOptions{
-		PackageType: new("container"),
-		ListOptions: github.ListOptions{PerPage: 100},
-	}
-	for {
-		pkgs, resp, err := ghClient.GitHub.Organizations.ListPackages(ctx, string(release.GithubOwnerBufbuild), opts)
+	for _, pkgName := range slices.Sorted(maps.Keys(packageToPlugin)) {
+		pkg, resp, err := ghClient.GitHub.Organizations.GetPackage(ctx, string(release.GithubOwnerBufbuild), "container", pkgName)
 		if err != nil {
-			return nil, fmt.Errorf("list packages: %w", err)
-		}
-		for _, pkg := range pkgs {
-			if pkg.GetUpdatedAt().Before(since) {
+			// A 404 means the image hasn't been pushed yet (new plugin version
+			// whose CI run is still in flight). The git diff pass already flags
+			// it as a candidate, so skip quietly.
+			if resp != nil && resp.StatusCode == http.StatusNotFound {
 				continue
 			}
-			pluginName, ok := packageToPlugin[pkg.GetName()]
-			if !ok {
-				continue
-			}
-			pkgAdded, err := c.addPackageVersionCandidates(ctx, ghClient, pkg.GetName(), pluginName, since, candidates)
-			if err != nil {
-				return nil, err
-			}
-			added = append(added, pkgAdded...)
+			return nil, fmt.Errorf("get package %q: %w", pkgName, err)
 		}
-		if resp.NextPage == 0 {
-			break
+		if pkg.GetUpdatedAt().Before(since) {
+			continue
 		}
-		opts.Page = resp.NextPage
+		pkgAdded, err := c.addPackageVersionCandidates(ctx, ghClient, pkgName, packageToPlugin[pkgName], since, candidates)
+		if err != nil {
+			return nil, err
+		}
+		added = append(added, pkgAdded...)
 	}
 	return sortedKeys(added), nil
 }
