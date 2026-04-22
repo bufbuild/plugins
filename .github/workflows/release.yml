@@ -12,7 +12,7 @@ on:
         default: ''
 
 permissions:
-  contents: write
+  contents: read
   id-token: write
   issues: write
   packages: read
@@ -26,6 +26,14 @@ jobs:
     if: github.repository == 'bufbuild/plugins'
     runs-on: ubuntu-latest
     steps:
+      - name: Generate token
+        id: generate_token
+        uses: actions/create-github-app-token@1b10c78c7865c340bc4f6099eb2f838309f1e8c3 # v3.1.1
+        with:
+          client-id: ${{ secrets.TOKEN_EXCHANGE_GH_APP_CLIENT_ID }}
+          private-key: ${{ secrets.TOKEN_EXCHANGE_GH_APP_PRIVATE_KEY }}
+          permission-contents: write
+          permission-packages: read
       - name: Checkout repository code
         uses: actions/checkout@v6
         with:
@@ -44,7 +52,7 @@ jobs:
           check-latest: true
       - name: Create Release
         env:
-          GITHUB_TOKEN: ${{ github.token }}
+          GITHUB_TOKEN: ${{ steps.generate_token.outputs.token }}
           MINISIGN_PRIVATE_KEY: ${{ secrets.MINISIGN_PRIVATE_KEY }}
           MINISIGN_PRIVATE_KEY_PASSWORD: ${{ secrets.MINISIGN_PRIVATE_KEY_PASSWORD }}
           PLUGINS: ${{ inputs.plugins }}
