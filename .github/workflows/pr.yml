@@ -72,7 +72,9 @@ jobs:
     - name: Cache golangci-lint
       uses: actions/cache@v5
       with:
-        path: .tmp/golangci-lint-*
+        path: |
+          .tmp/golangci-lint
+          .tmp/golangci-lint-*
         key: golangci-lint-${{ runner.os }}-${{ hashFiles('Makefile') }}
     - name: Lint
       run: make lint
