@@ -7,7 +7,7 @@ require (
 	buf.build/go/app v0.2.1-0.20260407195847-833f8f978cda
 	buf.build/go/interrupt v1.1.0
 	buf.build/go/standard v0.1.1-0.20260325175353-2b287e071df5
-	github.com/bufbuild/buf v1.68.2
+	github.com/bufbuild/buf v1.68.4
 	github.com/google/go-containerregistry v0.21.5
 	github.com/google/go-github/v72 v72.0.0
 	github.com/hashicorp/go-retryablehttp v0.7.8
