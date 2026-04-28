@@ -27,7 +27,7 @@ const (
 	goProxyURL        = "https://proxy.golang.org"
 	npmRegistryURL    = "https://registry.npmjs.org"
 	mavenURL          = "https://repo1.maven.org/maven2"
-	// docs: https://warehouse.pypa.io/api-reference/json.html
+	// docs: https://docs.pypi.org/api/json/
 	pypiURL = "https://pypi.org/pypi"
 )
 
