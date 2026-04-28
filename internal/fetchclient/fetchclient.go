@@ -27,11 +27,8 @@ const (
 	goProxyURL        = "https://proxy.golang.org"
 	npmRegistryURL    = "https://registry.npmjs.org"
 	mavenURL          = "https://repo1.maven.org/maven2"
-)
-
-const (
 	// docs: https://warehouse.pypa.io/api-reference/json.html
-	defaultPyPIURL = "https://pypi.org/pypi"
+	pypiURL = "https://pypi.org/pypi"
 )
 
 var (
@@ -62,7 +59,7 @@ func New(ctx context.Context) *Client {
 	return &Client{
 		httpClient:  client,
 		ghClient:    github.NewClient(client),
-		pypiBaseURL: defaultPyPIURL,
+		pypiBaseURL: pypiURL,
 	}
 }
 
