@@ -1,4 +1,3 @@
 source:
-  github:
-    owner: connectrpc
-    repository: connect-python
+  pypi:
+    name: protoc-gen-connect-python

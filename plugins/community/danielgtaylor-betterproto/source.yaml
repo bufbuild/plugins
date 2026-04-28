@@ -1,4 +1,3 @@
 source:
-  github:
-    owner: danielgtaylor
-    repository: python-betterproto
+  pypi:
+    name: betterproto
