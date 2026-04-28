@@ -443,30 +443,14 @@ func (c *Client) fetchPyPI(ctx context.Context, name string, ignoreVersions map[
 		return "", fmt.Errorf("received status code %d retrieving %q", response.StatusCode, request.URL.String())
 	}
 
-	// Simple API JSON response per the simple repository API spec.
-	// Each file's yanked field is absent or false when available, true or a
-	// non-empty string reason when yanked (per PEP 592).
 	var data struct {
-		Files []struct {
-			Filename string          `json:"filename"`
-			Yanked   json.RawMessage `json:"yanked"`
-		} `json:"files"`
+		Versions []string `json:"versions"`
 	}
 	if err := json.NewDecoder(response.Body).Decode(&data); err != nil {
 		return "", err
 	}
-	// Collect versions that have at least one non-yanked file.
-	available := make(map[string]struct{})
-	for _, file := range data.Files {
-		if pypiFileYanked(file.Yanked) {
-			continue
-		}
-		if v := pypiVersionFromFilename(file.Filename, name); v != "" {
-			available[v] = struct{}{}
-		}
-	}
 	var versions []string
-	for version := range available {
+	for _, version := range data.Versions {
 		v, ok := ensureSemverPrefix(version)
 		if !ok {
 			continue
@@ -484,42 +468,6 @@ func (c *Client) fetchPyPI(ctx context.Context, name string, ignoreVersions map[
 	}
 	semver.Sort(versions)
 	return versions[len(versions)-1], nil
-}
-
-// pypiFileYanked reports whether a file's yanked field marks it as yanked.
-// Per the simple repository API spec, yanked is absent or false when not
-// yanked, and true or a non-empty string reason when yanked (PEP 592).
-func pypiFileYanked(yanked json.RawMessage) bool {
-	s := string(yanked)
-	return len(s) > 0 && s != "false" && s != "null"
-}
-
-// pypiVersionFromFilename extracts the version string from a PyPI filename.
-// Wheel filenames: {dist}-{version}-{python}-{abi}-{platform}.whl
-// Sdist filenames: {dist}-{version}.tar.gz / .tar.bz2 / .zip
-// The distribution name is normalized ([-._] → _) in filenames.
-func pypiVersionFromFilename(filename, pkg string) string {
-	normalizer := strings.NewReplacer("-", "_", ".", "_")
-	// Normalize both sides so hyphens and underscores match. Substitution is
-	// 1:1 so len(prefix) equals the number of original characters to skip.
-	normPkg := strings.ToLower(normalizer.Replace(pkg))
-	normFile := strings.ToLower(normalizer.Replace(filename))
-	prefix := normPkg + "_"
-	if !strings.HasPrefix(normFile, prefix) {
-		return ""
-	}
-	rest := filename[len(prefix):]
-	// Wheel: version ends at first '-' before the python/abi/platform tags.
-	if version, _, ok := strings.Cut(rest, "-"); ok {
-		return version
-	}
-	// Sdist: version is everything before the file extension.
-	for _, ext := range []string{".tar.gz", ".tar.bz2", ".zip"} {
-		if strings.HasSuffix(strings.ToLower(rest), ext) {
-			return rest[:len(rest)-len(ext)]
-		}
-	}
-	return ""
 }
 
 // ensureSemverPrefix checks if the given version is valid semver, optionally
