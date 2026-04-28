@@ -15,13 +15,13 @@ func TestGatherSourceFilenames(t *testing.T) {
 	// Walk entire directory with a depth of 1
 	filenames, err := gatherSourceFilenames("testdata/success")
 	require.NoError(t, err)
-	assert.Len(t, filenames, 2)
+	assert.Len(t, filenames, 3)
 	filenames, err = gatherSourceFilenames("testdata/success/connect-go")
 	require.NoError(t, err)
 	assert.Len(t, filenames, 1)
 	filenames, err = gatherSourceFilenames("testdata/success")
 	require.NoError(t, err)
-	assert.Len(t, filenames, 2)
+	assert.Len(t, filenames, 3)
 
 	filenames, err = gatherSourceFilenames("testdata/fail")
 	require.NoError(t, err)
@@ -46,7 +46,7 @@ func TestGatherConfigs(t *testing.T) {
 	t.Parallel()
 	configs, err := GatherConfigs("testdata/success")
 	require.NoError(t, err)
-	assert.Len(t, configs, 2)
+	assert.Len(t, configs, 3)
 
 	for _, config := range configs {
 		name := filepath.Base(filepath.Dir(config.Filename))
@@ -63,6 +63,10 @@ func TestGatherConfigs(t *testing.T) {
 			assert.Equal(t, "@bufbuild/protoc-gen-connect-web", source.Name)
 			assert.True(t, config.Source.Disabled)
 			assert.Nil(t, config.Source.DartFlutter)
+		case "mypy-protobuf":
+			source := config.Source.PyPI
+			require.NotNil(t, source)
+			assert.Equal(t, "mypy-protobuf", source.Name)
 		default:
 			assert.FailNow(t, "unknown plugin name", name)
 		}

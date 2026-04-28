@@ -29,6 +29,11 @@ const (
 	mavenURL          = "https://repo1.maven.org/maven2"
 )
 
+const (
+	// docs: https://warehouse.pypa.io/api-reference/json.html
+	defaultPyPIURL = "https://pypi.org/pypi"
+)
+
 var (
 	// ErrSemverPrerelease is returned when a version is a pre-release.
 	ErrSemverPrerelease = errors.New("pre-release versions are not supported")
@@ -36,8 +41,9 @@ var (
 
 // Client is a client used to fetch latest package version.
 type Client struct {
-	httpClient *http.Client
-	ghClient   *github.Client
+	httpClient  *http.Client
+	ghClient    *github.Client
+	pypiBaseURL string
 }
 
 // New returns a new client.
@@ -54,8 +60,9 @@ func New(ctx context.Context) *Client {
 		client = retryableClient.StandardClient()
 	}
 	return &Client{
-		httpClient: client,
-		ghClient:   github.NewClient(client),
+		httpClient:  client,
+		ghClient:    github.NewClient(client),
+		pypiBaseURL: defaultPyPIURL,
 	}
 }
 
@@ -103,6 +110,8 @@ func (c *Client) fetch(ctx context.Context, config *source.Config) (string, erro
 		return c.fetchMaven(ctx, config.Source.Maven.Group, config.Source.Maven.Name, ignoreVersions, maxVersion)
 	case config.Source.Crates != nil:
 		return c.fetchCrate(ctx, config.Source.Crates.CrateName, ignoreVersions, maxVersion)
+	case config.Source.PyPI != nil:
+		return c.fetchPyPI(ctx, config.Source.PyPI.Name, ignoreVersions, maxVersion)
 	}
 	return "", errors.New("failed to match a source")
 }
@@ -409,6 +418,67 @@ func (c *Client) fetchGithub(
 		if page == 0 {
 			break
 		}
+	}
+	if len(versions) == 0 {
+		return "", errors.New("no versions found")
+	}
+	semver.Sort(versions)
+	return versions[len(versions)-1], nil
+}
+
+func (c *Client) fetchPyPI(ctx context.Context, name string, ignoreVersions map[string]struct{}, maxVersion string) (string, error) {
+	request, err := http.NewRequestWithContext(
+		ctx,
+		http.MethodGet,
+		fmt.Sprintf("%s/%s/json", c.pypiBaseURL, strings.TrimPrefix(name, "/")),
+		nil,
+	)
+	if err != nil {
+		return "", err
+	}
+	response, err := c.httpClient.Do(request)
+	if err != nil {
+		return "", err
+	}
+	defer response.Body.Close()
+	if response.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("received status code %d retrieving %q", response.StatusCode, request.URL.String())
+	}
+
+	var data struct {
+		Releases map[string][]struct {
+			Yanked bool `json:"yanked"`
+		} `json:"releases"`
+	}
+	if err := json.NewDecoder(response.Body).Decode(&data); err != nil {
+		return "", err
+	}
+	var versions []string
+	for version, files := range data.Releases {
+		if len(files) == 0 {
+			continue
+		}
+		yanked := true
+		for _, file := range files {
+			if !file.Yanked {
+				yanked = false
+				break
+			}
+		}
+		if yanked {
+			continue
+		}
+		v, ok := ensureSemverPrefix(version)
+		if !ok {
+			continue
+		}
+		if _, ok := ignoreVersions[v]; ok {
+			continue
+		}
+		if maxVersion != "" && semver.Compare(v, maxVersion) >= 0 {
+			continue
+		}
+		versions = append(versions, v)
 	}
 	if len(versions) == 0 {
 		return "", errors.New("no versions found")

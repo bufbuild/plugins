@@ -1,4 +1,3 @@
 source:
-  github:
-    owner: nipunn1313
-    repository: mypy-protobuf
+  pypi:
+    name: mypy-protobuf

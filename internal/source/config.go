@@ -45,6 +45,7 @@ type Source struct {
 	NPMRegistry *NPMRegistryConfig `yaml:"npm_registry"`
 	Maven       *MavenConfig       `yaml:"maven"`
 	Crates      *CratesConfig      `yaml:"crates"`
+	PyPI        *PyPIConfig        `yaml:"pypi"`
 	// IgnoreVersions is a list of versions to ignore when fetching.
 	IgnoreVersions []string `yaml:"ignore_versions"`
 	// MaxVersion is an exclusive upper bound for versions. Versions >= this value will be ignored.
@@ -72,6 +73,8 @@ func (s *Source) Name() string {
 		return "maven"
 	case s.Crates != nil:
 		return "crates"
+	case s.PyPI != nil:
+		return "pypi"
 	}
 	return "unknown"
 }
@@ -91,6 +94,8 @@ func (s *Source) CacheKey() string {
 		return name + "-" + s.Maven.CacheKey()
 	case s.Crates != nil:
 		return name + "-" + s.Crates.CacheKey()
+	case s.PyPI != nil:
+		return name + "-" + s.PyPI.CacheKey()
 	}
 	return name
 }
@@ -161,4 +166,15 @@ var _ Cacheable = (*MavenConfig)(nil)
 
 func (m MavenConfig) CacheKey() string {
 	return m.Group + "-" + m.Name
+}
+
+// PyPIConfig is the PyPI configuration.
+type PyPIConfig struct {
+	Name string `yaml:"name"`
+}
+
+var _ Cacheable = (*PyPIConfig)(nil)
+
+func (p PyPIConfig) CacheKey() string {
+	return p.Name
 }
