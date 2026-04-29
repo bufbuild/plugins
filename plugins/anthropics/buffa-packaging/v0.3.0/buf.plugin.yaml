@@ -1,0 +1,9 @@
+version: v1
+name: buf.build/anthropics/buffa-packaging
+plugin_version: v0.3.0
+source_url: https://github.com/anthropics/buffa
+description: Emits a mod.rs module tree that includes per-file output from protoc-gen-buffa (and plugins layered on it). Run with strategy=all so the plugin sees the full file set in one invocation.
+output_languages:
+  - rust
+spdx_license_id: Apache-2.0
+license_url: https://github.com/anthropics/buffa/blob/v0.3.0/LICENSE
