@@ -26,6 +26,12 @@ registry:
         default_features: true
         features:
           - json
+      - name: "buffa-descriptor"
+        req: "0.6.0"
+        default_features: true
+        features:
+          - json
+          - views
       # Generated code derives `::serde::Serialize` / `::serde::Deserialize`
       # directly when json=true, so serde must be a direct dep.
       - name: "serde"
