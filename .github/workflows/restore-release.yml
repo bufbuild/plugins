@@ -37,5 +37,7 @@ jobs:
       - name: Restore Release
         env:
           GITHUB_TOKEN: ${{ github.token }}
+          ARGUMENTS: ${{ inputs.arguments }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
         run: |
-          go run ./internal/cmd/restore-release ${{ inputs.arguments }} ${{ inputs.release_tag }}
+          go run ./internal/cmd/restore-release ${ARGUMENTS} "${RELEASE_TAG}"

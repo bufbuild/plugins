@@ -43,8 +43,10 @@ jobs:
       if: ${{ inputs.plugins == '' }}
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        REPOSITORY: ${{ github.repository }}
+        REF_NAME: ${{ github.ref_name }}
       run: |
-        base_ref=$(gh api "repos/${{ github.repository }}/actions/workflows/ci.yml/runs?branch=${{ github.ref_name }}&status=success&per_page=1" --jq '.workflow_runs[0].head_sha')
+        base_ref=$(gh api "repos/${REPOSITORY}/actions/workflows/ci.yml/runs?branch=${REF_NAME}&status=success&per_page=1" --jq '.workflow_runs[0].head_sha')
         val=$(go run ./internal/cmd/changed-plugins --base-ref "${base_ref}")
         if [[ -n "${val}" && -z "${PLUGINS}" ]]; then
           echo "PLUGINS=${val}" >> $GITHUB_ENV

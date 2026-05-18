@@ -47,8 +47,9 @@ jobs:
       - name: Download Plugins
         env:
           GITHUB_TOKEN: ${{ github.token }}
+          SINCE: ${{ inputs.since }}
         run: |
-          go run ./cmd/download-plugins -since ${{ inputs.since }} downloads
+          go run ./cmd/download-plugins -since "${SINCE}" downloads
       - name: Upload To Release Bucket
         run: gsutil -m rsync -r downloads gs://buf-plugins
       - name: Generate Github Token
@@ -63,7 +64,7 @@ jobs:
         if: ${{ failure() }}
         env:
           GITHUB_TOKEN: ${{ steps.generate_issues_token.outputs.token }}
-          GITHUB_SERVER_URL: ${ github.server_url }}
+          GITHUB_SERVER_URL: ${{ github.server_url }}
           GITHUB_REPOSITORY: ${{ github.repository }}
           GITHUB_RUN_ID: ${{ github.run_id }}
           GITHUB_RUN_ATTEMPT: ${{ github.run_attempt }}

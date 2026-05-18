@@ -1,8 +1,5 @@
 name: Fetch latest versions
 
-# When triggering a manual execution of the workflow, you may want to disable the scheduled execution temporarily
-# to ensure that any in-flight generated PR is not overridden by the scheduled execution.
-
 on:
   schedule:
     # Run once a day at 10 AM EST
@@ -11,6 +8,10 @@ on:
 permissions:
   contents: read
   issues: write
+
+# Only allow a single fetch-versions workflow to run at a time so a manual run
+# and the scheduled run don't race on the fetch-versions PR branch.
+concurrency: ${{ github.workflow }}
 jobs:
   fetch-versions:
     if: github.repository == 'bufbuild/plugins'
@@ -88,7 +89,7 @@ jobs:
         if: ${{ failure() }}
         env:
           GITHUB_TOKEN: ${{ steps.generate_issues_token.outputs.token }}
-          GITHUB_SERVER_URL: ${ github.server_url }}
+          GITHUB_SERVER_URL: ${{ github.server_url }}
           GITHUB_REPOSITORY: ${{ github.repository }}
           GITHUB_RUN_ID: ${{ github.run_id }}
           GITHUB_RUN_ATTEMPT: ${{ github.run_attempt }}
