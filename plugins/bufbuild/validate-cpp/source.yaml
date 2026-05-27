@@ -1,4 +1,6 @@
 source:
+  # Use protovalidate instead
+  disabled: true
   github:
     owner: bufbuild
     repository: protoc-gen-validate
