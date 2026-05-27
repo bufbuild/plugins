@@ -1,5 +1,5 @@
 source:
-  # Use protovalidate instead
+  # Use https://protovalidate.com instead
   disabled: true
   github:
     owner: bufbuild
