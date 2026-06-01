@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"cmp"
 	"context"
+	"encoding/json"
 	"encoding/xml"
 	"errors"
 	"fmt"
@@ -433,6 +434,58 @@ func TestNugetDependencies(t *testing.T) {
 			require.Equal(t, allDependencies, packageReferences)
 		})
 	}
+}
+
+func TestCargoDependencies(t *testing.T) {
+	t.Parallel()
+	ctx := t.Context()
+	client := &http.Client{}
+	plugins := loadFilteredPlugins(t)
+	for _, p := range plugins {
+		if p.Registry.Cargo == nil || len(p.Registry.Cargo.Deps) == 0 {
+			continue
+		}
+		t.Run(fmt.Sprintf("%s/%s@%s", p.Identity.Owner(), p.Identity.Plugin(), p.PluginVersion), func(t *testing.T) {
+			t.Parallel()
+			for _, dep := range p.Registry.Cargo.Deps {
+				url := fmt.Sprintf("https://crates.io/api/v1/crates/%s", dep.Name)
+				req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+				require.NoError(t, err)
+				// crates.io requires a descriptive User-Agent; see
+				// https://github.com/bufbuild/plugins/issues/252.
+				req.Header.Set("User-Agent", "bufbuild (github.com/bufbuild/plugins)")
+				resp, err := client.Do(req)
+				require.NoError(t, err)
+				require.Equalf(t, http.StatusOK, resp.StatusCode, "failed to fetch crate %q", dep.Name)
+				var data struct {
+					Versions []struct {
+						Yanked bool   `json:"yanked"`
+						Num    string `json:"num"`
+					} `json:"versions"`
+				}
+				require.NoError(t, json.NewDecoder(resp.Body).Decode(&data))
+				require.NoError(t, resp.Body.Close())
+				var matched bool
+				for _, v := range data.Versions {
+					if v.Yanked {
+						continue
+					}
+					if cargoReqMatches(dep.VersionRequirement, v.Num) {
+						matched = true
+						break
+					}
+				}
+				assert.Truef(t, matched, "no non-yanked version of crate %q satisfies req %q", dep.Name, dep.VersionRequirement)
+			}
+		})
+	}
+}
+
+func cargoReqMatches(req, version string) bool {
+	if strings.Count(req, ".") >= 2 {
+		return req == version
+	}
+	return strings.HasPrefix(version, req+".")
 }
 
 func TestPyPIDependencies(t *testing.T) {
