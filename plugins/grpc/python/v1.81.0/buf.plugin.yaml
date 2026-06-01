@@ -13,7 +13,7 @@ registry:
   python:
     package_type: "runtime"
     # https://github.com/grpc/grpc/blob/v1.81.0/src/python/grpcio/python_version.py#L19
-    requires_python: ">=3.9"
+    requires_python: ">=3.10"
     deps:
       # https://pypi.org/project/grpcio/
       - "grpcio>=1.81.0"
