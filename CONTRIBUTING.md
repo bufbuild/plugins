@@ -236,9 +236,9 @@ If the `fetcher` command opens a PR for a new version of an existing plugin, mos
 
 ### Updating Docker Base Images
 
-Docker base images are tracked in [.github/docker](.github/docker) and kept updated with Dependabot.
+Docker base images are tracked in [baseimages](baseimages) and kept updated with Dependabot.
 When new versions of a plugin are detected, they'll automatically be built with the latest base images.
-When creating a new plugin, ensure that it starts with the latest version of the base image in the `.github/docker` directory.
+When creating a new plugin, ensure that it starts with the latest version of the base image in the `baseimages` directory.
 
 ## Local Testing
 

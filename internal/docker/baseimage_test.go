@@ -17,12 +17,11 @@ func TestFindBaseImageDir(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, expectedAbs, baseImageDir)
 	}
-	expected := "../../.github/docker"
+	expected := "../../baseimages"
 	verifyDir(".", expected)
 	verifyDir("..", expected)
 	verifyDir("../..", expected)
-	verifyDir("../../.github", expected)
-	verifyDir("../../.github/docker", expected)
+	verifyDir("../../baseimages", expected)
 }
 
 func TestBaseImages(t *testing.T) {

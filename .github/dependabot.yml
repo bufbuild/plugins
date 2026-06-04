@@ -21,7 +21,7 @@ updates:
           - "*"
   # plugin base images
   - package-ecosystem: "docker"
-    directory: "/.github/docker"
+    directory: "/baseimages"
     schedule:
       interval: "daily"
     registries:
