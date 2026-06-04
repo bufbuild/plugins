@@ -14,16 +14,16 @@ var (
 	distrolessNamePrefix = "gcr.io/distroless/"
 )
 
-// BaseImages contains state about the latest versions of base images in the .github/docker directory.
+// BaseImages contains state about the latest versions of base images in the baseimages directory.
 // These are automatically kept up to date by dependabot.
 type BaseImages struct {
 	latestVersions             map[string]string
 	latestDistrolessImageNames map[string]string
 }
 
-// ImageNameAndVersion returns the latest image name and version (if tracked in the .github/docker directory).
+// ImageNameAndVersion returns the latest image name and version (if tracked in the baseimages directory).
 // For example, passing "debian" will return "debian:bookworm-yyyyMMdd" (where "yyyyMMdd" is the latest image date).
-// If the image is not tracked in the .github/docker directory, returns an empty string.
+// If the image is not tracked in the baseimages directory, returns an empty string.
 // This is used to automate updating Dockerfile base image versions when fetching new versions of plugins.
 func (b *BaseImages) ImageNameAndVersion(imageName string) string {
 	latestImageName := imageName
@@ -37,9 +37,9 @@ func (b *BaseImages) ImageNameAndVersion(imageName string) string {
 	return latestImageName + ":" + latestVersion
 }
 
-// ImageVersion returns the latest version for the image name (if tracked in the .github/docker directory).
+// ImageVersion returns the latest version for the image name (if tracked in the baseimages directory).
 // For example, passing "debian" will return "bookworm-yyyyMMdd" (where "yyyyMMdd" is the latest image date).
-// If the image is not tracked in the .github/docker directory, returns an empty string.
+// If the image is not tracked in the baseimages directory, returns an empty string.
 func (b *BaseImages) ImageVersion(imageName string) string {
 	latestImageName := imageName
 	if nameWithoutVersions := distrolessImageNameWithoutVersions(imageName); nameWithoutVersions != "" {
@@ -48,30 +48,30 @@ func (b *BaseImages) ImageVersion(imageName string) string {
 	return b.latestVersions[latestImageName]
 }
 
-// FindBaseImageDir looks for the .github/docker folder starting from basedir.
+// FindBaseImageDir looks for the baseimages folder starting from basedir.
 // It continues to search through parent directories till found (or at the root).
 func FindBaseImageDir(basedir string) (string, error) {
-	// Walk up from plugins dir to find .github dir
+	// Walk up from plugins dir to find the baseimages dir
 	rootDir, err := filepath.Abs(basedir)
 	if err != nil {
 		return "", err
 	}
 	var dockerDir string
 	for {
-		dockerDir = filepath.Join(rootDir, ".github", "docker")
+		dockerDir = filepath.Join(rootDir, "baseimages")
 		if st, err := os.Stat(dockerDir); err == nil && st.IsDir() {
 			break
 		}
 		newRootDir := filepath.Dir(rootDir)
 		if newRootDir == rootDir {
-			return "", fmt.Errorf("failed to find .github directory from %s", basedir)
+			return "", fmt.Errorf("failed to find baseimages directory from %s", basedir)
 		}
 		rootDir = newRootDir
 	}
 	return dockerDir, nil
 }
 
-// LoadLatestBaseImages returns the latest base image information from images found in the .github/docker directory.
+// LoadLatestBaseImages returns the latest base image information from images found in the baseimages directory.
 func LoadLatestBaseImages(baseImageDir string) (_ *BaseImages, retErr error) {
 	d, err := os.Open(baseImageDir)
 	if err != nil {

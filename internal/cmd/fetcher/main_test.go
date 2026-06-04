@@ -309,12 +309,12 @@ func (m *mockFetcher) Fetch(_ context.Context, config *source.Config) (string, e
 // setupTestRepository creates a complete test repository structure with:
 // - plugins/ directory with base-plugin and consumer-plugin
 // - source.yaml files for version detection
-// - .github/docker/ directory with base images.
+// - baseimages/ directory with base images.
 func setupTestRepository(t *testing.T, tmpDir string) {
 	t.Helper()
 
 	// Create base Docker images directory (required by run())
-	baseImageDir := filepath.Join(tmpDir, ".github", "docker")
+	baseImageDir := filepath.Join(tmpDir, "baseimages")
 	require.NoError(t, os.MkdirAll(baseImageDir, 0755))
 
 	// Create required docker/dockerfile base image
