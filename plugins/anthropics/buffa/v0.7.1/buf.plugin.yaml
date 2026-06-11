@@ -45,6 +45,7 @@ registry:
     # Enable serde derives + proto3 JSON mapping helpers. Required for
     # downstream plugins that need the Connect protocol's JSON codec.
     - json=true
+    # Enable textproto encoding/decoding.
     - text=true
     # Zero-copy view types. Default, but explicit for clarity.
     - views=true
