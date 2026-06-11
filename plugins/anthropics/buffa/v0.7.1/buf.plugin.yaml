@@ -9,7 +9,7 @@ spdx_license_id: Apache-2.0
 license_url: https://github.com/anthropics/buffa/blob/v0.7.1/LICENSE
 registry:
   cargo:
-    rust_version: "1.85"
+    rust_version: "1.87" # https://github.com/anthropics/buffa/blob/v0.7.1/Cargo.toml#L30
     deps:
       # Runtime: wire format, Message trait, view types, JSON helpers.
       # https://github.com/anthropics/buffa/blob/v0.7.1/buffa/Cargo.toml
@@ -18,6 +18,7 @@ registry:
         default_features: true
         features:
           - json
+          - text
       # Well-known types (Timestamp, Duration, Any, Struct, etc.).
       # Generated code references these via the auto-injected
       # extern_path mapping `.google.protobuf` -> `::buffa_types::google::protobuf`.
@@ -32,6 +33,7 @@ registry:
         features:
           - json
           - views
+          - text
       # Generated code derives `::serde::Serialize` / `::serde::Deserialize`
       # directly when json=true, so serde must be a direct dep.
       - name: "serde"
@@ -43,6 +45,7 @@ registry:
     # Enable serde derives + proto3 JSON mapping helpers. Required for
     # downstream plugins that need the Connect protocol's JSON codec.
     - json=true
+    - text=true
     # Zero-copy view types. Default, but explicit for clarity.
     - views=true
     # Emit one `<dotted.package>.rs` per proto package instead of one
