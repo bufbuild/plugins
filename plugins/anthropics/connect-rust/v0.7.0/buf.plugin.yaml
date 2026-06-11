@@ -22,7 +22,7 @@ registry:
       # buffa::bytes::Bytes directly. Message types live in the buffa SDK
       # crate (via the plugin dep above); this dep is for the runtime API.
       - name: "buffa"
-        req: "0.6.0"
+        req: "0.7.1"
         default_features: true
       # Well-known types. Service stubs whose request/response types are
       # WKTs (e.g. google.longrunning.Operations) reference them as
