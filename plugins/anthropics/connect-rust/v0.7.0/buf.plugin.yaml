@@ -30,7 +30,7 @@ registry:
       # extern_path mapping for `.google.protobuf`. Must be a direct dep
       # so the `::buffa_types` path resolves in the generated crate.
       - name: "buffa-types"
-        req: "0.6.0"
+        req: "0.7.1"
         default_features: true
         features:
           - json
