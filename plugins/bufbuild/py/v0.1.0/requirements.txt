@@ -1,0 +1,2 @@
+protoc-gen-py==0.1.0
+protobuf-py==0.1.0

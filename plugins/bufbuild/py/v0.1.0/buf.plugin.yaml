@@ -1,0 +1,9 @@
+version: v1
+name: buf.build/bufbuild/py
+plugin_version: v0.1.0
+source_url: https://github.com/bufbuild/protobuf-py
+description: Generates idiomatic Python code from Protocol Buffers definitions using protobuf-py.
+spdx_license_id: Apache-2.0
+license_url: https://github.com/bufbuild/protobuf-py/blob/v0.1.0/LICENSE
+output_languages:
+- python
