@@ -1,3 +1,3 @@
-FROM python:3.13.14-trixie@sha256:b73ad28cabbe8929288c3a898c763cca868bc82ca401bb63900a2f61a4011103
+FROM python:3.13.14-trixie@sha256:e009bc0d74d382e1a53616f1eac5c8b82ac003a7995feca3ca7cce85d28d5c58
 
 CMD echo this is a dummy file used to automate dependency upgrades for plugins
