@@ -1,10 +1,10 @@
 version: v1
 name: buf.build/bufbuild/py
-plugin_version: v0.1.0
+plugin_version: v0.1.1
 source_url: https://github.com/bufbuild/protobuf-py
 description: Generates idiomatic Python code from Protocol Buffers definitions using protobuf-py.
 spdx_license_id: Apache-2.0
-license_url: https://github.com/bufbuild/protobuf-py/blob/v0.1.0/LICENSE
+license_url: https://github.com/bufbuild/protobuf-py/blob/v0.1.1/LICENSE
 output_languages:
 - python
 registry:
@@ -13,7 +13,7 @@ registry:
     requires_python: ">=3.10"
     deps:
       # https://pypi.org/project/protobuf-py/
-      - "protobuf-py>=0.1.0"
+      - "protobuf-py>=0.1.1"
   opts:
     # Produce PEP 420 namespace packages so the py, grpc-py, and dependency
     # SDKs for a module can share the same top-level package.
