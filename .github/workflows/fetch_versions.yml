@@ -26,7 +26,7 @@ jobs:
           permission-contents: write
           permission-pull-requests: write
       - name: Checkout repository code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           token: ${{ steps.generate_token.outputs.token }}
           fetch-depth: 0 # full history needed for update_frequency git log lookups
