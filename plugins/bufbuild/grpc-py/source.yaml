@@ -1,0 +1,3 @@
+source:
+  pypi:
+    name: protoc-gen-grpc-py
