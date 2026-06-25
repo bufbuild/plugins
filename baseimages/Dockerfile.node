@@ -1,3 +1,3 @@
-FROM node:24.17.0-trixie@sha256:720409847eb7b70bce626b4ef6681b5f1e0c1edbc1d9fce88a2e495769681d0e
+FROM node:24.18.0-trixie@sha256:5ac1f09047e215d1e4df7fbdf95ff86ca14a35632380b6672d6c9c62d5ac3800
 
 CMD echo this is a dummy file used to automate dependency upgrades for plugins
