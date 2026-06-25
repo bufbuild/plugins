@@ -1,0 +1,3 @@
+FROM eclipse-temurin:25-jdk@sha256:dfc0093e3dbf43dae57827111c6e374f5b44fac19a9451584b2b336b81474d64
+
+CMD echo this is a dummy file used to automate dependency upgrades for plugins

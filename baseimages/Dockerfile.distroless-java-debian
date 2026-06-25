@@ -1,3 +1,0 @@
-FROM gcr.io/distroless/java25-debian13:latest@sha256:583ba2e08558063002bd1b5874a81b33b7204a0ad46727d4b6cbeff5a25935ba
-
-CMD echo this is a dummy file used to automate dependency upgrades for plugins

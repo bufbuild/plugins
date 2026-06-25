@@ -34,10 +34,9 @@ func TestBaseImages(t *testing.T) {
 	assert.NotEmpty(t, baseImages.ImageNameAndVersion("debian"))
 	assert.Empty(t, baseImages.ImageNameAndVersion("untracked"))
 	// Test distroless image upgrades
-	javaImage := baseImages.ImageNameAndVersion("gcr.io/distroless/java11-debian11")
-	assert.NotEmpty(t, javaImage)
-	assert.NotContains(t, javaImage, "java11")   // Should be replaced with a later java image
-	assert.NotContains(t, javaImage, "debian11") // Should be replaced with a later debian image
+	ccImage := baseImages.ImageNameAndVersion("gcr.io/distroless/cc-debian11")
+	assert.NotEmpty(t, ccImage)
+	assert.NotContains(t, ccImage, "debian11") // Should be replaced with a later debian image
 }
 
 func TestBaseImagesNoDuplicateVersions(t *testing.T) {
