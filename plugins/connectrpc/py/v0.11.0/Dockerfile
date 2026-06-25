@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1.24
-FROM python:3.13.14-trixie@sha256:6cd5c8d0efe5d264728f3690053b26807572f25805a643395752eca19148e31c AS build
+FROM python:3.13.14-trixie@sha256:ea79a4f0ffab442ce847e667e1aded8e7183921711af5be2253d7d78e45df67f AS build
 WORKDIR /app
 RUN python -mvenv /app
 ADD /requirements.txt requirements.txt
