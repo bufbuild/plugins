@@ -1,3 +1,5 @@
 source:
+  # Use connectrpc/py instead
+  disabled: true
   pypi:
     name: protoc-gen-connectrpc
