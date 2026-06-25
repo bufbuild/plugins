@@ -17,3 +17,4 @@ registry:
     deps:
       # https://pypi.org/project/connectrpc/
       - "connectrpc >= 0.10.1"
+deprecated: true
