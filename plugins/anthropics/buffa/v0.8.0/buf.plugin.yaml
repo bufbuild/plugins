@@ -9,7 +9,7 @@ spdx_license_id: Apache-2.0
 license_url: https://github.com/anthropics/buffa/blob/v0.8.0/LICENSE
 registry:
   cargo:
-    rust_version: "1.87" # https://github.com/anthropics/buffa/blob/v0.8.0/Cargo.toml#L30
+    rust_version: "1.75" # https://github.com/anthropics/buffa/blob/v0.8.0/Cargo.toml#L35
     deps:
       # Runtime: wire format, Message trait, view types, JSON helpers.
       # https://github.com/anthropics/buffa/blob/v0.8.0/buffa/Cargo.toml
