@@ -1,3 +1,3 @@
-FROM swift:6.3.2-bookworm@sha256:30d471336eefd13ae5adfab40966a923cb79a32ca0f10974a43b50438a1f9329
+FROM swift:6.3.3-bookworm@sha256:2b1e7c39309277dfd9e3ca472ff60342969b323125701bcb06bfc2cf9c8f69af
 
 CMD echo this is a dummy file used to automate dependency upgrades for plugins
