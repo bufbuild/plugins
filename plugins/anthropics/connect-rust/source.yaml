@@ -1,3 +1,5 @@
 source:
+  # Moved to connectrpc/rust
+  disabled: true
   crates:
     crate_name: connectrpc-codegen
