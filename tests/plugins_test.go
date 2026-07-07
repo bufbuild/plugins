@@ -81,6 +81,7 @@ exec docker run --log-driver=none --rm -i {{.ImageName}}:{{.Version}} "$@"
 		// build time. The standalone test harness has no dep chain, so provide
 		// a placeholder catch-all mapping.
 		"buf.build/anthropics/connect-rust": {"extern_path=.=crate"},
+		"buf.build/connectrpc/rust":         {"extern_path=.=crate"},
 	}
 	// Some plugins do not generate any code for the test protos, so we allow an empty plugin.sum file for these
 	// plugins. The format of the map is map[pluginName]map[image]bool, where the bool indicates whether an empty

@@ -1,29 +1,28 @@
 version: v1
-name: buf.build/anthropics/connect-rust
-plugin_version: v0.7.0
-source_url: https://github.com/anthropics/connect-rust
-description: Generates ConnectRPC service traits, typed clients, and monomorphic dispatchers for Rust. Compatible with the Connect, gRPC, and gRPC-Web protocols. Passes the full ConnectRPC conformance suite.
+name: buf.build/connectrpc/rust
+plugin_version: v0.8.0
+source_url: https://github.com/connectrpc/connect-rust
+description: Generates ConnectRPC service traits, typed clients, and monomorphic dispatchers for Rust. Compatible with the Connect, gRPC, and gRPC-Web protocols.
 deps:
-  - plugin: buf.build/anthropics/buffa:v0.7.1
+  - plugin: buf.build/anthropics/buffa:v0.8.1
 output_languages:
   - rust
 spdx_license_id: Apache-2.0
-license_url: https://github.com/anthropics/connect-rust/blob/v0.7.0/LICENSE
-deprecated: true
+license_url: https://github.com/connectrpc/connect-rust/blob/v0.8.0/LICENSE
 registry:
   cargo:
     rust_version: "1.88"
     deps:
       # ConnectRPC runtime: Router, Context, ConnectError, client transports.
-      # https://github.com/anthropics/connect-rust/blob/v0.7.0/connectrpc/Cargo.toml
+      # https://github.com/connectrpc/connect-rust/blob/v0.8.0/connectrpc/Cargo.toml
       - name: "connectrpc"
-        req: "0.7.0"
+        req: "0.8.0"
         default_features: true
       # Generated service stubs use buffa::Message, buffa::view::OwnedView,
       # buffa::bytes::Bytes directly. Message types live in the buffa SDK
       # crate (via the plugin dep above); this dep is for the runtime API.
       - name: "buffa"
-        req: "0.7.1"
+        req: "0.8.1"
         default_features: true
       # Well-known types. Service stubs whose request/response types are
       # WKTs (e.g. google.longrunning.Operations) reference them as
@@ -31,7 +30,7 @@ registry:
       # extern_path mapping for `.google.protobuf`. Must be a direct dep
       # so the `::buffa_types` path resolves in the generated crate.
       - name: "buffa-types"
-        req: "0.7.1"
+        req: "0.8.1"
         default_features: true
         features:
           - json
