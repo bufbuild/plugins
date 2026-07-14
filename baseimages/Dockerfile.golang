@@ -1,3 +1,3 @@
-FROM golang:1.26.5-trixie@sha256:116489021a0d8ca3facf79f84ee69052cff88733547150a644d45c5eaa91dc43
+FROM golang:1.26.5-trixie@sha256:c5fa560ff09f181211b5dc09158b5ac08c05fe379a7f8f083ac618386098f602
 
 CMD echo this is a dummy file used to automate dependency upgrades for plugins
