@@ -13,9 +13,9 @@ require (
 	github.com/hashicorp/go-retryablehttp v0.7.8
 	github.com/spf13/pflag v1.0.10
 	github.com/stretchr/testify v1.11.1
-	golang.org/x/mod v0.37.0
+	golang.org/x/mod v0.38.0
 	golang.org/x/oauth2 v0.36.0
-	golang.org/x/sync v0.21.0
+	golang.org/x/sync v0.22.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 
