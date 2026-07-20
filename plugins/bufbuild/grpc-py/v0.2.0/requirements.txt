@@ -1,0 +1,2 @@
+protoc-gen-grpc-py==0.2.0
+protobuf-py==0.1.1
