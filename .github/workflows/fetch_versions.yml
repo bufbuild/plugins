@@ -31,7 +31,7 @@ jobs:
           token: ${{ steps.generate_token.outputs.token }}
           fetch-depth: 0 # full history needed for update_frequency git log lookups
       - name: Install Go
-        uses: actions/setup-go@v6
+        uses: actions/setup-go@v7
         with:
           go-version-file: 'go.mod'
           check-latest: true
