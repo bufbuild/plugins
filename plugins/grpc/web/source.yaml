@@ -1,3 +1,7 @@
 source:
   npm_registry:
     name: grpc-web
+  ignore_versions:
+    # 2.1.0 was published to npm and tagged, but no GitHub release was cut, so
+    # the source tarball the Dockerfile downloads does not exist.
+    - v2.1.0
