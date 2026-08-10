@@ -19,6 +19,6 @@ registry:
       - package: '@connectrpc/connect-query'
         version: ^2.3.1
       - package: '@bufbuild/protobuf'
-        version: ^2.7.0
+        version: ^2.13.0
 spdx_license_id: Apache-2.0
 license_url: https://github.com/connectrpc/connect-query-es/blob/v2.3.1/LICENSE
