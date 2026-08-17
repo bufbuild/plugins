@@ -89,6 +89,7 @@ exec docker run --log-driver=none --rm -i {{.ImageName}}:{{.Version}} "$@"
 	allowedEmptyPluginSums = map[string]map[string]bool{
 		"buf.build/bufbuild/validate-java":            {"eliza": true, "petapis": true},
 		"buf.build/grpc-ecosystem/gateway":            {"eliza": true, "petapis": true},
+		"buf.build/grpc-ecosystem/openapiv3":          {"eliza": true, "petapis": true},
 		"buf.build/community/mercari-grpc-federation": {"eliza": true, "petapis": true},
 		"buf.build/googlecloudplatform/bq-schema":     {"eliza": true, "petapis": true},
 	}
@@ -154,6 +155,8 @@ func TestGeneration(t *testing.T) {
 				if semver.Compare(toTest.PluginVersion, "v2.16.0") >= 0 {
 					testPluginWithImage(t, toTest, "grpc-gateway")
 				}
+			case "grpc-ecosystem/openapiv3":
+				testPluginWithImage(t, toTest, "grpc-gateway")
 			case "community/mercari-grpc-federation":
 				switch {
 				case semver.Compare(toTest.PluginVersion, "v1.4.1") >= 0:
