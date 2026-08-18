@@ -55,7 +55,7 @@ jobs:
     - uses: bufbuild/buf-action@v1
       with:
         setup_only: true
-    - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+    - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
     - name: Login to Docker Hub
       if: ${{ env.DOCKERHUB_USERNAME != '' }}
       uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
