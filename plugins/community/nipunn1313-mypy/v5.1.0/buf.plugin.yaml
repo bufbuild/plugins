@@ -11,7 +11,8 @@ registry:
   python:
     package_type: "stub-only"
     # https://github.com/nipunn1313/mypy-protobuf/blob/v5.1.0/pyproject.toml#L21
-    requires_python: ">=3.8"
+    # Bumped to match protobuf requirement.
+    requires_python: ">=3.9"
     deps:
       # https://github.com/nipunn1313/mypy-protobuf/tree/v5.1.0#requirements-to-run-typecheckers-on-stubs-generated-by-mypy-protobuf
       # > Earlier releases might work, but aren't tested.
