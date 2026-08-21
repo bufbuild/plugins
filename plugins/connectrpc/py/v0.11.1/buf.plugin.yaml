@@ -7,7 +7,7 @@ spdx_license_id: Apache-2.0
 license_url: https://github.com/connectrpc/connect-py/blob/v0.11.1/LICENSE
 deps:
   # https://github.com/connectrpc/connect-py/blob/v0.11.1/pyproject.toml#L32
-  - plugin: buf.build/bufbuild/py:v0.1.1
+  - plugin: buf.build/bufbuild/py:v0.2.0
 output_languages:
   - python
 registry:
