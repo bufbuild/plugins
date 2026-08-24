@@ -2,3 +2,6 @@ source:
   github:
     owner: nanopb
     repository: nanopb
+  ignore_versions:
+    # Git tag exists but pypi release isn't out yet.
+    - v0.4.92
