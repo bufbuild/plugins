@@ -4,10 +4,13 @@ linters:
   disable:
     - cyclop            # covered by gocyclo
     - depguard          # not needed
-    - exhaustruct
+    - exhaustruct       # don't _always_ need to exhaustively create struct
+    - exhaustruct_v5    # don't _always_ need to exhaustively create struct
     - funlen            # rely on code review to limit function length
     - gochecknoglobals  # sometimes useful to declare constants
     - gocognit          # dubious "cognitive overhead" quantification
+    - goconst           # too noisy
+    - gomodguard        # replaced with gomodguard_v2
     - ireturn           # "accept interfaces, return structs" isn't ironclad
     - lll               # don't want hard limits for line length
     - maintidx          # covered by gocyclo

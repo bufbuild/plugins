@@ -188,7 +188,7 @@ func (c *command) addPackageVersionCandidates(
 ) ([]pluginNameVersion, error) {
 	var added []pluginNameVersion
 	opts := &github.PackageListOptions{
-		ListOptions: github.ListOptions{PerPage: 100},
+		PerPage: 100,
 	}
 	for {
 		versions, resp, err := ghClient.GitHub.Organizations.PackageGetAllVersions(

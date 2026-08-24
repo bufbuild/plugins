@@ -8,7 +8,7 @@ DOCKER_BUILD_EXTRA_ARGS ?=
 DOCKER_BUILDER := bufbuild-plugins
 DOCKER_CACHE_DIR ?= $(TMP)/dockercache
 GO ?= go
-GOLANGCI_LINT_VERSION ?= v2.11.4
+GOLANGCI_LINT_VERSION ?= v2.13.1
 GOLANGCI_LINT := $(TMP)/golangci-lint-$(GOLANGCI_LINT_VERSION)
 # OUTPUT_DIR is the directory where plugin zip files are written by `make package`.
 OUTPUT_DIR ?= $(TMP)/plugins
