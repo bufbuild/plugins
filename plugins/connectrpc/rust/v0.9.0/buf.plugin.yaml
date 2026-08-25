@@ -1,0 +1,32 @@
+version: v1
+name: buf.build/connectrpc/rust
+plugin_version: v0.9.0
+source_url: https://github.com/connectrpc/connect-rust
+description: Generates ConnectRPC service traits, typed clients, and monomorphic dispatchers for Rust. Compatible with the Connect, gRPC, and gRPC-Web protocols.
+deps:
+  - plugin: buf.build/anthropics/buffa:v0.9.1
+output_languages:
+  - rust
+spdx_license_id: Apache-2.0
+license_url: https://github.com/connectrpc/connect-rust/blob/v0.9.0/LICENSE
+registry:
+  cargo:
+    rust_version: "1.88"
+    deps:
+      - name: "connectrpc"
+        req: "0.9.0"
+        default_features: true
+      - name: "buffa"
+        req: "0.9.1"
+        default_features: true
+      - name: "buffa-types"
+        req: "0.9.1"
+        default_features: true
+        features:
+          - json
+  opts:
+    # Emit one `<dotted.package>.rs` per proto package, mirroring the
+    # buffa plugin's `file_per_package=true` opt. Matches the
+    # prost/tonic filename convention the BSR Rust SDK lib.rs
+    # synthesis expects.
+    - file_per_package
