@@ -8,7 +8,12 @@ RUN curl -fsSL -o servicetalk-grpc-protoc.jar https://repo1.maven.org/maven2/io/
 
 FROM eclipse-temurin:25-jdk@sha256:e787e08ef76f4c16866108cd7f9fcd96a68eef3ac6cc76866897d4d02d5a2262 AS jre
 RUN jlink --add-modules java.base,java.compiler,java.instrument,java.logging,java.management,jdk.unsupported \
-      --strip-debug --no-man-pages --no-header-files --output /jre
+  --strip-debug \
+  --no-man-pages \
+  --no-header-files \
+  --generate-cds-archive \
+  --output /jre \
+ && rm /jre/lib/server/classes_nocoops.jsa
 
 FROM gcr.io/distroless/cc-debian13:latest@sha256:e86cf4f565c8eee2cbb2be073bb107dafb14734b53d5872da20fdf47418a02f4 AS base
 
