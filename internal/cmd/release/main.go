@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io/fs"
 	"log/slog"
+	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -22,6 +23,7 @@ import (
 	githubkeychain "github.com/google/go-containerregistry/pkg/authn/github"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
+	"github.com/google/go-containerregistry/pkg/v1/remote/transport"
 	"github.com/google/go-github/v72/github"
 	"github.com/spf13/pflag"
 	"golang.org/x/mod/semver"
@@ -590,12 +592,32 @@ func (c *command) pluginReleasesURL(releaseName string) string {
 
 func fetchRegistryImageAndImageID(plugin *plugin.Plugin) (string, string, error) {
 	identity := plugin.Identity
-	imageName := fmt.Sprintf("ghcr.io/%s/plugins-%s-%s:%s", release.GithubOwnerBufbuild, identity.Owner(), identity.Plugin(), plugin.PluginVersion)
+	imageName := fmt.Sprintf(
+		"ghcr.io/%s/plugins-%s-%s:%s",
+		release.GithubOwnerBufbuild,
+		identity.Owner(),
+		identity.Plugin(),
+		plugin.PluginVersion,
+	)
+	registryImage, imageID, err := fetchImageAndImageIDFromRegistry(
+		imageName,
+		remote.WithAuthFromKeychain(githubkeychain.Keychain),
+	)
+	if err != nil {
+		if isImageNotFoundError(err) {
+			return "", "", nil
+		}
+		return "", "", err
+	}
+	return registryImage, imageID, nil
+}
+
+func fetchImageAndImageIDFromRegistry(imageName string, options ...remote.Option) (string, string, error) {
 	parsedName, err := name.ParseReference(imageName)
 	if err != nil {
 		return "", "", err
 	}
-	remoteImage, err := remote.Image(parsedName, remote.WithAuthFromKeychain(githubkeychain.Keychain))
+	remoteImage, err := remote.Image(parsedName, options...)
 	if err != nil {
 		return "", "", err
 	}
@@ -608,4 +630,12 @@ func fetchRegistryImageAndImageID(plugin *plugin.Plugin) (string, string, error)
 		return "", "", err
 	}
 	return fmt.Sprintf("%s@%s", imageName, remoteDigest.String()), manifest.Config.Digest.String(), nil
+}
+
+func isImageNotFoundError(err error) bool {
+	var transportErr *transport.Error
+	if !errors.As(err, &transportErr) {
+		return false
+	}
+	return transportErr.StatusCode == http.StatusNotFound
 }
