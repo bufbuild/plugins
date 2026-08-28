@@ -15,7 +15,6 @@ import (
 	"github.com/google/go-github/v72/github"
 	"github.com/hashicorp/go-retryablehttp"
 	"golang.org/x/mod/semver"
-	"golang.org/x/oauth2"
 
 	"github.com/bufbuild/plugins/internal/source"
 )
@@ -26,7 +25,7 @@ const (
 	dartFlutterAPIURL = "https://pub.dev/api/packages"
 	goProxyURL        = "https://proxy.golang.org"
 	npmRegistryURL    = "https://registry.npmjs.org"
-	mavenURL          = "https://repo1.maven.org/maven2"
+	mavenURL          = "https://repo.maven.apache.org/maven2"
 	// docs: https://packaging.python.org/en/latest/specifications/simple-repository-api/
 	pypiURL = "https://pypi.org/simple"
 )
@@ -44,23 +43,24 @@ type Client struct {
 }
 
 // New returns a new client.
-func New(ctx context.Context) *Client {
-	var client *http.Client
+func New() *Client {
+	httpClient := NewHTTPClient()
+	ghClient := github.NewClient(httpClient)
 	if ghToken := os.Getenv("GITHUB_TOKEN"); ghToken != "" {
-		ts := oauth2.StaticTokenSource(
-			&oauth2.Token{AccessToken: ghToken},
-		)
-		client = oauth2.NewClient(ctx, ts)
-	} else {
-		retryableClient := retryablehttp.NewClient()
-		retryableClient.Logger = nil
-		client = retryableClient.StandardClient()
+		ghClient = ghClient.WithAuthToken(ghToken)
 	}
 	return &Client{
-		httpClient:  client,
-		ghClient:    github.NewClient(client),
+		httpClient:  httpClient,
+		ghClient:    ghClient,
 		pypiBaseURL: pypiURL,
 	}
+}
+
+// NewHTTPClient returns an HTTP client which retries transient failures.
+func NewHTTPClient() *http.Client {
+	retryableClient := retryablehttp.NewClient()
+	retryableClient.Logger = nil
+	return retryableClient.StandardClient()
 }
 
 // Fetch fetches new versions based on the given config and returns a valid semver version
