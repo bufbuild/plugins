@@ -109,12 +109,12 @@ func newRootCommand(name string) *appcmd.Command {
 		Short: "Fetches latest plugin versions from external sources.",
 		Args:  appcmd.MaximumNArgs(1),
 		Run: builder.NewRunFunc(func(ctx context.Context, container appext.Container) error {
-			client := fetchclient.New(ctx)
+			client := fetchclient.New()
 			created, err := run(ctx, container, client, f)
 			if err != nil {
 				return fmt.Errorf("failed to fetch versions: %w", err)
 			}
-			if err := postProcessCreatedPlugins(ctx, container.Logger(), http.DefaultClient, created); err != nil {
+			if err := postProcessCreatedPlugins(ctx, container.Logger(), fetchclient.NewHTTPClient(), created); err != nil {
 				return fmt.Errorf("failed to run post-processing on plugins: %w", err)
 			}
 			if err := writeGitHubOutput("pr_title", generatePRTitle(created)); err != nil {
