@@ -10,7 +10,7 @@ license_url: https://github.com/protocolbuffers/protobuf/blob/v36.1/LICENSE
 registry:
   python:
     package_type: "stub-only"
-    # https://github.com/protocolbuffers/protobuf/blob/v36.1/python/dist/setup.py#L91
+    # https://github.com/protocolbuffers/protobuf/blob/v36.1/python/dist/setup.py#L95
     requires_python: ">=3.10"
     deps:
       # https://pypi.org/project/protobuf/
