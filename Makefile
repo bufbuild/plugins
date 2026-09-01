@@ -37,7 +37,7 @@ ifeq ($(PLUGINS),)
 else
 	docker buildx inspect "$(DOCKER_BUILDER)" 2> /dev/null || docker buildx create --use --bootstrap --name="$(DOCKER_BUILDER)" > /dev/null
 	$(GO) run ./internal/cmd/dockerbuild -cache-dir "$(DOCKER_CACHE_DIR)" -org "$(DOCKER_ORG)" -- $(DOCKER_BUILD_EXTRA_ARGS) || \
-		(docker buildx rm "$(DOCKER_BUILDER)"; exit 1)
+		(docker buildx --timeout 5m rm "$(DOCKER_BUILDER)"; exit 1)
 	docker buildx rm --timeout 5m "$(DOCKER_BUILDER)" > /dev/null
 endif
 
