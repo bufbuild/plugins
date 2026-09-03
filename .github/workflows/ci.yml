@@ -18,7 +18,11 @@ permissions:
   contents: read
   packages: write
 
-concurrency: ci-${{ github.ref }}
+concurrency:
+  group: ci-${{ github.ref }}
+  # Queue pending runs instead of replacing them, so we build every commit.
+  # Ref: https://github.blog/changelog/2026-05-07-github-actions-concurrency-groups-now-allow-larger-queues/
+  queue: max
 
 defaults:
   run:
@@ -39,15 +43,17 @@ jobs:
       with:
         go-version-file: 'go.mod'
         check-latest: true
-    - name: Calculate changed plugins and set PLUGINS env var from last successful commit push
+    - name: Calculate changed plugins and set PLUGINS env var from the commit being built
       if: ${{ inputs.plugins == '' }}
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        REPOSITORY: ${{ github.repository }}
-        REF_NAME: ${{ github.ref_name }}
       run: |
-        base_ref=$(gh api "repos/${REPOSITORY}/actions/workflows/ci.yml/runs?branch=${REF_NAME}&status=success&per_page=1" --jq '.workflow_runs[0].head_sha')
-        val=$(go run ./internal/cmd/changed-plugins --base-ref "${base_ref}")
+        # We only allow squash merges to main, so we only need to look one commit back.
+        # Combined with concurrency `queue: max`, we should build every commit to main.
+        # We have to do this because `base_sha` from the GitHub API is no longer reliable.
+        # Ref: https://github.com/orgs/community/discussions/206725
+        #
+        # In a break glass scenario, run this workflow manually and specify the PLUGINS input.
+        # This will force a rebuild and publish of the selected plugins.
+        val=$(go run ./internal/cmd/changed-plugins --base-ref HEAD~1)
         if [[ -n "${val}" && -z "${PLUGINS}" ]]; then
           echo "PLUGINS=${val}" >> $GITHUB_ENV
         fi
