@@ -1,3 +1,3 @@
-FROM docker/dockerfile:1.26
+FROM docker/dockerfile:1.27
 
 CMD echo this is a dummy file used to automate dependency upgrades for plugins
