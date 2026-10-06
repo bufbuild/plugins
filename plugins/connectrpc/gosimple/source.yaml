@@ -2,3 +2,5 @@ source:
   github:
     owner: connectrpc
     repository: connect-go
+  # connect-go v2 generates the simple API by default, use connectrpc/go for v2
+  max_version: 2.0.0
