@@ -1,0 +1,20 @@
+version: v1
+name: buf.build/connectrpc/go
+plugin_version: v2.0.0
+source_url: https://github.com/connectrpc/connect-go
+integration_guide_url: https://connectrpc.com/docs/go/getting-started
+description: Generates client and server stubs for connectrpc.com/connect/v2. Compatible with the gRPC, gRPC-Web, and Connect RPC protocols.
+deps:
+  - plugin: buf.build/protocolbuffers/go:v1.36.12
+output_languages:
+  - go
+registry:
+  go:
+    min_version: "1.26"
+    deps:
+      - module: connectrpc.com/connect/v2
+        version: v2.0.0
+  opts:
+    - paths=source_relative
+spdx_license_id: Apache-2.0
+license_url: https://github.com/connectrpc/connect-go/blob/v2.0.0/LICENSE
