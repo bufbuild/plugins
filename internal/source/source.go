@@ -2,6 +2,7 @@ package source
 
 import (
 	"errors"
+	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -38,7 +39,7 @@ func loadConfigFile(filename string) (_ *Config, retErr error) {
 	}()
 	config, err := NewConfig(file)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%s: %w", filename, err)
 	}
 	config.Filename = filename
 	return config, nil

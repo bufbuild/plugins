@@ -1,8 +1,13 @@
 package source
 
 import (
+	"errors"
+	"fmt"
 	"io"
+	"slices"
+	"strings"
 
+	"golang.org/x/mod/semver"
 	"gopkg.in/yaml.v3"
 )
 
@@ -24,6 +29,9 @@ func NewConfig(reader io.Reader) (*Config, error) {
 	decoder.KnownFields(true)
 	var config *Config
 	if err := decoder.Decode(&config); err != nil {
+		return nil, err
+	}
+	if err := config.Source.normalizeVersions(); err != nil {
 		return nil, err
 	}
 	return config, nil
@@ -79,6 +87,30 @@ func (s *Source) Name() string {
 	return "unknown"
 }
 
+// LatestVersion returns the highest of the given versions that is not listed
+// in IgnoreVersions and is below MaxVersion (if set). Versions must be valid
+// semver with a "v" prefix.
+func (s *Source) LatestVersion(versions []string) (string, error) {
+	var latestVersion string
+	for _, version := range versions {
+		if s.MaxVersion != "" && semver.Compare(version, s.MaxVersion) >= 0 {
+			continue
+		}
+		if slices.ContainsFunc(s.IgnoreVersions, func(ignoreVersion string) bool {
+			return semver.Compare(version, ignoreVersion) == 0
+		}) {
+			continue
+		}
+		if latestVersion == "" || semver.Compare(version, latestVersion) > 0 {
+			latestVersion = version
+		}
+	}
+	if latestVersion == "" {
+		return "", errors.New("no versions satisfy ignore_versions and max_version")
+	}
+	return latestVersion, nil
+}
+
 func (s *Source) CacheKey() string {
 	name := s.Name()
 	switch {
@@ -98,6 +130,33 @@ func (s *Source) CacheKey() string {
 		return name + "-" + s.PyPI.CacheKey()
 	}
 	return name
+}
+
+// normalizeVersions adds a "v" prefix to MaxVersion and IgnoreVersions and
+// validates that they are semver.
+func (s *Source) normalizeVersions() error {
+	if s.MaxVersion != "" {
+		maxVersion := ensureVPrefix(s.MaxVersion)
+		if !semver.IsValid(maxVersion) {
+			return fmt.Errorf("max_version is not a valid semver: %s", s.MaxVersion)
+		}
+		s.MaxVersion = maxVersion
+	}
+	for i, ignoreVersion := range s.IgnoreVersions {
+		normalized := ensureVPrefix(ignoreVersion)
+		if !semver.IsValid(normalized) {
+			return fmt.Errorf("ignore_versions entry is not a valid semver: %q", ignoreVersion)
+		}
+		s.IgnoreVersions[i] = normalized
+	}
+	return nil
+}
+
+func ensureVPrefix(version string) string {
+	if strings.HasPrefix(version, "v") {
+		return version
+	}
+	return "v" + version
 }
 
 // CratesConfig is the crates.io API configuration.

@@ -203,9 +203,9 @@ func TestRunDependencyOrdering(t *testing.T) {
 	// Mock fetcher that returns new versions for our test plugins
 	// Cache keys are formatted as "github-owner-repository"
 	fetcher := &mockFetcher{
-		versions: map[string]string{
-			"github-test-base-plugin":     "v2.0.0",
-			"github-test-consumer-plugin": "v2.0.0",
+		versions: map[string][]string{
+			"github-test-base-plugin":     {"v1.0.0", "v2.0.0"},
+			"github-test-consumer-plugin": {"v1.0.0", "v2.0.0"},
 		},
 	}
 
@@ -244,9 +244,9 @@ func TestRunUpdateFrequency(t *testing.T) {
     repository: base-plugin
 `
 	fetcher := &mockFetcher{
-		versions: map[string]string{
-			"github-test-base-plugin":     "v2.0.0",
-			"github-test-consumer-plugin": "v2.0.0",
+		versions: map[string][]string{
+			"github-test-base-plugin":     {"v1.0.0", "v2.0.0"},
+			"github-test-consumer-plugin": {"v1.0.0", "v2.0.0"},
 		},
 	}
 
@@ -294,16 +294,14 @@ func TestRunUpdateFrequency(t *testing.T) {
 
 // mockFetcher returns predetermined versions for testing.
 type mockFetcher struct {
-	versions map[string]string // maps cache key (e.g., "github-owner-repo") -> version to return
+	versions map[string][]string // maps cache key (e.g., "github-owner-repo") -> versions to return
 }
 
-func (m *mockFetcher) Fetch(_ context.Context, config *source.Config) (string, error) {
-	key := config.CacheKey()
-	if version, ok := m.versions[key]; ok {
-		return version, nil
+func (m *mockFetcher) FetchVersions(_ context.Context, src *source.Source) ([]string, error) {
+	if versions, ok := m.versions[src.CacheKey()]; ok {
+		return versions, nil
 	}
-	// Return a default version if not in map
-	return "v1.0.0", nil
+	return []string{"v1.0.0"}, nil
 }
 
 // setupTestRepository creates a complete test repository structure with:
@@ -613,4 +611,46 @@ func newTestContainer(t *testing.T, root string) appext.Container {
 	require.NoError(t, err)
 	logger := slog.New(slog.NewTextHandler(testWriter{t}, &slog.HandlerOptions{Level: slog.LevelDebug}))
 	return appext.NewContainer(nameContainer, logger, appext.LogLevelDebug, appext.LogFormatText)
+}
+
+func TestFetchPendingCreationsMaxVersionSharedSource(t *testing.T) {
+	t.Parallel()
+	pluginsDir := filepath.Join(t.TempDir(), "plugins")
+	writePlugin := func(name string, sourceYAML string) {
+		pluginDir := filepath.Join(pluginsDir, "test", name)
+		require.NoError(t, os.MkdirAll(filepath.Join(pluginDir, "v1.0.0"), 0755))
+		require.NoError(t, os.WriteFile(filepath.Join(pluginDir, "source.yaml"), []byte(sourceYAML), 0644))
+	}
+	writePlugin("unbounded", `source:
+  github:
+    owner: test
+    repository: shared
+`)
+	writePlugin("bounded", `source:
+  github:
+    owner: test
+    repository: shared
+  max_version: 2.0.0
+`)
+	configs, err := source.GatherConfigs(pluginsDir)
+	require.NoError(t, err)
+	fetcher := &mockFetcher{
+		versions: map[string][]string{
+			"github-test-shared": {"v1.0.0", "v1.1.0", "v2.0.0"},
+		},
+	}
+	logger := slog.New(slog.DiscardHandler)
+	pending, err := fetchPendingCreations(t.Context(), logger, fetcher, configs, nil, nil)
+	require.NoError(t, err)
+	require.Len(t, pending, 2)
+	for _, config := range configs {
+		pluginDir, err := filepath.Abs(filepath.Dir(config.Filename))
+		require.NoError(t, err)
+		require.Contains(t, pending, pluginDir)
+		want := "v2.0.0"
+		if config.Source.MaxVersion != "" {
+			want = "v1.1.0"
+		}
+		assert.Equal(t, want, pending[pluginDir].newVersion, pluginDir)
+	}
 }
