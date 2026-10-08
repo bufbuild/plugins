@@ -13,7 +13,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"slices"
 	"strings"
 	"time"
 
@@ -94,7 +93,8 @@ func (f *pluginFilter) includes(org, name string) bool {
 
 // Fetcher is an interface for fetching plugin versions from external sources.
 type Fetcher interface {
-	Fetch(ctx context.Context, config *source.Config) (string, error)
+	// FetchVersions return all non-prerelease versions for the specified source.
+	FetchVersions(ctx context.Context, src *source.Source) ([]string, error)
 }
 
 func main() {
@@ -646,7 +646,7 @@ func fetchPendingCreations(
 	versionTime func(ctx context.Context, path string) (time.Time, error),
 ) (map[string]*pluginToCreate, error) {
 	filter := newPluginFilter(includes)
-	latestVersions := make(map[string]string, len(configs))
+	versionsByCacheKey := make(map[string][]string, len(configs))
 	pendingCreations := make(map[string]*pluginToCreate)
 
 	for _, config := range configs {
@@ -670,35 +670,29 @@ func fetchPendingCreations(
 				continue
 			}
 		}
-		newVersion := latestVersions[config.CacheKey()]
-		if newVersion == "" {
+		versions, ok := versionsByCacheKey[config.CacheKey()]
+		if !ok {
 			var err error
-			newVersion, err = fetcher.Fetch(ctx, config)
+			versions, err = fetcher.FetchVersions(ctx, &config.Source)
 			if err != nil {
-				if errors.Is(err, fetchclient.ErrSemverPrerelease) {
-					logger.InfoContext(ctx, "skipping source", slog.String("filename", config.Filename), slog.Any("error", err))
-					continue
-				}
-				return nil, err
+				return nil, fmt.Errorf("%s: %w", config.Filename, err)
 			}
-			latestVersions[config.CacheKey()] = newVersion
+			versionsByCacheKey[config.CacheKey()] = versions
 		}
-		// Some plugins share the same source but specify different ignore versions.
-		// Ensure we continue to only fetch the latest version once but still respect ignores.
-		if slices.Contains(config.Source.IgnoreVersions, newVersion) {
-			logger.InfoContext(ctx, "skipping source", slog.String("filename", config.Filename), slog.String("version", newVersion))
-			continue
+		newVersion, err := config.Source.LatestVersion(versions)
+		if err != nil {
+			return nil, fmt.Errorf("%s: %w", config.Filename, err)
 		}
 		// Convert to absolute path to match plugin.Walk behavior (which converts paths via filepath.Abs)
 		pluginDir, err := filepath.Abs(filepath.Dir(config.Filename))
 		if err != nil {
 			return nil, err
 		}
-		ok, err := checkDirExists(filepath.Join(pluginDir, newVersion))
+		exists, err := checkDirExists(filepath.Join(pluginDir, newVersion))
 		if err != nil {
 			return nil, err
 		}
-		if ok {
+		if exists {
 			continue
 		}
 		previousVersion, err := getLatestVersionFromDir(pluginDir)

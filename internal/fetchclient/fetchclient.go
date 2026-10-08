@@ -6,14 +6,17 @@ import (
 	"encoding/xml"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"os"
+	"slices"
 	"strings"
 
-	"buf.build/go/standard/xslices"
 	"github.com/google/go-github/v72/github"
 	"github.com/hashicorp/go-retryablehttp"
+	"golang.org/x/mod/modfile"
+	"golang.org/x/mod/module"
 	"golang.org/x/mod/semver"
 
 	"github.com/bufbuild/plugins/internal/source"
@@ -30,16 +33,12 @@ const (
 	pypiURL = "https://pypi.org/simple"
 )
 
-var (
-	// ErrSemverPrerelease is returned when a version is a pre-release.
-	ErrSemverPrerelease = errors.New("pre-release versions are not supported")
-)
-
-// Client is a client used to fetch latest package version.
+// Client is a client used to fetch package versions.
 type Client struct {
-	httpClient  *http.Client
-	ghClient    *github.Client
-	pypiBaseURL string
+	httpClient     *http.Client
+	ghClient       *github.Client
+	goProxyBaseURL string
+	pypiBaseURL    string
 }
 
 // New returns a new client.
@@ -50,9 +49,10 @@ func New() *Client {
 		ghClient = ghClient.WithAuthToken(ghToken)
 	}
 	return &Client{
-		httpClient:  httpClient,
-		ghClient:    ghClient,
-		pypiBaseURL: pypiURL,
+		httpClient:     httpClient,
+		ghClient:       ghClient,
+		goProxyBaseURL: goProxyURL,
+		pypiBaseURL:    pypiURL,
 	}
 }
 
@@ -63,62 +63,41 @@ func NewHTTPClient() *http.Client {
 	return retryableClient.StandardClient()
 }
 
-// Fetch fetches new versions based on the given config and returns a valid semver version
-// that can be used with the Go semver package. The version is guaranteed to contain a "v" prefix.
-func (c *Client) Fetch(ctx context.Context, config *source.Config) (string, error) {
-	version, err := c.fetch(ctx, config)
+// FetchVersions returns every stable version published by the source's
+// upstream. Each version is valid semver with a "v" prefix. Prereleases and
+// versions that are not valid semver are omitted.
+func (c *Client) FetchVersions(ctx context.Context, src *source.Source) ([]string, error) {
+	versions, err := c.fetchVersions(ctx, src)
 	if err != nil {
-		return "", fmt.Errorf("%s: %w", config.Source.Name(), err)
+		return nil, fmt.Errorf("%s: %w", src.Name(), err)
 	}
-	// We must ensure that the version is prefixed with "v" for the semver package.
-	if !strings.HasPrefix(version, "v") {
-		version = "v" + version
+	if len(versions) == 0 {
+		return nil, fmt.Errorf("%s: no versions found", src.Name())
 	}
-	if !semver.IsValid(version) {
-		return "", fmt.Errorf("%s: invalid semver: %s", config.Source.Name(), version)
-	}
-	if semver.Prerelease(version) != "" {
-		return "", fmt.Errorf("%s: %w: %s", config.Source.Name(), ErrSemverPrerelease, version)
-	}
-	return version, nil
+	return versions, nil
 }
 
-func (c *Client) fetch(ctx context.Context, config *source.Config) (string, error) {
-	ignoreVersions := xslices.ToStructMap(config.Source.IgnoreVersions)
-	maxVersion := config.Source.MaxVersion
-	if maxVersion != "" {
-		if !strings.HasPrefix(maxVersion, "v") {
-			maxVersion = "v" + maxVersion
-		}
-		if !semver.IsValid(maxVersion) {
-			return "", fmt.Errorf("%s: max_version is not a valid semver: %s", config.Filename, config.Source.MaxVersion)
-		}
-	}
+func (c *Client) fetchVersions(ctx context.Context, src *source.Source) ([]string, error) {
 	switch {
-	case config.Source.GitHub != nil:
-		return c.fetchGithub(ctx, config.Source.GitHub.Owner, config.Source.GitHub.Repository, ignoreVersions, maxVersion)
-	case config.Source.DartFlutter != nil:
-		return c.fetchDartFlutter(ctx, config.Source.DartFlutter.Name, ignoreVersions, maxVersion)
-	case config.Source.GoProxy != nil:
-		return c.fetchGoProxy(ctx, config.Source.GoProxy.Name, ignoreVersions, maxVersion)
-	case config.Source.NPMRegistry != nil:
-		return c.fetchNPMRegistry(ctx, config.Source.NPMRegistry.Name, ignoreVersions, maxVersion)
-	case config.Source.Maven != nil:
-		return c.fetchMaven(ctx, config.Source.Maven.Group, config.Source.Maven.Name, ignoreVersions, maxVersion)
-	case config.Source.Crates != nil:
-		return c.fetchCrate(ctx, config.Source.Crates.CrateName, ignoreVersions, maxVersion)
-	case config.Source.PyPI != nil:
-		return c.fetchPyPI(ctx, config.Source.PyPI.Name, ignoreVersions, maxVersion)
+	case src.GitHub != nil:
+		return c.fetchGithub(ctx, src.GitHub.Owner, src.GitHub.Repository)
+	case src.DartFlutter != nil:
+		return c.fetchDartFlutter(ctx, src.DartFlutter.Name)
+	case src.GoProxy != nil:
+		return c.fetchGoProxy(ctx, src.GoProxy.Name)
+	case src.NPMRegistry != nil:
+		return c.fetchNPMRegistry(ctx, src.NPMRegistry.Name)
+	case src.Maven != nil:
+		return c.fetchMaven(ctx, src.Maven.Group, src.Maven.Name)
+	case src.Crates != nil:
+		return c.fetchCrate(ctx, src.Crates.CrateName)
+	case src.PyPI != nil:
+		return c.fetchPyPI(ctx, src.PyPI.Name)
 	}
-	return "", errors.New("failed to match a source")
+	return nil, errors.New("failed to match a source")
 }
 
-func (c *Client) fetchDartFlutter(
-	ctx context.Context,
-	name string,
-	ignoreVersions map[string]struct{},
-	maxVersion string,
-) (string, error) {
+func (c *Client) fetchDartFlutter(ctx context.Context, name string) (_ []string, retErr error) {
 	request, err := http.NewRequestWithContext(
 		ctx,
 		http.MethodGet,
@@ -126,55 +105,37 @@ func (c *Client) fetchDartFlutter(
 		nil,
 	)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	response, err := c.httpClient.Do(request)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-	defer response.Body.Close()
+	defer func() {
+		retErr = errors.Join(retErr, response.Body.Close())
+	}()
 	if response.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("received status code %d retrieving %q", response.StatusCode, request.URL.String())
+		return nil, fmt.Errorf("received status code %d retrieving %q", response.StatusCode, request.URL.String())
 	}
 
 	var data struct {
-		Latest struct {
-			Version string `json:"version"`
-		} `json:"latest"`
 		Versions []struct {
 			Version string `json:"version"`
 		} `json:"versions"`
 	}
 	if err := json.NewDecoder(response.Body).Decode(&data); err != nil {
-		return "", err
+		return nil, err
 	}
-	if len(ignoreVersions) == 0 && maxVersion == "" {
-		return data.Latest.Version, nil
-	}
-	var latestVersion string
+	versions := make([]string, 0, len(data.Versions))
 	for _, version := range data.Versions {
-		version, ok := ensureSemverPrefix(version.Version)
-		if !ok {
-			continue
-		}
-		if _, ok := ignoreVersions[version]; ok {
-			continue
-		}
-		if maxVersion != "" && semver.Compare(version, maxVersion) >= 0 {
-			continue
-		}
-		if latestVersion == "" || semver.Compare(latestVersion, version) < 0 {
-			latestVersion = version
+		if v, ok := ensureSemverPrefix(version.Version); ok {
+			versions = append(versions, v)
 		}
 	}
-	// Shouldn't be possible unless we've ignored all versions
-	if latestVersion == "" {
-		return "", fmt.Errorf("failed to calculate latest version for dart source %s", name)
-	}
-	return latestVersion, nil
+	return versions, nil
 }
 
-func (c *Client) fetchCrate(ctx context.Context, name string, ignoreVersions map[string]struct{}, maxVersion string) (string, error) {
+func (c *Client) fetchCrate(ctx context.Context, name string) (_ []string, retErr error) {
 	request, err := http.NewRequestWithContext(
 		ctx,
 		http.MethodGet,
@@ -182,18 +143,20 @@ func (c *Client) fetchCrate(ctx context.Context, name string, ignoreVersions map
 		nil,
 	)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	// See https://github.com/bufbuild/plugins/issues/252 for more information.
 	// We must be careful with this API and respect the crawling policy.
 	request.Header.Set("User-Agent", "bufbuild (github.com/bufbuild/plugins)")
 	response, err := c.httpClient.Do(request)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-	defer response.Body.Close()
+	defer func() {
+		retErr = errors.Join(retErr, response.Body.Close())
+	}()
 	if response.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("received status code %d retrieving %q", response.StatusCode, request.URL.String())
+		return nil, fmt.Errorf("received status code %d retrieving %q", response.StatusCode, request.URL.String())
 	}
 
 	var data struct {
@@ -203,7 +166,7 @@ func (c *Client) fetchCrate(ctx context.Context, name string, ignoreVersions map
 		} `json:"versions"`
 	}
 	if err := json.NewDecoder(response.Body).Decode(&data); err != nil {
-		return "", err
+		return nil, err
 	}
 	versions := make([]string, 0, len(data.Versions))
 	for _, version := range data.Versions {
@@ -212,60 +175,73 @@ func (c *Client) fetchCrate(ctx context.Context, name string, ignoreVersions map
 			// from the server's index.
 			continue
 		}
-		v, ok := ensureSemverPrefix(version.Num)
-		if !ok {
-			continue
+		if v, ok := ensureSemverPrefix(version.Num); ok {
+			versions = append(versions, v)
 		}
-		if _, ok := ignoreVersions[v]; ok {
-			continue
-		}
-		if maxVersion != "" && semver.Compare(v, maxVersion) >= 0 {
-			continue
-		}
-		versions = append(versions, v)
 	}
-	if len(versions) == 0 {
-		return "", errors.New("no versions found")
-	}
-	semver.Sort(versions)
-	return versions[len(versions)-1], nil
+	return versions, nil
 }
 
-func (c *Client) fetchGoProxy(ctx context.Context, name string, ignoreVersions map[string]struct{}, maxVersion string) (string, error) {
-	if len(ignoreVersions) > 0 {
-		return "", errors.New("ignore_versions not supported yet for go sources")
-	}
-	if maxVersion != "" {
-		return "", errors.New("max_version not supported yet for go sources")
-	}
-	request, err := http.NewRequestWithContext(
-		ctx,
-		http.MethodGet,
-		fmt.Sprintf("%s/%s/@latest", goProxyURL, strings.TrimPrefix(name, "/")),
-		nil,
-	)
+func (c *Client) fetchGoProxy(ctx context.Context, name string) ([]string, error) {
+	modulePath := strings.TrimPrefix(name, "/")
+	escapedPath, err := module.EscapePath(modulePath)
 	if err != nil {
-		return "", err
+		return nil, err
+	}
+	list, err := c.getGoProxy(ctx, escapedPath+"/@v/list")
+	if err != nil {
+		return nil, err
+	}
+	var versions []string
+	for line := range strings.Lines(string(list)) {
+		if v, ok := ensureSemverPrefix(strings.TrimSpace(line)); ok {
+			versions = append(versions, v)
+		}
+	}
+	if len(versions) == 0 {
+		return nil, nil
+	}
+	// Like the go command, honor retractions declared by the highest version.
+	highestVersion := slices.MaxFunc(versions, semver.Compare)
+	escapedVersion, err := module.EscapeVersion(highestVersion)
+	if err != nil {
+		return nil, err
+	}
+	modPath := escapedPath + "/@v/" + escapedVersion + ".mod"
+	modData, err := c.getGoProxy(ctx, modPath)
+	if err != nil {
+		return nil, err
+	}
+	modFile, err := modfile.ParseLax(modPath, modData, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse %s: %w", modPath, err)
+	}
+	return slices.DeleteFunc(versions, func(version string) bool {
+		return slices.ContainsFunc(modFile.Retract, func(retract *modfile.Retract) bool {
+			return semver.Compare(version, retract.Low) >= 0 && semver.Compare(version, retract.High) <= 0
+		})
+	}), nil
+}
+
+func (c *Client) getGoProxy(ctx context.Context, path string) (_ []byte, retErr error) {
+	request, err := http.NewRequestWithContext(ctx, http.MethodGet, c.goProxyBaseURL+"/"+path, nil)
+	if err != nil {
+		return nil, err
 	}
 	response, err := c.httpClient.Do(request)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-	defer response.Body.Close()
+	defer func() {
+		retErr = errors.Join(retErr, response.Body.Close())
+	}()
 	if response.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("received status code %d retrieving %q", response.StatusCode, request.URL.String())
+		return nil, fmt.Errorf("received status code %d retrieving %q", response.StatusCode, request.URL.String())
 	}
-
-	var data struct {
-		Version string `json:"Version"` //nolint:tagliatelle
-	}
-	if err := json.NewDecoder(response.Body).Decode(&data); err != nil {
-		return "", err
-	}
-	return data.Version, nil
+	return io.ReadAll(response.Body)
 }
 
-func (c *Client) fetchNPMRegistry(ctx context.Context, name string, ignoreVersions map[string]struct{}, maxVersion string) (string, error) {
+func (c *Client) fetchNPMRegistry(ctx context.Context, name string) (_ []string, retErr error) {
 	request, err := http.NewRequestWithContext(
 		ctx,
 		http.MethodGet,
@@ -273,68 +249,53 @@ func (c *Client) fetchNPMRegistry(ctx context.Context, name string, ignoreVersio
 		nil,
 	)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	response, err := c.httpClient.Do(request)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-	defer response.Body.Close()
+	defer func() {
+		retErr = errors.Join(retErr, response.Body.Close())
+	}()
 	if response.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("received status code %d retrieving %q", response.StatusCode, request.URL.String())
+		return nil, fmt.Errorf("received status code %d retrieving %q", response.StatusCode, request.URL.String())
 	}
 
 	var data struct {
 		Versions map[string]any `json:"versions"`
 	}
 	if err := json.NewDecoder(response.Body).Decode(&data); err != nil {
-		return "", err
+		return nil, err
 	}
-	latestVersion := ""
+	versions := make([]string, 0, len(data.Versions))
 	for version := range data.Versions {
-		semverVersion, ok := ensureSemverPrefix(version)
-		if !ok {
-			continue
-		}
-		if _, ignored := ignoreVersions[semverVersion]; ignored {
-			continue
-		}
-		if maxVersion != "" && semver.Compare(semverVersion, maxVersion) >= 0 {
-			continue
-		}
-		if latestVersion == "" || semver.Compare(latestVersion, semverVersion) < 0 {
-			latestVersion = semverVersion
+		if v, ok := ensureSemverPrefix(version); ok {
+			versions = append(versions, v)
 		}
 	}
-	if latestVersion == "" {
-		return "", errors.New("no versions found")
-	}
-	return latestVersion, nil
+	return versions, nil
 }
 
-func (c *Client) fetchMaven(
-	ctx context.Context,
-	group string,
-	name string,
-	ignoreVersions map[string]struct{},
-	maxVersion string,
-) (string, error) {
+func (c *Client) fetchMaven(ctx context.Context, group string, name string) (_ []string, retErr error) {
 	groupComponents := strings.Split(group, ".")
 	targetURL, err := url.JoinPath(mavenURL, append(groupComponents, name, "maven-metadata.xml")...)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	request, err := http.NewRequestWithContext(ctx, http.MethodGet, targetURL, nil)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	response, err := c.httpClient.Do(request)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-	defer response.Body.Close()
+	defer func() {
+		retErr = errors.Join(retErr, response.Body.Close())
+	}()
 	if response.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("received status code %d retrieving %q", response.StatusCode, request.URL.String())
+		return nil, fmt.Errorf("received status code %d retrieving %q", response.StatusCode, request.URL.String())
 	}
 	var metadata struct {
 		GroupID    string `xml:"groupId"`
@@ -347,38 +308,18 @@ func (c *Client) fetchMaven(
 		} `xml:"versioning"`
 	}
 	if err := xml.NewDecoder(response.Body).Decode(&metadata); err != nil {
-		return "", err
+		return nil, err
 	}
-	latestVersion := ""
+	versions := make([]string, 0, len(metadata.Versioning.Versions))
 	for _, version := range metadata.Versioning.Versions {
-		v, ok := ensureSemverPrefix(version)
-		if !ok {
-			continue
-		}
-		v = semver.Canonical(v)
-		if _, ok := ignoreVersions[v]; ok {
-			continue
-		}
-		if maxVersion != "" && semver.Compare(v, maxVersion) >= 0 {
-			continue
-		}
-		if latestVersion == "" || semver.Compare(latestVersion, v) < 0 {
-			latestVersion = v
+		if v, ok := ensureSemverPrefix(version); ok {
+			versions = append(versions, semver.Canonical(v))
 		}
 	}
-	if latestVersion == "" {
-		return "", errors.New("failed to determine latest version from metadata")
-	}
-	return latestVersion, nil
+	return versions, nil
 }
 
-func (c *Client) fetchGithub(
-	ctx context.Context,
-	owner string,
-	repository string,
-	ignoreVersions map[string]struct{},
-	maxVersion string,
-) (string, error) {
+func (c *Client) fetchGithub(ctx context.Context, owner string, repository string) ([]string, error) {
 	// With the GitHub API we have a few options:
 	//
 	// ✅ 1. list all git tags
@@ -395,19 +336,13 @@ func (c *Client) fetchGithub(
 			PerPage: 100,
 		})
 		if err != nil {
-			return "", err
+			return nil, err
 		}
 		for _, tag := range tags {
 			if tag.Name == nil {
 				continue
 			}
 			if v, ok := ensureSemverPrefix(*tag.Name); ok {
-				if _, ok := ignoreVersions[v]; ok {
-					continue
-				}
-				if maxVersion != "" && semver.Compare(v, maxVersion) >= 0 {
-					continue
-				}
 				versions = append(versions, v)
 			}
 		}
@@ -416,14 +351,10 @@ func (c *Client) fetchGithub(
 			break
 		}
 	}
-	if len(versions) == 0 {
-		return "", errors.New("no versions found")
-	}
-	semver.Sort(versions)
-	return versions[len(versions)-1], nil
+	return versions, nil
 }
 
-func (c *Client) fetchPyPI(ctx context.Context, name string, ignoreVersions map[string]struct{}, maxVersion string) (string, error) {
+func (c *Client) fetchPyPI(ctx context.Context, name string) (_ []string, retErr error) {
 	request, err := http.NewRequestWithContext(
 		ctx,
 		http.MethodGet,
@@ -431,49 +362,39 @@ func (c *Client) fetchPyPI(ctx context.Context, name string, ignoreVersions map[
 		nil,
 	)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	request.Header.Set("Accept", "application/vnd.pypi.simple.v1+json")
 	response, err := c.httpClient.Do(request)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-	defer response.Body.Close()
+	defer func() {
+		retErr = errors.Join(retErr, response.Body.Close())
+	}()
 	if response.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("received status code %d retrieving %q", response.StatusCode, request.URL.String())
+		return nil, fmt.Errorf("received status code %d retrieving %q", response.StatusCode, request.URL.String())
 	}
 
 	var data struct {
 		Versions []string `json:"versions"`
 	}
 	if err := json.NewDecoder(response.Body).Decode(&data); err != nil {
-		return "", err
+		return nil, err
 	}
-	var versions []string
+	versions := make([]string, 0, len(data.Versions))
 	for _, version := range data.Versions {
-		v, ok := ensureSemverPrefix(version)
-		if !ok {
-			continue
+		if v, ok := ensureSemverPrefix(version); ok {
+			versions = append(versions, v)
 		}
-		if _, ok := ignoreVersions[v]; ok {
-			continue
-		}
-		if maxVersion != "" && semver.Compare(v, maxVersion) >= 0 {
-			continue
-		}
-		versions = append(versions, v)
 	}
-	if len(versions) == 0 {
-		return "", errors.New("no versions found")
-	}
-	semver.Sort(versions)
-	return versions[len(versions)-1], nil
+	return versions, nil
 }
 
 // ensureSemverPrefix checks if the given version is valid semver, optionally
 // prefixing with "v". The output version is not guaranteed to be the same
-// as input. This function returns false if the version is not valid semver or
-// is a prerelease.
+// as input. This function returns false if the version is not valid semver, is
+// a prerelease, or has build metadata.
 func ensureSemverPrefix(version string) (string, bool) {
 	if !strings.HasPrefix(version, "v") {
 		version = "v" + version
@@ -481,7 +402,7 @@ func ensureSemverPrefix(version string) (string, bool) {
 	if !semver.IsValid(version) {
 		return "", false
 	}
-	if semver.Prerelease(version) != "" {
+	if semver.Prerelease(version) != "" || semver.Build(version) != "" {
 		return "", false
 	}
 	return version, true
