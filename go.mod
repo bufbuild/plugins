@@ -4,10 +4,10 @@ go 1.27
 
 require (
 	aead.dev/minisign v0.3.0
-	buf.build/go/app v0.2.1-0.20260824172350-b0e76892c61a
+	buf.build/go/app v0.2.1-0.20260928213032-9a091f2dc726
 	buf.build/go/interrupt v1.1.0
 	buf.build/go/standard v0.1.1-0.20260325175353-2b287e071df5
-	github.com/bufbuild/buf v1.73.0
+	github.com/bufbuild/buf v1.74.0
 	github.com/google/go-containerregistry v0.22.1
 	github.com/google/go-github/v72 v72.0.0
 	github.com/hashicorp/go-retryablehttp v0.7.8
@@ -27,7 +27,7 @@ require (
 	github.com/google/go-querystring v1.2.0 // indirect
 	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
-	github.com/klauspost/compress v1.20.1 // indirect
+	github.com/klauspost/compress v1.20.3 // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/opencontainers/image-spec v1.1.1 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
