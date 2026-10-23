@@ -19,3 +19,5 @@ registry:
     # Produce PEP 420 namespace packages so the py, grpc-py, and dependency
     # SDKs for a module can share the same top-level package.
     - init_files=false
+    # Generated SDKs always output to the root, so we always map imports to the root too.
+    - "map_imports=**:"

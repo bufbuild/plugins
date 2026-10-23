@@ -19,3 +19,6 @@ registry:
     deps:
       # https://pypi.org/project/connectrpc/
       - "connectrpc >= 0.13.0"
+  opts:
+    # Generated SDKs always output to the root, so we always map imports to the root too.
+    - "map_imports=**:"
