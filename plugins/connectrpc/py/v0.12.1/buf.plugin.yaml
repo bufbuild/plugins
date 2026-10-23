@@ -19,3 +19,8 @@ registry:
     deps:
       # https://pypi.org/project/connectrpc/
       - "connectrpc >= 0.12.1"
+  opts:
+    # Import other generated modules by their absolute path so imports across
+    # top-level packages resolve in installed SDKs. protobuf-py 0.4.0 names
+    # this option rewrite_imports (map_imports in 0.5.0+).
+    - "rewrite_imports=./**/*_pb.py:"
