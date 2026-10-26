@@ -1,0 +1,21 @@
+version: v1
+name: buf.build/connectrpc/py
+plugin_version: v0.13.0
+source_url: https://github.com/connectrpc/connect-py
+integration_guide_url: https://connectrpc.com/docs/python/getting-started
+description: Generates client and server stubs for Connect Python. Compatible with the Connect RPC protocol.
+spdx_license_id: Apache-2.0
+license_url: https://github.com/connectrpc/connect-py/blob/v0.13.0/LICENSE
+deps:
+  # https://github.com/connectrpc/connect-py/blob/v0.13.0/pyproject.toml#L32
+  - plugin: buf.build/bufbuild/py:v0.7.0
+output_languages:
+  - python
+registry:
+  python:
+    package_type: "runtime"
+    # https://github.com/connectrpc/connect-py/blob/v0.13.0/pyproject.toml#L6
+    requires_python: ">=3.11"
+    deps:
+      # https://pypi.org/project/connectrpc/
+      - "connectrpc >= 0.13.0"
