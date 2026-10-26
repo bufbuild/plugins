@@ -1,3 +1,3 @@
-FROM gcr.io/distroless/python3-debian13:latest@sha256:96234eaf03bba491856ead9142eccdda8cf9d09ce418770a260b84f529d81848
+FROM gcr.io/distroless/python3-debian13:latest@sha256:0db804f397ca31a1498c9d94c3c1df53fe49ac8007e5942b1cb547c1c3355c09
 
 CMD echo this is a dummy file used to automate dependency upgrades for plugins
