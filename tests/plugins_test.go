@@ -53,7 +53,7 @@ plugins:
 {{- if .Opts }}
     opt:
 {{- range .Opts }}
-      - {{ . }}
+      - {{ printf "%q" . }}
 {{- end }}
 {{- end -}}
 `))
