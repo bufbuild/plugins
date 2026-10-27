@@ -4,10 +4,10 @@ go 1.27
 
 require (
 	aead.dev/minisign v0.3.0
-	buf.build/go/app v0.2.1-0.20260928213032-9a091f2dc726
+	buf.build/go/app v0.3.0
 	buf.build/go/interrupt v1.1.0
 	buf.build/go/standard v0.1.1-0.20260325175353-2b287e071df5
-	github.com/bufbuild/buf v1.74.0
+	github.com/bufbuild/buf v1.75.0
 	github.com/google/go-containerregistry v0.22.1
 	github.com/google/go-github/v72 v72.0.0
 	github.com/hashicorp/go-retryablehttp v0.7.8
@@ -22,7 +22,7 @@ require (
 	buf.build/go/bufprivateusage v0.1.0 // indirect
 	buf.build/go/spdx v0.3.0 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.7 // indirect
-	github.com/docker/cli v29.9.0+incompatible // indirect
+	github.com/docker/cli v29.9.1+incompatible // indirect
 	github.com/docker/docker-credential-helpers v0.9.10 // indirect
 	github.com/google/go-querystring v1.2.0 // indirect
 	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect
