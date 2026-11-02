@@ -1,0 +1,12 @@
+version: v1
+name: buf.build/community/ftshp-connect-php
+plugin_version: v0.1.0
+source_url: https://github.com/ftshp/connect-php
+integration_guide_url: https://github.com/ftshp/connect-php#generated-code
+description: Generates a PHP service interface and a PSR-18 client per service for ftshp/connect, an unofficial PHP implementation of the Connect protocol for unary RPCs. Use alongside protocolbuffers/php for the message classes.
+deps:
+  - plugin: buf.build/protocolbuffers/php:v36.2
+output_languages:
+  - php
+spdx_license_id: Apache-2.0
+license_url: https://github.com/ftshp/connect-php/blob/v0.1.0/LICENSE
