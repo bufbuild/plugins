@@ -1,4 +1,6 @@
 source:
+  # Moved to connectrpc/openapi
+  disabled: true
   github:
     owner: sudorandom
     repository: protoc-gen-connect-openapi
