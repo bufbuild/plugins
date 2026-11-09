@@ -7,8 +7,8 @@ import (
 	"slices"
 	"strings"
 
+	"go.yaml.in/yaml/v3"
 	"golang.org/x/mod/semver"
-	"gopkg.in/yaml.v3"
 )
 
 // Cacheable indicates that a given config can be cached by the returned key.

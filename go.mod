@@ -13,9 +13,9 @@ require (
 	github.com/hashicorp/go-retryablehttp v0.7.8
 	github.com/spf13/pflag v1.0.10
 	github.com/stretchr/testify v1.12.1
+	go.yaml.in/yaml/v3 v3.0.6
 	golang.org/x/mod v0.42.0
 	golang.org/x/sync v0.24.0
-	gopkg.in/yaml.v3 v3.0.1
 )
 
 require (
@@ -33,7 +33,6 @@ require (
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/sirupsen/logrus v1.10.2 // indirect
 	github.com/spf13/cobra v1.10.2 // indirect
-	go.yaml.in/yaml/v3 v3.0.5 // indirect
 	golang.org/x/crypto v0.58.0 // indirect
 	golang.org/x/sys v0.49.0 // indirect
 	gotest.tools/v3 v3.5.2 // indirect
