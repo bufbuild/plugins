@@ -11,11 +11,11 @@ require (
 	github.com/google/go-containerregistry v0.22.1
 	github.com/google/go-github/v72 v72.0.0
 	github.com/hashicorp/go-retryablehttp v0.7.8
-	github.com/spf13/pflag v1.0.10
+	github.com/spf13/pflag v1.1.0
 	github.com/stretchr/testify v1.12.1
 	go.yaml.in/yaml/v3 v3.0.6
 	golang.org/x/mod v0.42.0
-	golang.org/x/sync v0.24.0
+	golang.org/x/sync v0.25.0
 )
 
 require (
