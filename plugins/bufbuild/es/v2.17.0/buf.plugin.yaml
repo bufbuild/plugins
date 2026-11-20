@@ -10,6 +10,7 @@ output_languages:
 registry:
   opts:
     - import_extension=js
+    - json_types=true
   npm:
     import_style: module
     rewrite_import_path_suffix: pb.js
